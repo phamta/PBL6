@@ -1,28 +1,20 @@
-import { IsOptional, IsString, IsEnum, IsDateString } from 'class-validator';
-import { TranslationStatus, DocumentType, LanguagePair } from '../../entities/translation-request.entity';
+import { IsEnum, IsOptional, IsDateString, IsString } from 'class-validator';
 
 export enum ReportFormat {
-  EXCEL = 'excel',
   PDF = 'pdf',
+  EXCEL = 'excel',
+  CSV = 'csv',
+}
+
+export enum ReportPeriod {
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  MONTHLY = 'monthly',
+  YEARLY = 'yearly',
+  CUSTOM = 'custom',
 }
 
 export class TranslationReportDto {
-  @IsOptional()
-  @IsString()
-  submittingUnit?: string;
-
-  @IsOptional()
-  @IsEnum(TranslationStatus)
-  status?: TranslationStatus;
-
-  @IsOptional()
-  @IsEnum(DocumentType)
-  documentType?: DocumentType;
-
-  @IsOptional()
-  @IsEnum(LanguagePair)
-  languagePair?: LanguagePair;
-
   @IsOptional()
   @IsDateString()
   startDate?: string;
@@ -32,10 +24,38 @@ export class TranslationReportDto {
   endDate?: string;
 
   @IsOptional()
-  @IsString()
-  year?: string;
+  @IsEnum(ReportPeriod)
+  period?: ReportPeriod;
 
   @IsOptional()
   @IsEnum(ReportFormat)
-  format?: ReportFormat;
+  format?: ReportFormat = ReportFormat.PDF;
+
+  @IsOptional()
+  @IsString()
+  filterByStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  filterByTranslator?: string;
+
+  @IsOptional()
+  @IsString()
+  submittingUnit?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsString()
+  documentType?: string;
+
+  @IsOptional()
+  @IsString()
+  languagePair?: string;
+
+  @IsOptional()
+  @IsString()
+  year?: string;
 }

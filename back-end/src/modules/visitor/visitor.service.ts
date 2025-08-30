@@ -1,27 +1,27 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Visitor } from './entities/visitor.entity';
+import { VisitorGroup } from './entities/visitor.entity';
 import { CreateVisitorDto } from './dto/create-visitor.dto';
 import { UpdateVisitorDto } from './dto/update-visitor.dto';
 
 @Injectable()
 export class VisitorService {
   constructor(
-    @InjectRepository(Visitor)
-    private visitorRepository: Repository<Visitor>,
+    @InjectRepository(VisitorGroup)
+    private visitorRepository: Repository<VisitorGroup>,
   ) {}
 
-  async create(createVisitorDto: CreateVisitorDto): Promise<Visitor> {
+  async create(createVisitorDto: CreateVisitorDto): Promise<VisitorGroup> {
     const visitor = this.visitorRepository.create(createVisitorDto);
     return this.visitorRepository.save(visitor);
   }
 
-  async findAll(): Promise<Visitor[]> {
+  async findAll(): Promise<VisitorGroup[]> {
     return this.visitorRepository.find();
   }
 
-  async findOne(id: string): Promise<Visitor> {
+  async findOne(id: string): Promise<VisitorGroup> {
     const visitor = await this.visitorRepository.findOne({
       where: { id },
     });
@@ -33,7 +33,7 @@ export class VisitorService {
     return visitor;
   }
 
-  async update(id: string, updateVisitorDto: UpdateVisitorDto): Promise<Visitor> {
+  async update(id: string, updateVisitorDto: UpdateVisitorDto): Promise<VisitorGroup> {
     const visitor = await this.findOne(id);
     Object.assign(visitor, updateVisitorDto);
     return this.visitorRepository.save(visitor);

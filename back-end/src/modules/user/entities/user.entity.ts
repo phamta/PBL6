@@ -5,54 +5,48 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToMany,
+  JoinTable,
 } from 'typeorm';
+import { Role } from './role.entity';
 import { UserRole, UserStatus } from '../../../common/enums/user.enum';
-import { VisaApplication } from '../../visa/entities/visa-application.entity';
 
-@Entity('users')
+@Entity('user')
 export class User {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'user_id' })
   id: string;
 
-  @Column({ unique: true })
+  @Column({ unique: true, length: 100 })
+  username: string;
+
+  @Column({ unique: true, length: 200 })
   email: string;
 
-  @Column()
+  @Column({ name: 'password_hash', length: 255 })
   password: string;
 
-  @Column()
+  @Column({ name: 'full_name', length: 200 })
   fullName: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, length: 20 })
   phone: string;
 
-  @Column({ nullable: true })
-  department: string;
-
-  @Column({
-    type: 'enum',
-    enum: UserRole,
-    default: UserRole.USER,
-  })
-  role: UserRole;
-
-  @Column({
-    type: 'enum',
-    enum: UserStatus,
-    default: UserStatus.ACTIVE,
-  })
-  status: UserStatus;
-
-  @Column({ nullable: true })
-  avatar: string;
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  // Relations
-  @OneToMany(() => VisaApplication, (visaApplication) => visaApplication.user)
-  visaApplications: VisaApplication[];
+  // Temporary properties for backward compatibility
+  role?: UserRole;
+  status?: UserStatus;
+
+  // Relations với các bảng khác
+  @ManyToMany(() => Role, (role) => role.users)
+  @JoinTable({
+    name: 'user_role',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
+  })
+  roles: Role[];
 }

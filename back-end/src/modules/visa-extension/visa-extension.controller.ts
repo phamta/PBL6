@@ -17,8 +17,9 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { Permissions } from '../../auth/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 import { UserRole } from '../../common/enums/user.enum';
 import { VisaExtensionService } from './visa-extension.service';
 import { VisaExtensionDocumentService } from './visa-extension-document.service';
@@ -49,15 +50,15 @@ export class VisaExtensionController {
   }
 
   @Get('statistics')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.PHONG)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.REPORT_STATS)
   async getStatistics(@Request() req) {
     return await this.visaExtensionService.getStatistics(req.user);
   }
 
   @Get('expiring-soon')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.PHONG)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.VISA_READ)
   async getExpiringSoon(@Query('days') days?: string) {
     const daysNumber = days ? parseInt(days, 10) : 30;
     return await this.visaExtensionService.getExpiringSoon(daysNumber);
@@ -78,8 +79,8 @@ export class VisaExtensionController {
   }
 
   @Patch(':id/status')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.PHONG)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.VISA_REVIEW)
   async changeStatus(
     @Param('id') id: string,
     @Body() changeStatusDto: ChangeStatusDto,
@@ -170,8 +171,8 @@ export class VisaExtensionController {
   }
 
   @Patch(':id/documents/:documentId/verify')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.PHONG)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.VISA_REVIEW)
   async verifyDocument(
     @Param('id') id: string,
     @Param('documentId') documentId: string,

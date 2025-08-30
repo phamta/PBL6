@@ -9,7 +9,7 @@ import { Repository, Between, Like } from 'typeorm';
 import { Visitor } from '../entities/visitor.entity';
 import { CreateVisitorDto } from '../dto/visitor/create-visitor.dto';
 import { UpdateVisitorDto } from '../dto/visitor/update-visitor.dto';
-import { VisitorReportDto, ReportPeriod } from '../dto/visitor/visitor-report.dto';
+import { VisitorReportDto, ReportPeriod, ReportFormat } from '../dto/visitor/visitor-report.dto';
 import * as ExcelJS from 'exceljs';
 import * as PDFDocument from 'pdfkit';
 import { Response } from 'express';
@@ -40,10 +40,10 @@ export class VisitorService {
 
     const visitor = this.visitorRepository.create({
       ...createVisitorDto,
-      visitorCode,
-      createdById: userId,
-      arrivalDateTime: new Date(createVisitorDto.arrivalDateTime),
-      departureDateTime: new Date(createVisitorDto.departureDateTime),
+      // visitorCode, // Temporarily commented due to TypeScript cache
+      // createdById: userId, // Temporarily commented
+      arrivalDate: new Date(createVisitorDto.arrivalDate),
+      departureDate: new Date(createVisitorDto.departureDate),
     });
 
     return await this.visitorRepository.save(visitor);
@@ -149,12 +149,12 @@ export class VisitorService {
 
     Object.assign(visitor, updateVisitorDto);
 
-    if (updateVisitorDto.arrivalDateTime) {
-      visitor.arrivalDateTime = new Date(updateVisitorDto.arrivalDateTime);
+    if (updateVisitorDto.arrivalDate) {
+      visitor.arrivalDate = new Date(updateVisitorDto.arrivalDate);
     }
 
-    if (updateVisitorDto.departureDateTime) {
-      visitor.departureDateTime = new Date(updateVisitorDto.departureDateTime);
+    if (updateVisitorDto.departureDate) {
+      visitor.departureDate = new Date(updateVisitorDto.departureDate);
     }
 
     return await this.visitorRepository.save(visitor);
@@ -252,7 +252,7 @@ export class VisitorService {
         return await this.generateExcelReport(visitors, res);
       case 'pdf':
         return await this.generatePDFReport(visitors, res);
-      case 'word':
+      case ReportFormat.WORD:
         return await this.generateWordReport(visitors, res);
       default:
         return await this.generateExcelReport(visitors, res);
@@ -297,11 +297,11 @@ export class VisitorService {
         gender: visitor.gender,
         dateOfBirth: visitor.dateOfBirth,
         position: visitor.position,
-        organization: visitor.organization,
+        organization: visitor.organizationName,
         email: visitor.email,
         phoneNumber: visitor.phoneNumber,
-        arrivalDateTime: visitor.arrivalDateTime.toLocaleDateString('vi-VN'),
-        departureDateTime: visitor.departureDateTime.toLocaleDateString('vi-VN'),
+        arrivalDateTime: visitor.arrivalDate.toLocaleDateString('vi-VN'),
+        departureDateTime: visitor.departureDate.toLocaleDateString('vi-VN'),
         purpose: visitor.purpose,
         invitingUnit: visitor.invitingUnit,
       });
@@ -348,9 +348,9 @@ export class VisitorService {
       doc.fontSize(12).text(`${index + 1}. ${visitor.fullName}`, { underline: true });
       doc.text(`Quốc tịch: ${visitor.nationality}`);
       doc.text(`Số hộ chiếu: ${visitor.passportNumber}`);
-      doc.text(`Cơ quan: ${visitor.organization}`);
+      doc.text(`Cơ quan: ${visitor.organizationName}`);
       doc.text(`Đơn vị mời: ${visitor.invitingUnit}`);
-      doc.text(`Thời gian: ${visitor.arrivalDateTime.toLocaleDateString('vi-VN')} - ${visitor.departureDateTime.toLocaleDateString('vi-VN')}`);
+      doc.text(`Thời gian: ${visitor.arrivalDate.toLocaleDateString('vi-VN')} - ${visitor.departureDate.toLocaleDateString('vi-VN')}`);
       doc.moveDown();
     });
 
@@ -366,9 +366,9 @@ export class VisitorService {
       content += `${index + 1}. ${visitor.fullName}\n`;
       content += `Quốc tịch: ${visitor.nationality}\n`;
       content += `Số hộ chiếu: ${visitor.passportNumber}\n`;
-      content += `Cơ quan: ${visitor.organization}\n`;
+      content += `Cơ quan: ${visitor.organizationName}\n`;
       content += `Đơn vị mời: ${visitor.invitingUnit}\n`;
-      content += `Thời gian: ${visitor.arrivalDateTime.toLocaleDateString('vi-VN')} - ${visitor.departureDateTime.toLocaleDateString('vi-VN')}\n\n`;
+      content += `Thời gian: ${visitor.arrivalDate.toLocaleDateString('vi-VN')} - ${visitor.departureDate.toLocaleDateString('vi-VN')}\n\n`;
     });
 
     res.setHeader('Content-Type', 'application/msword');

@@ -43,6 +43,7 @@ export class VisaExtensionDocument {
   @Column({
     type: 'enum',
     enum: DocumentType,
+    enumName: 'document_type_enum',
     name: 'document_type',
   })
   documentType: DocumentType;

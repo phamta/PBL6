@@ -4,26 +4,13 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
 } from 'typeorm';
-import { User } from '../modules/user/entities/user.entity';
 
-export enum VisitorGender {
-  MALE = 'Male',
-  FEMALE = 'Female',
-  OTHER = 'Other',
-}
-
-export enum VisitorPurpose {
-  ACADEMIC_EXCHANGE = 'Academic Exchange',
-  RESEARCH_COLLABORATION = 'Research Collaboration',
-  CONFERENCE = 'Conference',
-  WORKSHOP = 'Workshop',
-  TRAINING = 'Training',
-  BUSINESS_MEETING = 'Business Meeting',
-  CULTURAL_EXCHANGE = 'Cultural Exchange',
-  OTHER = 'Other',
+export enum VisitorStatus {
+  SCHEDULED = 'scheduled',
+  ARRIVED = 'arrived',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
 }
 
 @Entity('visitors')
@@ -31,63 +18,88 @@ export class Visitor {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 255 })
-  fullName: string;
+  @Column()
+  groupName: string;
 
-  @Column({ type: 'varchar', length: 100 })
-  nationality: string;
+  @Column()
+  organizationName: string;
 
-  @Column({ type: 'varchar', length: 50, unique: true })
-  passportNumber: string;
+  @Column()
+  country: string;
 
-  @Column({ type: 'enum', enum: VisitorGender })
-  gender: VisitorGender;
+  @Column({ type: 'int' })
+  numberOfMembers: number;
+
+  @Column()
+  contactPerson: string;
+
+  @Column()
+  contactEmail: string;
+
+  @Column({ nullable: true })
+  contactPhone: string;
 
   @Column({ type: 'date' })
-  dateOfBirth: string;
+  arrivalDate: Date;
 
-  @Column({ type: 'varchar', length: 255 })
-  position: string;
+  @Column({ type: 'date' })
+  departureDate: Date;
 
-  @Column({ type: 'varchar', length: 255 })
-  organization: string;
+  @Column({ type: 'text' })
+  purpose: string;
 
-  @Column({ type: 'varchar', length: 255 })
-  email: string;
-
-  @Column({ type: 'varchar', length: 20 })
-  phoneNumber: string;
-
-  @Column({ type: 'timestamp' })
-  arrivalDateTime: Date;
-
-  @Column({ type: 'timestamp' })
-  departureDateTime: Date;
-
-  @Column({ type: 'enum', enum: VisitorPurpose })
-  purpose: VisitorPurpose;
+  @Column({
+    type: 'enum',
+    enum: VisitorStatus,
+    default: VisitorStatus.SCHEDULED,
+  })
+  status: VisitorStatus;
 
   @Column({ type: 'text', nullable: true })
-  purposeDetails: string;
+  itinerary: string;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column({ type: 'text', nullable: true })
+  notes: string;
+
+  @Column({ type: 'json', nullable: true })
+  membersList: string[];
+
+  // Additional fields for individual visitor tracking
+  @Column({ nullable: true })
+  visitorCode: string;
+
+  @Column({ nullable: true })
+  fullName: string;
+
+  @Column({ nullable: true })
+  nationality: string;
+
+  @Column({ nullable: true })
+  passportNumber: string;
+
+  @Column({ nullable: true })
+  gender: string;
+
+  @Column({ type: 'date', nullable: true })
+  dateOfBirth: Date;
+
+  @Column({ nullable: true })
+  position: string;
+
+  @Column({ nullable: true })
+  email: string;
+
+  @Column({ nullable: true })
+  phoneNumber: string;
+
+  @Column({ nullable: true })
   invitingUnit: string;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ nullable: true })
   passportScanPath: string;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ nullable: true })
   documentPath: string;
-
-  @Column({ type: 'varchar', length: 50 })
-  visitorCode: string; // Auto-generated code
-
-  @ManyToOne(() => User, { eager: true })
-  @JoinColumn({ name: 'created_by' })
-  createdBy: User;
-
-  @Column({ name: 'created_by' })
-  createdById: string;
 
   @CreateDateColumn()
   createdAt: Date;

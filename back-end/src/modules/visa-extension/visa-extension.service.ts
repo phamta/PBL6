@@ -95,7 +95,7 @@ export class VisaExtensionService {
       .leftJoinAndSelect('visa_extension.documents', 'documents');
 
     // Role-based filtering
-    if (user.role === UserRole.USER || user.role === UserRole.KHOA) {
+    if (user.role === UserRole.USER || user.role === UserRole.MANAGER) {
       queryBuilder.where('visa_extension.applicantId = :userId', { userId: user.id });
     }
 
@@ -144,13 +144,13 @@ export class VisaExtensionService {
       );
     }
 
-    // Applicant filter (for admin/phong use)
-    if (applicantId && (user.role === UserRole.ADMIN || user.role === UserRole.PHONG)) {
+    // Applicant filter (for admin/specialist use)
+    if (applicantId && (user.role === UserRole.ADMIN || user.role === UserRole.SPECIALIST)) {
       queryBuilder.andWhere('visa_extension.applicantId = :applicantId', { applicantId });
     }
 
     // Reviewer filter
-    if (reviewerId && (user.role === UserRole.ADMIN || user.role === UserRole.PHONG)) {
+    if (reviewerId && (user.role === UserRole.ADMIN || user.role === UserRole.SPECIALIST)) {
       queryBuilder.andWhere('visa_extension.reviewerId = :reviewerId', { reviewerId });
     }
 
@@ -187,7 +187,7 @@ export class VisaExtensionService {
     // Check permission
     if (
       user.role !== UserRole.ADMIN &&
-      user.role !== UserRole.PHONG &&
+      user.role !== UserRole.SPECIALIST &&
       visaExtension.applicantId !== user.id
     ) {
       throw new ForbiddenException('Access denied');
@@ -204,10 +204,10 @@ export class VisaExtensionService {
     const visaExtension = await this.findOne(id, user);
 
     // Only allow updates if status is DRAFT or ADDITIONAL_REQUIRED (for applicant)
-    // Or if user is admin/phong
+    // Or if user is admin/specialist
     if (
       user.role !== UserRole.ADMIN &&
-      user.role !== UserRole.PHONG &&
+      user.role !== UserRole.SPECIALIST &&
       visaExtension.status !== VisaExtensionStatus.DRAFT &&
       visaExtension.status !== VisaExtensionStatus.ADDITIONAL_REQUIRED
     ) {
@@ -252,8 +252,8 @@ export class VisaExtensionService {
     const visaExtension = await this.findOne(id, user);
 
     // Check permissions for status changes
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.PHONG) {
-      throw new ForbiddenException('Only admin and phong can change status');
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SPECIALIST) {
+      throw new ForbiddenException('Only admin and specialist can change status');
     }
 
     const oldStatus = visaExtension.status;
@@ -351,7 +351,7 @@ export class VisaExtensionService {
   }
 
   async getStatistics(user: User): Promise<any> {
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.PHONG) {
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SPECIALIST) {
       throw new ForbiddenException('Access denied');
     }
 

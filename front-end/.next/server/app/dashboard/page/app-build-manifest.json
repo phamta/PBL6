@@ -1,14 +1,16 @@
 {
   "pages": {
     "/dashboard/page": [
-      "static/chunks/[root-of-the-server]__608acd83._.css",
+      "static/chunks/[root-of-the-server]__9a168d68._.css",
       "static/chunks/node_modules_next_dist_01fcdebf._.js",
-      "static/chunks/app_layout_tsx_68b267f5._.js",
-      "static/chunks/node_modules_next_dist_client_components_builtin_global-error_4ef5de28.js",
-      "static/chunks/_fad5949c._.js",
-      "static/chunks/app_dashboard_layout_tsx_4ef5de28._.js",
-      "static/chunks/app_dashboard_page_tsx_ad9a6368._.js",
-      "static/chunks/app_dashboard_page_tsx_ae35e6fd._.js",
+      "static/chunks/src_app_layout_tsx_68b267f5._.js",
+      "static/chunks/node_modules_next_dist_client_components_builtin_global-error_3c41bf90.js",
+      "static/chunks/src_eef0d5f7._.js",
+      "static/chunks/node_modules_b2399a8f._.js",
+      "static/chunks/src_app_dashboard_layout_tsx_3c41bf90._.js",
+      "static/chunks/src_app_dashboard_page_tsx_04fd597f._.js",
+      "static/chunks/node_modules_lucide-react_dist_esm_icons_237e492e._.js",
+      "static/chunks/src_app_dashboard_page_tsx_a9b94557._.js",
       "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_6aaa83c7._.js",
       "static/chunks/node_modules_next_dist_compiled_react-dom_1f56dc06._.js",
       "static/chunks/node_modules_next_dist_compiled_next-devtools_index_d575f738.js",

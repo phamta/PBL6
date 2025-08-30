@@ -1,5 +1,6 @@
-import { IsString, IsDateString, IsOptional, IsEnum, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsEnum, IsArray } from 'class-validator';
 import { VisaStatus } from '../entities/visa-application.entity';
+// import { VisaStatus } from '../entities/visa-application.entity';
 
 export class CreateVisaApplicationDto {
   @IsString()

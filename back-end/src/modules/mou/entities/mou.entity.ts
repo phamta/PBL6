@@ -5,20 +5,23 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
 
 export enum MouStatus {
-  PROPOSING = 'proposing',           // Đang đề xuất
-  REVIEWING = 'reviewing',           // Đang duyệt
-  PENDING_SUPPLEMENT = 'pending_supplement', // Yêu cầu bổ sung
-  APPROVED = 'approved',             // Đã duyệt
-  SIGNED = 'signed',                 // Đã ký
-  REJECTED = 'rejected',             // Từ chối
-  EXPIRED = 'expired',               // Hết hạn
-  TERMINATED = 'terminated',         // Chấm dứt
-  ACTIVE = 'active',                 // Tạm thời giữ để tương thích với data cũ
+  DRAFT = 'draft',
+  ACTIVE = 'active',
+  EXPIRED = 'expired',
+  TERMINATED = 'terminated',
+  // Temporary for backward compatibility
+  PROPOSING = 'proposing',
+  REVIEWING = 'reviewing',
+  PENDING_SUPPLEMENT = 'pending_supplement',
+  APPROVED = 'approved',
+  SIGNED = 'signed',
+  REJECTED = 'rejected',
 }
 
 export enum MouType {
@@ -37,131 +40,126 @@ export enum MouPriority {
   URGENT = 'urgent',
 }
 
-@Entity('mous')
+@Entity('mou')
 export class Mou {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'mou_id' })
   id: string;
 
-  @Column()
-  title: string;
+  @Column({ name: 'org_name', length: 300 })
+  orgName: string;
 
-  @Column()
-  partnerOrganization: string;
+  @Column({ name: 'start_date', type: 'date' })
+  startDate: Date;
 
-  @Column()
-  partnerCountry: string;
-
-  @Column({ nullable: true })
-  partnerContact: string;
-
-  @Column({ nullable: true })
-  partnerEmail: string;
-
-  @Column({ nullable: true })
-  partnerPhone: string;
-
-  @Column({ type: 'text' })
-  description: string;
+  @Column({ name: 'end_date', type: 'date' })
+  endDate: Date;
 
   @Column({
-    type: 'enum',
-    enum: MouType,
-    default: MouType.ACADEMIC_COOPERATION,
-  })
-  type: MouType;
-
-  @Column({
-    type: 'enum',
-    enum: MouPriority,
-    default: MouPriority.MEDIUM,
-  })
-  priority: MouPriority;
-
-  @Column({ type: 'date', nullable: true })
-  proposedDate: Date;
-
-  @Column({ type: 'date', nullable: true })
-  signedDate: Date;
-
-  @Column({ type: 'date', nullable: true })
-  effectiveDate: Date;
-
-  @Column({ type: 'date', nullable: true })
-  expiryDate: Date;
-
-  @Column({
-    type: 'enum',
-    enum: MouStatus,
-    default: MouStatus.PROPOSING,
+    type: 'varchar',
+    length: 50,
+    default: MouStatus.DRAFT,
   })
   status: MouStatus;
 
-  @Column({ type: 'json', nullable: true })
-  documents: string[];
-
-  @Column({ type: 'text', nullable: true })
-  terms: string;
-
-  @Column({ type: 'text', nullable: true })
-  objectives: string;
-
-  @Column({ type: 'text', nullable: true })
-  scope: string;
-
-  @Column({ type: 'text', nullable: true })
-  benefits: string;
-
-  @Column({ type: 'text', nullable: true })
-  notes: string;
-
-  @Column({ nullable: true })
-  reviewedBy: string;
-
-  @Column({ type: 'date', nullable: true })
-  reviewedAt: Date;
-
-  @Column({ type: 'text', nullable: true })
-  reviewComments: string;
-
-  @Column({ nullable: true })
-  approvedBy: string;
-
-  @Column({ type: 'date', nullable: true })
-  approvedAt: Date;
-
-  @Column({ nullable: true })
-  rejectedBy: string;
-
-  @Column({ type: 'date', nullable: true })
-  rejectedAt: Date;
-
-  @Column({ type: 'text', nullable: true })
-  rejectionReason: string;
-
-  @Column({ nullable: true })
-  department: string;
-
-  @Column({ nullable: true })
-  faculty: string;
-
-  // Relations
-  @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'createdBy' })
-  creator: User;
-
-  @Column({ nullable: true })
-  createdBy: string;
-
-  @ManyToOne(() => User, { nullable: true })
-  @JoinColumn({ name: 'assignedTo' })
-  assignee: User;
-
-  @Column({ nullable: true })
-  assignedTo: string;
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  // Temporary properties for backward compatibility
+  title?: string;
+  partnerOrganization?: string;
+  partnerCountry?: string;
+  partnerContact?: string;
+  partnerEmail?: string;
+  partnerPhone?: string;
+  description?: string;
+  type?: MouType;
+  priority?: MouPriority;
+  proposedDate?: Date;
+  signedDate?: Date;
+  effectiveDate?: Date;
+  expiryDate?: Date;
+  documents?: string[];
+  terms?: string;
+  objectives?: string;
+  scope?: string;
+  benefits?: string;
+  notes?: string;
+  reviewedBy?: string;
+  reviewedAt?: Date;
+  reviewComments?: string;
+  approvedBy?: string;
+  approvedAt?: Date;
+  rejectedBy?: string;
+  rejectedAt?: Date;
+  rejectionReason?: string;
+  department?: string;
+  faculty?: string;
+  assignedTo?: string;
+
+  // Relations
+  @Column('uuid', { name: 'created_by' })
+  createdBy: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'created_by' })
+  creator: User;
+
+  @OneToMany(() => MouDocument, (document) => document.mou)
+  documents_rel: MouDocument[];
+
+  @OneToMany(() => MouHistory, (history) => history.mou)
+  history: MouHistory[];
+}
+
+@Entity('mou_document')
+export class MouDocument {
+  @PrimaryGeneratedColumn('uuid', { name: 'doc_id' })
+  id: string;
+
+  @Column({ name: 'file_type', length: 100 })
+  fileType: string;
+
+  @Column({ name: 'file_path', length: 500 })
+  filePath: string;
+
+  @Column({ name: 'uploaded_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  uploadedAt: Date;
+
+  // Relations
+  @Column('uuid', { name: 'mou_id' })
+  mouId: string;
+
+  @ManyToOne(() => Mou, (mou) => mou.documents_rel)
+  @JoinColumn({ name: 'mou_id' })
+  mou: Mou;
+}
+
+@Entity('mou_history')
+export class MouHistory {
+  @PrimaryGeneratedColumn('uuid', { name: 'history_id' })
+  id: string;
+
+  @Column({ length: 50 })
+  status: string;
+
+  @Column({ name: 'updated_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  updatedAt: Date;
+
+  // Relations
+  @Column('uuid', { name: 'mou_id' })
+  mouId: string;
+
+  @Column('uuid', { name: 'updated_by' })
+  updatedBy: string;
+
+  @ManyToOne(() => Mou, (mou) => mou.history)
+  @JoinColumn({ name: 'mou_id' })
+  mou: Mou;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'updated_by' })
+  user: User;
 }

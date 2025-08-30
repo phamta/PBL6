@@ -1,19 +1,9 @@
-import {
-  IsString,
-  IsEnum,
-  IsNotEmpty,
-  MinLength,
-  MaxLength,
-  IsOptional,
-} from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsBoolean, IsNumber, IsDateString } from 'class-validator';
 import { DocumentType, LanguagePair } from '../../entities/translation-request.entity';
 
 export class CreateTranslationRequestDto {
-  @IsNotEmpty()
   @IsString()
-  @MinLength(5)
-  @MaxLength(255)
-  originalDocumentTitle: string;
+  documentTitle: string;
 
   @IsEnum(DocumentType)
   documentType: DocumentType;
@@ -21,21 +11,30 @@ export class CreateTranslationRequestDto {
   @IsEnum(LanguagePair)
   languagePair: LanguagePair;
 
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(10)
-  purpose: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @MaxLength(255)
-  submittingUnit: string;
-
   @IsOptional()
   @IsString()
   originalFilePath?: string;
 
   @IsOptional()
+  @IsNumber()
+  pagesCount?: number = 1;
+
+  @IsOptional()
+  @IsBoolean()
+  urgentRequest?: boolean = false;
+
+  @IsOptional()
+  @IsDateString()
+  expectedCompletionDate?: string;
+
+  @IsOptional()
   @IsString()
-  translatedFilePath?: string;
+  notes?: string;
+
+  @IsOptional()
+  @IsString()
+  specialRequirements?: string;
+
+  @IsString()
+  submittedById: string;
 }

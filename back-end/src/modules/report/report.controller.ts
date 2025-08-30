@@ -2,9 +2,9 @@ import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { ReportService } from './report.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/user.enum';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { Permissions } from '../../auth/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @Controller('reports')
 @UseGuards(JwtAuthGuard)
@@ -12,8 +12,8 @@ export class ReportController {
   constructor(private readonly reportService: ReportService) {}
 
   @Get('mou/excel')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.KHOA, UserRole.PHONG)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.REPORT_EXPORT)
   async exportMouExcel(@Query() filters: any, @Res() res: Response) {
     const buffer = await this.reportService.generateExcelReport(filters);
     
@@ -24,8 +24,8 @@ export class ReportController {
   }
 
   @Get('mou/pdf')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.KHOA, UserRole.PHONG)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.REPORT_EXPORT)
   async exportMouPDF(@Query() filters: any, @Res() res: Response) {
     const buffer = await this.reportService.generatePDFReport(filters);
     
@@ -36,8 +36,8 @@ export class ReportController {
   }
 
   @Get('dashboard/stats')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.KHOA, UserRole.PHONG)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.REPORT_STATS)
   async getDashboardStats() {
     return this.reportService.getDashboardStats();
   }

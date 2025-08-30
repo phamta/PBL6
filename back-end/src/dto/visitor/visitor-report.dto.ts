@@ -1,12 +1,15 @@
-import { IsOptional, IsString, IsDateString, IsEnum } from 'class-validator';
+import { IsEnum, IsOptional, IsDateString, IsString } from 'class-validator';
 
 export enum ReportFormat {
-  EXCEL = 'excel',
   PDF = 'pdf',
+  EXCEL = 'excel',
+  CSV = 'csv',
   WORD = 'word',
 }
 
 export enum ReportPeriod {
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
   MONTHLY = 'monthly',
   QUARTERLY = 'quarterly',
   YEARLY = 'yearly',
@@ -14,10 +17,6 @@ export enum ReportPeriod {
 }
 
 export class VisitorReportDto {
-  @IsOptional()
-  @IsString()
-  invitingUnit?: string;
-
   @IsOptional()
   @IsDateString()
   startDate?: string;
@@ -32,7 +31,23 @@ export class VisitorReportDto {
 
   @IsOptional()
   @IsEnum(ReportFormat)
-  format?: ReportFormat;
+  format?: ReportFormat = ReportFormat.PDF;
+
+  @IsOptional()
+  @IsString()
+  filterByStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  filterByCountry?: string;
+
+  @IsOptional()
+  @IsString()
+  filterByOrganization?: string;
+
+  @IsOptional()
+  @IsString()
+  invitingUnit?: string;
 
   @IsOptional()
   @IsString()

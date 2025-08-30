@@ -76,9 +76,9 @@ export class VisaExtensionDocumentService {
   ): Promise<VisaExtensionDocument> {
     const document = await this.findOne(id, user);
 
-    // Only admin and phong can verify documents
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.PHONG) {
-      throw new ForbiddenException('Only admin and phong can verify documents');
+    // Only admin and specialist can verify documents
+    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SPECIALIST) {
+      throw new ForbiddenException('Only admin and specialist can verify documents');
     }
 
     document.isVerified = verifyData.isVerified;

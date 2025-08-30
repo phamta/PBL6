@@ -69,6 +69,9 @@ export default function MouListPage() {
     year: '',
   });
 
+  // Helper function để đảm bảo mous luôn là array
+  const safeMous = Array.isArray(mous) ? mous : [];
+
   useEffect(() => {
     fetchMous();
   }, [filters]);
@@ -77,6 +80,12 @@ export default function MouListPage() {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Không tìm thấy token đăng nhập');
+        setMous([]);
+        return;
+      }
+
       const queryParams = new URLSearchParams();
       
       Object.entries(filters).forEach(([key, value]) => {
@@ -86,18 +95,33 @@ export default function MouListPage() {
       const response = await fetch(`http://localhost:3001/api/v1/mou?${queryParams}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
       });
 
       if (response.ok) {
         const result = await response.json();
-        setMous(result.data || []);
+        console.log('MOU API Response:', result); // Debug log
+        
+        // Đảm bảo setMous nhận được một array
+        if (Array.isArray(result)) {
+          setMous(result);
+        } else if (result && Array.isArray(result.data)) {
+          setMous(result.data);
+        } else {
+          console.error('Unexpected response format:', result);
+          setMous([]);
+          toast.error('Định dạng dữ liệu không đúng');
+        }
       } else {
+        console.error('API Error:', response.status, response.statusText);
         toast.error('Không thể tải danh sách MOU');
+        setMous([]);
       }
     } catch (error) {
       console.error('Error fetching MOUs:', error);
       toast.error('Lỗi kết nối server');
+      setMous([]);
     } finally {
       setLoading(false);
     }
@@ -253,7 +277,7 @@ export default function MouListPage() {
         <CardHeader>
           <CardTitle>Danh sách MOU</CardTitle>
           <CardDescription>
-            Tổng cộng: {mous.length} MOU
+            Tổng cộng: {safeMous.length} MOU
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -277,14 +301,14 @@ export default function MouListPage() {
                       Đang tải...
                     </TableCell>
                   </TableRow>
-                ) : mous.length === 0 ? (
+                ) : safeMous.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
                       Không có dữ liệu
                     </TableCell>
                   </TableRow>
                 ) : (
-                  mous.map((mou) => (
+                  safeMous.map((mou) => (
                     <TableRow key={mou.id}>
                       <TableCell className="font-medium">
                         <div>

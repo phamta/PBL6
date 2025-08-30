@@ -12,9 +12,9 @@ import { TranslationService } from './translation.service';
 import { CreateTranslationDto } from './dto/create-translation.dto';
 import { UpdateTranslationDto } from './dto/update-translation.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/user.enum';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { Permissions } from '../../auth/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @Controller('translation')
 @UseGuards(JwtAuthGuard)
@@ -22,32 +22,36 @@ export class TranslationController {
   constructor(private readonly translationService: TranslationService) {}
 
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.KHOA, UserRole.PHONG)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.TRANSLATION_CREATE)
   create(@Body() createTranslationDto: CreateTranslationDto) {
     return this.translationService.create(createTranslationDto);
   }
 
   @Get()
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.TRANSLATION_READ)
   findAll() {
     return this.translationService.findAll();
   }
 
   @Get(':id')
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.TRANSLATION_READ)
   findOne(@Param('id') id: string) {
     return this.translationService.findOne(id);
   }
 
   @Patch(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.KHOA)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.TRANSLATION_UPDATE)
   update(@Param('id') id: string, @Body() updateTranslationDto: UpdateTranslationDto) {
     return this.translationService.update(id, updateTranslationDto);
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.TRANSLATION_DELETE)
   remove(@Param('id') id: string) {
     return this.translationService.remove(id);
   }

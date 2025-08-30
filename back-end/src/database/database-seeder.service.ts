@@ -5,11 +5,12 @@ import { ConflictException } from '@nestjs/common';
 import { UserRole } from '../common/enums/user.enum';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Mou, MouStatus } from '../modules/mou/entities/mou.entity';
-import { VisaApplication, VisaStatus } from '../modules/visa/entities/visa-application.entity';
-import { Visitor, VisitorStatus } from '../modules/visitor/entities/visitor.entity';
-import { Translation, TranslationStatus, DocumentType } from '../modules/translation/entities/translation.entity';
+// import { Mou, MouStatus } from '../modules/mou/entities/mou.entity';
+// import { VisaApplication, VisaStatus } from '../modules/visa/entities/visa-application.entity';
+// import { Visitor, VisitorStatus } from '../modules/visitor/entities/visitor.entity';
+// import { Translation, TranslationStatus, DocumentType } from '../modules/translation/entities/translation.entity';
 import { User } from '../modules/user/entities/user.entity';
+import { TranslationRequest } from '../entities/translation-request.entity';
 
 @Injectable()
 export class DatabaseSeederService implements OnModuleInit {
@@ -17,24 +18,30 @@ export class DatabaseSeederService implements OnModuleInit {
 
   constructor(
     private readonly userService: UserService,
-    @InjectRepository(Mou)
-    private readonly mouRepository: Repository<Mou>,
-    @InjectRepository(VisaApplication)
-    private readonly visaRepository: Repository<VisaApplication>,
-    @InjectRepository(Visitor)
-    private readonly visitorRepository: Repository<Visitor>,
-    @InjectRepository(Translation)
-    private readonly translationRepository: Repository<Translation>,
+    // @InjectRepository(Mou)
+    // private readonly mouRepository: Repository<Mou>,
+    // @InjectRepository(VisaApplication)
+    // private readonly visaRepository: Repository<VisaApplication>,
+    // @InjectRepository(Visitor)
+    // private readonly visitorRepository: Repository<Visitor>,
+    // @InjectRepository(Translation)
+    // private readonly translationRepository: Repository<Translation>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(TranslationRequest)
+    private readonly translationRequestRepository: Repository<TranslationRequest>,
   ) {}
 
   async onModuleInit() {
-    // Delay để đảm bảo tất cả bảng đã được tạo
-    setTimeout(async () => {
-      await this.seedDefaultAdmin();
-      await this.seedSampleData();
-    }, 3000);
+    // SEEDER DISABLED - Uncomment below lines to enable automatic data seeding
+    
+    // // Delay để đảm bảo tất cả bảng đã được tạo
+    // setTimeout(async () => {
+    //   await this.seedDefaultAdmin();
+    //   await this.seedSampleData();
+    // }, 3000);
+    
+    this.logger.log('Database seeder is disabled. No automatic data seeding will occur.');
   }
 
   private async seedDefaultAdmin() {
@@ -46,6 +53,7 @@ export class DatabaseSeederService implements OnModuleInit {
       
       if (!existingAdmin) {
         const createAdminDto: CreateUserDto = {
+          username: 'admin',
           email: adminEmail,
           fullName: 'Administrator',
           password: 'admin123',
@@ -72,10 +80,11 @@ export class DatabaseSeederService implements OnModuleInit {
   private async seedSampleData() {
     try {
       await this.seedUsers();
-      await this.seedMOUs();
-      await this.seedVisaApplications();
-      await this.seedVisitors();
-      await this.seedTranslations();
+      await this.seedTranslationRequests();
+      // await this.seedMOUs();
+      // await this.seedVisaApplications();
+      // await this.seedVisitors();
+      // await this.seedTranslations();
       this.logger.log('Sample data seeded successfully');
     } catch (error) {
       this.logger.error('Failed to seed sample data', error.stack);
@@ -91,27 +100,24 @@ export class DatabaseSeederService implements OnModuleInit {
 
     const sampleUsers = [
       {
+        username: 'nguyenvana',
         email: 'nguyenvana@university.edu.vn',
         fullName: 'Nguyễn Văn A',
         password: 'password123',
-        role: UserRole.KHOA,
-        department: 'Khoa Công nghệ Thông tin',
         phone: '0901234567'
       },
       {
+        username: 'tranthib',
         email: 'tranthib@university.edu.vn',
         fullName: 'Trần Thị B',
         password: 'password123',
-        role: UserRole.PHONG,
-        department: 'Phòng Hợp tác Quốc tế',
         phone: '0901234568'
       },
       {
+        username: 'levankien',
         email: 'levankien@university.edu.vn',
         fullName: 'Lê Văn Kiên',
         password: 'password123',
-        role: UserRole.USER,
-        department: 'Khoa Kinh tế',
         phone: '0901234569'
       }
     ];
@@ -122,6 +128,65 @@ export class DatabaseSeederService implements OnModuleInit {
     this.logger.log('Sample users created');
   }
 
+  private async seedTranslationRequests() {
+    const existingRequests = await this.translationRequestRepository.count();
+    if (existingRequests > 0) {
+      this.logger.log('Translation requests already exist, skipping seeding');
+      return;
+    }
+
+    // Get admin user for seeding
+    const adminUser = await this.userRepository.findOne({ where: { email: 'admin@university.edu.vn' } });
+    if (!adminUser) {
+      this.logger.log('Admin user not found, skipping translation request seeding');
+      return;
+    }
+
+    const { TranslationStatus, DocumentType, LanguagePair } = await import('../entities/translation-request.entity');
+
+    const sampleRequests = [
+      {
+        requestCode: 'TR-2025-001',
+        originalDocumentTitle: 'Bằng tốt nghiệp Đại học Kinh tế',
+        documentType: DocumentType.DIPLOMA,
+        languagePair: LanguagePair.VI_EN,
+        purpose: 'Nộp hồ sơ du học tại Mỹ',
+        submittingUnit: 'Khoa Kinh tế',
+        status: TranslationStatus.PENDING,
+        submittedById: adminUser.id,
+        submittedBy: adminUser
+      },
+      {
+        requestCode: 'TR-2025-002',
+        originalDocumentTitle: 'Hợp đồng hợp tác nghiên cứu với MIT',
+        documentType: DocumentType.CONTRACT,
+        languagePair: LanguagePair.EN_VI,
+        purpose: 'Hợp tác nghiên cứu quốc tế',
+        submittingUnit: 'Phòng Hợp tác Quốc tế',
+        status: TranslationStatus.APPROVED,
+        submittedById: adminUser.id,
+        submittedBy: adminUser,
+        approvedAt: new Date()
+      },
+      {
+        requestCode: 'TR-2025-003',
+        originalDocumentTitle: 'Bài báo khoa học về AI',
+        documentType: DocumentType.ACADEMIC_PAPER,
+        languagePair: LanguagePair.EN_VI,
+        purpose: 'Xuất bản tạp chí trong nước',
+        submittingUnit: 'Khoa Công nghệ Thông tin',
+        status: TranslationStatus.UNDER_REVIEW,
+        submittedById: adminUser.id,
+        submittedBy: adminUser
+      }
+    ];
+
+    await this.translationRequestRepository.save(sampleRequests);
+    this.logger.log('Sample translation requests created');
+  }
+
+  /*
+  // Commented out unused seeding methods
   private async seedMOUs() {
     const existingMous = await this.mouRepository.count();
     if (existingMous > 0) {
@@ -318,4 +383,5 @@ export class DatabaseSeederService implements OnModuleInit {
     await this.translationRepository.save(sampleTranslations);
     this.logger.log('Sample translations created');
   }
+  */
 }

@@ -13,9 +13,9 @@ import { VisaService } from './visa.service';
 import { CreateVisaApplicationDto } from './dto/create-visa-application.dto';
 import { UpdateVisaApplicationDto } from './dto/update-visa-application.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/user.enum';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { Permissions } from '../../auth/decorators/permissions.decorator';
+import { Permission } from '../../common/enums/permission.enum';
 
 @Controller('visa')
 @UseGuards(JwtAuthGuard)
@@ -23,13 +23,15 @@ export class VisaController {
   constructor(private readonly visaService: VisaService) {}
 
   @Post()
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.VISA_CREATE)
   create(@Body() createVisaApplicationDto: CreateVisaApplicationDto, @Request() req) {
     return this.visaService.create(createVisaApplicationDto, req.user.id);
   }
 
   @Get()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.KHOA, UserRole.PHONG)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.VISA_READ)
   findAll() {
     return this.visaService.findAll();
   }
@@ -40,20 +42,22 @@ export class VisaController {
   }
 
   @Get(':id')
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.VISA_READ)
   findOne(@Param('id') id: string) {
     return this.visaService.findOne(id);
   }
 
   @Patch(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.KHOA)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.VISA_UPDATE)
   update(@Param('id') id: string, @Body() updateVisaApplicationDto: UpdateVisaApplicationDto) {
     return this.visaService.update(id, updateVisaApplicationDto);
   }
 
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(PermissionsGuard)
+  @Permissions(Permission.VISA_DELETE)
   remove(@Param('id') id: string) {
     return this.visaService.remove(id);
   }

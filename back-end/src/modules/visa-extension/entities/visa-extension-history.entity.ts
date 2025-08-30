@@ -17,6 +17,7 @@ export class VisaExtensionHistory {
   @Column({
     type: 'enum',
     enum: VisaExtensionStatus,
+    enumName: 'visa_extension_status_enum',
     name: 'from_status',
   })
   fromStatus: VisaExtensionStatus;
@@ -24,6 +25,7 @@ export class VisaExtensionHistory {
   @Column({
     type: 'enum',
     enum: VisaExtensionStatus,
+    enumName: 'visa_extension_status_enum',
     name: 'to_status',
   })
   toStatus: VisaExtensionStatus;

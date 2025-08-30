@@ -2,10 +2,14 @@ import { DataSource } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { config } from 'dotenv';
 import { User } from '../modules/user/entities/user.entity';
-import { VisaApplication } from '../modules/visa/entities/visa-application.entity';
-import { Mou } from '../modules/mou/entities/mou.entity';
-import { Visitor } from '../modules/visitor/entities/visitor.entity';
-import { Translation } from '../modules/translation/entities/translation.entity';
+import { Role } from '../modules/user/entities/role.entity';
+import { Mou, MouDocument, MouHistory } from '../modules/mou/entities/mou.entity';
+import { VisaApplication, VisaDocument, VisaHistory, VisaReminder } from '../modules/visa/entities/visa-application.entity';
+import { VisitorGroup, VisitorMember, VisitorReport } from '../modules/visitor/entities/visitor.entity';
+import { TranslationRequest, TranslationFile, TranslationHistory } from '../modules/translation/entities/translation.entity';
+import { VisaExtension } from '../modules/visa-extension/entities/visa-extension.entity';
+import { VisaExtensionHistory } from '../modules/visa-extension/entities/visa-extension-history.entity';
+import { VisaExtensionDocument } from '../modules/visa-extension/entities/visa-extension-document.entity';
 
 config();
 
@@ -20,12 +24,25 @@ export default new DataSource({
   database: configService.get('DB_DATABASE'),
   entities: [
     User,
-    VisaApplication,
+    Role,
     Mou,
-    Visitor,
-    Translation,
+    MouDocument,
+    MouHistory,
+    VisaApplication,
+    VisaDocument, 
+    VisaHistory,
+    VisaReminder,
+    VisitorGroup,
+    VisitorMember,
+    VisitorReport,
+    TranslationRequest,
+    TranslationFile,
+    TranslationHistory,
+    VisaExtension,
+    VisaExtensionHistory,
+    VisaExtensionDocument,
   ],
   migrations: ['src/database/migrations/*.ts'],
-  synchronize: false,
+  synchronize: true,
   logging: true,
 });

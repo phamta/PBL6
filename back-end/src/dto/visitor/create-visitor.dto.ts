@@ -1,78 +1,95 @@
-import {
-  IsString,
-  IsEmail,
-  IsEnum,
-  IsDateString,
-  IsOptional,
-  IsNotEmpty,
-  MinLength,
-  MaxLength,
-  Matches,
-} from 'class-validator';
-import { VisitorGender, VisitorPurpose } from '../../entities/visitor.entity';
+import { IsString, IsDateString, IsOptional, IsEnum, IsArray, IsNumber, IsEmail } from 'class-validator';
+import { VisitorStatus } from '../../entities/visitor.entity';
 
 export class CreateVisitorDto {
-  @IsNotEmpty()
   @IsString()
-  @MinLength(2)
-  @MaxLength(255)
-  fullName: string;
+  groupName: string;
 
-  @IsNotEmpty()
   @IsString()
-  @MaxLength(100)
-  nationality: string;
+  organizationName: string;
 
-  @IsNotEmpty()
   @IsString()
-  @Matches(/^[A-Z0-9]{6,9}$/, {
-    message: 'Passport number must be 6-9 characters long and contain only uppercase letters and numbers',
-  })
-  passportNumber: string;
+  country: string;
 
-  @IsEnum(VisitorGender)
-  gender: VisitorGender;
+  @IsNumber()
+  numberOfMembers: number;
 
-  @IsDateString()
-  dateOfBirth: string;
-
-  @IsNotEmpty()
   @IsString()
-  @MaxLength(255)
-  position: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @MaxLength(255)
-  organization: string;
+  contactPerson: string;
 
   @IsEmail()
-  email: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @Matches(/^[\+]?[1-9][\d]{0,15}$/, {
-    message: 'Phone number must be a valid international format',
-  })
-  phoneNumber: string;
-
-  @IsDateString()
-  arrivalDateTime: string;
-
-  @IsDateString()
-  departureDateTime: string;
-
-  @IsEnum(VisitorPurpose)
-  purpose: VisitorPurpose;
+  contactEmail: string;
 
   @IsOptional()
   @IsString()
-  purposeDetails?: string;
+  contactPhone?: string;
 
-  @IsNotEmpty()
+  @IsDateString()
+  arrivalDate: string;
+
+  @IsDateString()
+  departureDate: string;
+
   @IsString()
-  @MaxLength(255)
-  invitingUnit: string;
+  purpose: string;
+
+  @IsOptional()
+  @IsEnum(VisitorStatus)
+  status?: VisitorStatus;
+
+  @IsOptional()
+  @IsString()
+  itinerary?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  membersList?: string[];
+
+  // Additional fields for individual visitor tracking
+  @IsOptional()
+  @IsString()
+  visitorCode?: string;
+
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  nationality?: string;
+
+  @IsOptional()
+  @IsString()
+  passportNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  gender?: string;
+
+  @IsOptional()
+  @IsDateString()
+  dateOfBirth?: string;
+
+  @IsOptional()
+  @IsString()
+  position?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  invitingUnit?: string;
 
   @IsOptional()
   @IsString()

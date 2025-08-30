@@ -79,6 +79,7 @@ export class VisaExtension {
   @Column({
     type: 'enum',
     enum: VisaType,
+    enumName: 'visa_type_enum',
     name: 'visa_type',
   })
   visaType: VisaType;
@@ -95,6 +96,7 @@ export class VisaExtension {
   @Column({
     type: 'enum',
     enum: StudyProgram,
+    enumName: 'study_program_enum',
     name: 'study_program',
     nullable: true,
   })
@@ -127,6 +129,7 @@ export class VisaExtension {
   @Column({
     type: 'enum',
     enum: VisaExtensionStatus,
+    enumName: 'visa_extension_status_enum',
     default: VisaExtensionStatus.DRAFT,
   })
   status: VisaExtensionStatus;

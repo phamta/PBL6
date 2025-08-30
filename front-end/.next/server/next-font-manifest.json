@@ -1,15 +1,9 @@
 {
   "app": {
-    "[project]/app/dashboard/mou/page": [
+    "[project]/src/app/dashboard/page": [
       "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
     ],
-    "[project]/app/dashboard/page": [
-      "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
-    ],
-    "[project]/app/login/page": [
-      "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
-    ],
-    "[project]/app/page": [
+    "[project]/src/app/login/page": [
       "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
     ]
   },
