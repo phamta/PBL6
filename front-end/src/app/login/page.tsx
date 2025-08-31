@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { authAPI } from '@/lib/api-client'
 import { authHelpers } from '@/lib/auth'
 import { UserRole, UserRoleType } from '@/hooks/usePermissions'
 import { getDashboardUrl } from '@/lib/role-navigation'
@@ -20,16 +19,12 @@ export default function LoginPage() {
     setError('')
 
     try {
-      // Call real API
-      const response = await authAPI.login(email, password)
+      // Call real API using authHelpers
+      const response = await authHelpers.login({ email, password })
       
-      if (response.access_token && response.user) {
-        // Store token and user info
-        authHelpers.setToken(response.access_token)
-        authHelpers.setUser(response.user)
-        
+      if (response.success && response.data) {
         // Get user role from response
-        const userRole = response.user.role || response.user.roles?.[0]?.name || UserRole.USER
+        const userRole = response.data.user.role || UserRole.USER
         
         // Redirect to appropriate dashboard based on role
         const dashboardUrl = getDashboardUrl(userRole as UserRoleType)
@@ -37,7 +32,7 @@ export default function LoginPage() {
         console.log(`Redirecting ${userRole} to: ${dashboardUrl}`)
         router.push(dashboardUrl)
       } else {
-        setError('Phản hồi từ server không hợp lệ')
+        setError(response.message || 'Đăng nhập thất bại')
       }
     } catch (error: any) {
       console.error('Login error:', error)
@@ -45,8 +40,10 @@ export default function LoginPage() {
         setError('Email hoặc mật khẩu không đúng')
       } else if (error.response?.data?.message) {
         setError(error.response.data.message)
-      } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+      } else if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
         setError('Không thể kết nối đến server. Vui lòng kiểm tra backend có đang chạy không.')
+      } else if (error.message) {
+        setError(error.message)
       } else {
         setError('Đăng nhập thất bại. Vui lòng thử lại.')
       }
@@ -133,17 +130,6 @@ export default function LoginPage() {
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
-            </button>
-          </div>
-
-          {/* Clear Data Button */}
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={handleClearData}
-              className="text-sm text-gray-500 hover:text-gray-700 underline"
-            >
-              Xóa dữ liệu cache (nếu gặp lỗi)
             </button>
           </div>
         </form>

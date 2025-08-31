@@ -1,24 +1,15 @@
 {
   "app": {
-    "[project]/src/app/_not-found/page": [
-      "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
-    ],
     "[project]/src/app/dashboard/admin/page": [
       "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
     ],
-    "[project]/src/app/dashboard/manager/page": [
+    "[project]/src/app/dashboard/admin/roles/page": [
+      "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
+    ],
+    "[project]/src/app/dashboard/admin/users/page": [
       "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
     ],
     "[project]/src/app/dashboard/page": [
-      "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
-    ],
-    "[project]/src/app/dashboard/specialist/page": [
-      "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
-    ],
-    "[project]/src/app/login/page": [
-      "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
-    ],
-    "[project]/src/app/page": [
       "static/media/06ba6ef833b337bc-s.p.0faac26c.woff2"
     ]
   },

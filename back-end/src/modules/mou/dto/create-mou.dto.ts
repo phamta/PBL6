@@ -1,5 +1,6 @@
 import { IsString, IsDateString, IsOptional, IsEnum, IsArray, IsNotEmpty } from 'class-validator';
 import { MouStatus, MouType, MouPriority } from '../entities/mou.entity';
+import { MouType as AppMouType, MouStatus as AppMouStatus } from '../entities/mou-application.entity';
 
 export class CreateMouDto {
   @IsString()
@@ -14,6 +15,40 @@ export class CreateMouDto {
   @IsNotEmpty()
   partnerCountry: string;
 
+  @IsEnum(AppMouType)
+  @IsOptional()
+  mouType?: AppMouType;
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsDateString()
+  @IsNotEmpty()
+  proposedStartDate: string;
+
+  @IsDateString()
+  @IsOptional()
+  proposedEndDate?: string;
+
+  @IsString()
+  @IsOptional()
+  expectedOutcomes?: string;
+
+  @IsString()
+  @IsOptional()
+  contactPersonName?: string;
+
+  @IsString()
+  @IsOptional()
+  contactPersonEmail?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  documentPaths?: string[];
+
+  // Legacy fields for backward compatibility
   @IsString()
   @IsOptional()
   partnerContact?: string;
@@ -25,10 +60,6 @@ export class CreateMouDto {
   @IsString()
   @IsOptional()
   partnerPhone?: string;
-
-  @IsString()
-  @IsNotEmpty()
-  description: string;
 
   @IsEnum(MouType)
   @IsOptional()

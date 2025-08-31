@@ -10,7 +10,6 @@ import {
 } from 'typeorm';
 import { Role } from './role.entity';
 import { UserRole as UserRoleEntity } from './user-role.entity';
-import { UserRole, UserStatus } from '../../../common/enums/user.enum';
 
 @Entity('user')
 export class User {
@@ -37,10 +36,6 @@ export class User {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-
-  // Temporary properties for backward compatibility
-  role?: UserRole;
-  status?: UserStatus;
 
   // Relations với các bảng khác
   @ManyToMany(() => Role, (role) => role.users)

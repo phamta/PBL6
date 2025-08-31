@@ -2,6 +2,32 @@
 
 Backend API cho hệ thống quản lý hợp tác quốc tế được xây dựng với NestJS, TypeORM và PostgreSQL.
 
+## ✨ Tính năng mới
+
+### 🔧 Cải thiện Backend Architecture
+
+- **Global Exception Filter**: Xử lý lỗi thống nhất toàn system
+- **Logging Interceptor**: Ghi log tự động cho tất cả request/response
+- **Global Validation Pipe**: Validation dữ liệu chặt chẽ với error messages chi tiết
+- **Response Builder**: Chuẩn hóa format response API
+- **Database Service**: Utilities cho database operations
+- **Migration System**: Hỗ trợ migration MOU với dry-run mode
+- **Constants Management**: Tách constants thành files riêng
+- **Type Safety**: Cải thiện TypeScript types và interfaces
+
+### 🚀 Migration Tools
+
+- **MOU Migration Service**: Fix enum issues với dry-run support
+- **Migration Controller**: REST endpoints để chạy migrations
+- **Safety Features**: Force flag cho các operations nguy hiểm
+
+### 📝 Logging & Monitoring
+
+- **Structured Logging**: Log format chuẩn với timestamp và context
+- **Request Tracking**: Track tất cả API calls với performance metrics
+- **Error Tracking**: Chi tiết error logs với stack traces
+- **Sensitive Data Protection**: Tự động ẩn passwords, tokens trong logs
+
 ## Yêu cầu hệ thống
 
 - Node.js >= 18

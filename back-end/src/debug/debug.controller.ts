@@ -2,6 +2,7 @@ import { Controller, Get, Post } from '@nestjs/common';
 import { UserService } from '../modules/user/user.service';
 import { CreateUserDto } from '../modules/user/dto/create-user.dto';
 import { UserRole } from '../common/enums/user.enum';
+import { UserUtils } from '../common/utils/user.utils';
 
 @Controller('debug')
 export class DebugController {
@@ -20,8 +21,8 @@ export class DebugController {
           id: user.id,
           email: user.email,
           fullName: user.fullName,
-          role: user.role,
-          status: user.status,
+          role: UserUtils.getPrimaryRole(user),
+          status: 'active',
           createdAt: user.createdAt
         }))
       };
@@ -52,7 +53,7 @@ export class DebugController {
           id: user.id,
           email: user.email,
           fullName: user.fullName,
-          role: user.role
+          role: UserUtils.getPrimaryRole(user)
         },
         credentials: {
           email: 'admin@university.edu.vn',
@@ -79,8 +80,8 @@ export class DebugController {
             id: admin.id,
             email: admin.email,
             fullName: admin.fullName,
-            role: admin.role,
-            status: admin.status
+            role: UserUtils.getPrimaryRole(admin),
+            status: 'active'
           }
         };
       } else {

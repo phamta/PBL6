@@ -34,7 +34,7 @@ export default function TranslationRequestForm({ onSuccess, onCancel }: Translat
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.originalDocumentTitle.trim() || !formData.purpose.trim() || !formData.submittingUnit.trim()) {
+    if (!formData.originalDocumentTitle?.trim() || !formData.purpose?.trim() || !formData.submittingUnit?.trim()) {
       alert('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }

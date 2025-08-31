@@ -80,18 +80,18 @@ export default function VisaExtensionForm({ initialData, isEditing, applicationI
 
     try {
       if (isEditing && applicationId) {
-        await visaExtensionAPI.updateVisaExtension(applicationId, formData)
+        await visaExtensionAPI.update(applicationId, formData)
         toast({
           title: 'Success',
           description: 'Visa extension application updated successfully',
         })
       } else {
-        const response = await visaExtensionAPI.createVisaExtension(formData)
+        const response = await visaExtensionAPI.create(formData)
         toast({
           title: 'Success',
           description: 'Visa extension application created successfully',
         })
-        router.push(`/dashboard/visa-extension/${response.data.id}`)
+        router.push(`/dashboard/visa-extension/${response.id}`)
       }
     } catch (error: any) {
       toast({

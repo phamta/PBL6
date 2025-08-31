@@ -20,11 +20,13 @@ export class PermissionsGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest();
     
-    if (!user || !user.role) {
+    if (!user || !user.roles || user.roles.length === 0) {
       return false;
     }
 
-    const userPermissions = ROLE_PERMISSIONS[user.role] || [];
+    // Get permissions from the user's primary role (first role)
+    const primaryRole = user.roles[0]?.roleName;
+    const userPermissions = ROLE_PERMISSIONS[primaryRole] || [];
     
     return requiredPermissions.some((permission) =>
       userPermissions.includes(permission),

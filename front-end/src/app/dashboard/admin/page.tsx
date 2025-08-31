@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,15 +19,48 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+interface DashboardStats {
+  totalUsers: number;
+  totalVisaApplications: number;
+  activeVisas: number;
+  newUsersThisMonth: number;
+  newVisasThisMonth: number;
+  systemUptime: string;
+}
+
 export default function AdminDashboard() {
   const { isAdmin } = usePermissions();
   const router = useRouter();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isAdmin) {
       router.push('/dashboard');
+    } else {
+      fetchDashboardStats();
     }
   }, [isAdmin, router]);
+
+  const fetchDashboardStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3001/admin/dashboard/stats', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -40,12 +73,23 @@ export default function AdminDashboard() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Đang tải dữ liệu...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
         <p className="text-muted-foreground">
-          Quản lý toàn bộ hệ thống HTQT - Trường Đại học Sư phạm Kỹ thuật Hưng Yên
+          Quản lý toàn bộ hệ thống HTQT - Trường Đại học Bách khoa Đà Nẵng
         </p>
       </div>
 
@@ -57,8 +101,10 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">150</div>
-            <p className="text-xs text-muted-foreground">+10% so với tháng trước</p>
+            <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              +{stats?.newUsersThisMonth || 0} so với tháng trước
+            </p>
           </CardContent>
         </Card>
 
@@ -68,18 +114,18 @@ export default function AdminDashboard() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">45</div>
+            <div className="text-2xl font-bold">{stats?.totalVisaApplications || 0}</div>
             <p className="text-xs text-muted-foreground">Tổng số đơn trong hệ thống</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Biên bản MOU</CardTitle>
+            <CardTitle className="text-sm font-medium">Visa được duyệt</CardTitle>
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">15</div>
+            <div className="text-2xl font-bold">{stats?.activeVisas || 0}</div>
             <p className="text-xs text-muted-foreground">Đang hoạt động</p>
           </CardContent>
         </Card>
@@ -90,7 +136,7 @@ export default function AdminDashboard() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">98.5%</div>
+            <div className="text-2xl font-bold">{stats?.systemUptime || '0%'}</div>
             <p className="text-xs text-muted-foreground">30 ngày qua</p>
           </CardContent>
         </Card>

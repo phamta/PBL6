@@ -103,13 +103,13 @@ export default function VisitorForm({ initialData, isEditing, visitorId }: Visit
       }
 
       if (isEditing && visitorId) {
-        await visitorAPI.updateVisitor(visitorId, formData as UpdateVisitorDto, files)
+        await visitorAPI.update(visitorId, formData as UpdateVisitorDto)
         toast({
           title: 'Thành công',
           description: 'Cập nhật thông tin khách thành công',
         })
       } else {
-        await visitorAPI.createVisitor(formData as CreateVisitorDto, files)
+        await visitorAPI.create(formData as CreateVisitorDto)
         toast({
           title: 'Thành công',
           description: 'Thêm khách mới thành công',

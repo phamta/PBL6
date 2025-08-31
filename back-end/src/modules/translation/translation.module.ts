@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TranslationService } from './translation.service';
 import { TranslationController } from './translation.controller';
-import { TranslationRequest } from './entities/translation.entity';
+import { TranslationRequestNew } from './entities/translation-application.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TranslationRequest])],
+  imports: [TypeOrmModule.forFeature([TranslationRequestNew])],
   controllers: [TranslationController],
   providers: [TranslationService],
   exports: [TranslationService],

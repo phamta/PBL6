@@ -224,11 +224,11 @@ export default function TranslationRequestList({ onSelectRequest, userRole }: Tr
                       </div>
                       <div>
                         <span className="font-medium">Loại:</span>{' '}
-                        {DOCUMENT_TYPE_LABELS[request.documentType]}
+                        {request.documentType ? DOCUMENT_TYPE_LABELS[request.documentType] : 'Không xác định'}
                       </div>
                       <div>
                         <span className="font-medium">Ngôn ngữ:</span>{' '}
-                        {LANGUAGE_PAIR_LABELS[request.languagePair]}
+                        {request.languagePair ? LANGUAGE_PAIR_LABELS[request.languagePair as keyof typeof LANGUAGE_PAIR_LABELS] : 'Không xác định'}
                       </div>
                       <div>
                         <span className="font-medium">Đơn vị:</span> {request.submittingUnit}
@@ -238,7 +238,7 @@ export default function TranslationRequestList({ onSelectRequest, userRole }: Tr
                       <span className="font-medium">Mục đích:</span> {request.purpose}
                     </div>
                     <div className="mt-2 text-sm text-gray-500">
-                      Ngày nộp: {formatDate(request.createdAt)}
+                      Ngày nộp: {request.createdAt ? formatDate(request.createdAt) : 'Không xác định'}
                       {request.approvedAt && (
                         <span className="ml-4">
                           Ngày duyệt: {formatDate(request.approvedAt)}

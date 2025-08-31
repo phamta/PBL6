@@ -15,6 +15,7 @@ import { ChangeStatusDto } from './dto/change-status.dto';
 import { VisaExtensionFilterDto } from './dto/visa-extension-filter.dto';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../../common/enums/user.enum';
+import { UserUtils } from '../../common/utils/user.utils';
 import { EmailService } from '../email/email.service';
 import { NotificationService } from '../notification/notification.service';
 
@@ -95,7 +96,7 @@ export class VisaExtensionService {
       .leftJoinAndSelect('visa_extension.documents', 'documents');
 
     // Role-based filtering
-    if (user.role === UserRole.USER || user.role === UserRole.MANAGER) {
+    if (UserUtils.hasAnyRole(user, [UserRole.USER, UserRole.MANAGER])) {
       queryBuilder.where('visa_extension.applicantId = :userId', { userId: user.id });
     }
 
@@ -145,12 +146,12 @@ export class VisaExtensionService {
     }
 
     // Applicant filter (for admin/specialist use)
-    if (applicantId && (user.role === UserRole.ADMIN || user.role === UserRole.SPECIALIST)) {
+    if (applicantId && (UserUtils.hasAnyRole(user, [UserRole.ADMIN, UserRole.SPECIALIST]))) {
       queryBuilder.andWhere('visa_extension.applicantId = :applicantId', { applicantId });
     }
 
     // Reviewer filter
-    if (reviewerId && (user.role === UserRole.ADMIN || user.role === UserRole.SPECIALIST)) {
+    if (reviewerId && (UserUtils.hasAnyRole(user, [UserRole.ADMIN, UserRole.SPECIALIST]))) {
       queryBuilder.andWhere('visa_extension.reviewerId = :reviewerId', { reviewerId });
     }
 
@@ -186,8 +187,8 @@ export class VisaExtensionService {
 
     // Check permission
     if (
-      user.role !== UserRole.ADMIN &&
-      user.role !== UserRole.SPECIALIST &&
+      !UserUtils.hasRole(user, UserRole.ADMIN) &&
+      !UserUtils.hasRole(user, UserRole.SPECIALIST) &&
       visaExtension.applicantId !== user.id
     ) {
       throw new ForbiddenException('Access denied');
@@ -206,8 +207,8 @@ export class VisaExtensionService {
     // Only allow updates if status is DRAFT or ADDITIONAL_REQUIRED (for applicant)
     // Or if user is admin/specialist
     if (
-      user.role !== UserRole.ADMIN &&
-      user.role !== UserRole.SPECIALIST &&
+      !UserUtils.hasRole(user, UserRole.ADMIN) &&
+      !UserUtils.hasRole(user, UserRole.SPECIALIST) &&
       visaExtension.status !== VisaExtensionStatus.DRAFT &&
       visaExtension.status !== VisaExtensionStatus.ADDITIONAL_REQUIRED
     ) {
@@ -252,7 +253,7 @@ export class VisaExtensionService {
     const visaExtension = await this.findOne(id, user);
 
     // Check permissions for status changes
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SPECIALIST) {
+    if (!UserUtils.hasRole(user, UserRole.ADMIN) && !UserUtils.hasRole(user, UserRole.SPECIALIST)) {
       throw new ForbiddenException('Only admin and specialist can change status');
     }
 
@@ -351,7 +352,7 @@ export class VisaExtensionService {
   }
 
   async getStatistics(user: User): Promise<any> {
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SPECIALIST) {
+    if (!UserUtils.hasRole(user, UserRole.ADMIN) && !UserUtils.hasRole(user, UserRole.SPECIALIST)) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -412,7 +413,7 @@ export class VisaExtensionService {
     // Only allow deletion if status is DRAFT and user is the applicant or admin
     if (
       visaExtension.status !== VisaExtensionStatus.DRAFT ||
-      (user.role !== UserRole.ADMIN && visaExtension.applicantId !== user.id)
+      (!UserUtils.hasRole(user, UserRole.ADMIN) && visaExtension.applicantId !== user.id)
     ) {
       throw new BadRequestException('Cannot delete application in current status');
     }

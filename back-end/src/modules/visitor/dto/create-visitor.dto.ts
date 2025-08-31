@@ -1,37 +1,94 @@
 import { IsString, IsDateString, IsOptional, IsEnum, IsArray, IsNumber, IsEmail } from 'class-validator';
 import { VisitorStatus } from '../entities/visitor.entity';
+import { VisitPurpose, VisitorStatus as AppVisitorStatus } from '../entities/visitor-application.entity';
 
 export class CreateVisitorDto {
   @IsString()
   groupName: string;
 
   @IsString()
-  organizationName: string;
+  organization: string;
 
   @IsString()
-  country: string;
+  organizationCountry: string;
+
+  @IsEnum(VisitPurpose)
+  @IsOptional()
+  visitPurpose?: VisitPurpose;
+
+  @IsDateString()
+  visitStartDate: string;
+
+  @IsDateString()
+  visitEndDate: string;
 
   @IsNumber()
-  numberOfMembers: number;
+  numberOfPeople: number;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsString()
+  contactPersonName?: string;
+
+  @IsOptional()
+  @IsEmail()
+  contactPersonEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  contactPersonPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  accommodation?: string;
+
+  @IsOptional()
+  @IsString()
+  transportation?: string;
+
+  @IsOptional()
+  members?: any;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  documentPaths?: string[];
+
+  // Legacy fields for backward compatibility
+  @IsString()
+  @IsOptional()
+  organizationName?: string;
 
   @IsString()
-  contactPerson: string;
+  @IsOptional()
+  country?: string;
+
+  @IsString()
+  @IsOptional()
+  contactPerson?: string;
 
   @IsEmail()
-  contactEmail: string;
+  @IsOptional()
+  contactEmail?: string;
 
   @IsOptional()
   @IsString()
   contactPhone?: string;
 
   @IsDateString()
-  arrivalDate: string;
+  @IsOptional()
+  arrivalDate?: string;
 
   @IsDateString()
-  departureDate: string;
+  @IsOptional()
+  departureDate?: string;
 
   @IsString()
-  purpose: string;
+  @IsOptional()
+  purpose?: string;
 
   @IsOptional()
   @IsEnum(VisitorStatus)
@@ -49,4 +106,8 @@ export class CreateVisitorDto {
   @IsArray()
   @IsString({ each: true })
   membersList?: string[];
+
+  @IsNumber()
+  @IsOptional()
+  numberOfMembers?: number;
 }

@@ -20,9 +20,12 @@ import {
   MessageSquare,
   GraduationCap,
   Building,
-  Calendar
+  Calendar,
+  Globe,
+  Building2
 } from 'lucide-react';
 import { usePermissions, UserRole } from '@/hooks/usePermissions';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface DashboardStats {
@@ -38,12 +41,31 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const { userRole, getRoleDisplayName, can } = usePermissions();
+  const router = useRouter();
   const [stats, setStats] = useState<DashboardStats>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Redirect to role-specific dashboard if user has a specific role
+    if (userRole) {
+      const roleRoutes: Record<string, string> = {
+        [UserRole.ADMIN]: '/dashboard/admin',
+        [UserRole.USER]: '/dashboard/user', 
+        [UserRole.STUDENT]: '/dashboard/student',
+        [UserRole.SPECIALIST]: '/dashboard/specialist',
+        [UserRole.MANAGER]: '/dashboard/manager',
+        [UserRole.VIEWER]: '/dashboard/viewer',
+      };
+      
+      const targetRoute = roleRoutes[userRole];
+      if (targetRoute) {
+        router.push(targetRoute);
+        return;
+      }
+    }
+    
     fetchDashboardStats();
-  }, [userRole]);
+  }, [userRole, router]);
 
   const fetchDashboardStats = async () => {
     try {
@@ -209,7 +231,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {can.createVisa() && (
-              <Link href="/dashboard/visa/create">
+              <Link href="/dashboard/user/visa/create">
                 <Button variant="outline" className="w-full justify-start">
                   <Plus className="mr-2 h-4 w-4" />
                   Tạo đơn xin Visa
@@ -217,7 +239,7 @@ export default function DashboardPage() {
               </Link>
             )}
             {can.createMOU() && (
-              <Link href="/dashboard/mou/create">
+              <Link href="/dashboard/user/mou/create">
                 <Button variant="outline" className="w-full justify-start">
                   <FileSignature className="mr-2 h-4 w-4" />
                   Tạo Biên bản ghi nhớ
@@ -225,7 +247,7 @@ export default function DashboardPage() {
               </Link>
             )}
             {can.createTranslation() && (
-              <Link href="/dashboard/translation/create">
+              <Link href="/dashboard/user/translation/create">
                 <Button variant="outline" className="w-full justify-start">
                   <MessageSquare className="mr-2 h-4 w-4" />
                   Yêu cầu dịch thuật
@@ -233,7 +255,7 @@ export default function DashboardPage() {
               </Link>
             )}
             {can.createVisitor() && (
-              <Link href="/dashboard/visitor/create">
+              <Link href="/dashboard/user/visitor/create">
                 <Button variant="outline" className="w-full justify-start">
                   <UserCheck className="mr-2 h-4 w-4" />
                   Đăng ký khách thăm
@@ -300,7 +322,7 @@ export default function DashboardPage() {
             <CardTitle>Dịch vụ</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/dashboard/visa/create">
+            <Link href="/dashboard/student/visa/create">
               <Button variant="outline" className="w-full justify-start">
                 <Plus className="mr-2 h-4 w-4" />
                 Gia hạn Visa
@@ -396,13 +418,13 @@ export default function DashboardPage() {
             <CardTitle>Công việc ưu tiên</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/dashboard/specialist/visa-review">
+            <Link href="/dashboard/specialist/visa/review">
               <Button variant="outline" className="w-full justify-start">
                 <FileText className="mr-2 h-4 w-4" />
                 Xét duyệt Visa ({stats.pendingReview || 0})
               </Button>
             </Link>
-            <Link href="/dashboard/specialist/mou-review">
+            <Link href="/dashboard/specialist/mou/review">
               <Button variant="outline" className="w-full justify-start">
                 <BookOpen className="mr-2 h-4 w-4" />
                 Xét duyệt MOU
@@ -492,19 +514,19 @@ export default function DashboardPage() {
             <CardTitle>Phê duyệt ưu tiên</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/dashboard/manager/visa-approval">
+            <Link href="/dashboard/manager/visa/approval">
               <Button variant="outline" className="w-full justify-start">
                 <FileText className="mr-2 h-4 w-4" />
                 Phê duyệt Visa ({stats.pendingApprovals || 0})
               </Button>
             </Link>
-            <Link href="/dashboard/manager/mou-signing">
+            <Link href="/dashboard/manager/mou/signing">
               <Button variant="outline" className="w-full justify-start">
                 <FileSignature className="mr-2 h-4 w-4" />
                 Ký MOU (3)
               </Button>
             </Link>
-            <Link href="/dashboard/manager/visitor-approval">
+            <Link href="/dashboard/manager/visitor/approval">
               <Button variant="outline" className="w-full justify-start">
                 <UserCheck className="mr-2 h-4 w-4" />
                 Phê duyệt khách thăm
@@ -583,19 +605,19 @@ export default function DashboardPage() {
             <CardTitle>Tra cứu thông tin</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/dashboard/viewer/visa-lookup">
+            <Link href="/dashboard/viewer/visa/lookup">
               <Button variant="outline" className="w-full justify-start">
                 <Eye className="mr-2 h-4 w-4" />
                 Tra cứu Visa
               </Button>
             </Link>
-            <Link href="/dashboard/viewer/mou-lookup">
+            <Link href="/dashboard/viewer/mou/lookup">
               <Button variant="outline" className="w-full justify-start">
                 <BookOpen className="mr-2 h-4 w-4" />
                 Tra cứu MOU
               </Button>
             </Link>
-            <Link href="/dashboard/viewer/visitor-lookup">
+            <Link href="/dashboard/viewer/visitor/lookup">
               <Button variant="outline" className="w-full justify-start">
                 <UserCheck className="mr-2 h-4 w-4" />
                 Tra cứu khách thăm
@@ -609,7 +631,7 @@ export default function DashboardPage() {
             <CardTitle>Thống kê công khai</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/dashboard/viewer/public-stats">
+            <Link href="/dashboard/viewer/statistics">
               <Button variant="outline" className="w-full justify-start">
                 <BarChart3 className="mr-2 h-4 w-4" />
                 Xem thống kê
@@ -658,10 +680,26 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Xin chào, {getRoleDisplayName(userRole)}. Chào mừng bạn đến với hệ thống HTQT.
-        </p>
+        <div className="flex items-center gap-4 mb-4">
+          <div className="bg-blue-600 text-white p-3 rounded-lg">
+            <Building2 className="h-8 w-8" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-blue-800">
+              Hệ thống Quản lý Hợp tác Quốc tế
+            </h1>
+            <p className="text-muted-foreground flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              Trường Đại học Bách Khoa Đà Nẵng
+            </p>
+          </div>
+        </div>
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
+          <p className="text-blue-700">
+            Xin chào, <span className="font-semibold">{getRoleDisplayName(userRole)}</span>. 
+            Chào mừng bạn đến với hệ thống quản lý hợp tác quốc tế của trường.
+          </p>
+        </div>
       </div>
 
       {renderDashboardContent()}

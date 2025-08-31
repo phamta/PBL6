@@ -12,6 +12,7 @@ import { VisaExtensionDocument, DocumentType } from './entities/visa-extension-d
 import { VisaExtensionService } from './visa-extension.service';
 import { User } from '../user/entities/user.entity';
 import { UserRole } from '../../common/enums/user.enum';
+import { UserUtils } from '../../common/utils/user.utils';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -77,7 +78,7 @@ export class VisaExtensionDocumentService {
     const document = await this.findOne(id, user);
 
     // Only admin and specialist can verify documents
-    if (user.role !== UserRole.ADMIN && user.role !== UserRole.SPECIALIST) {
+    if (!UserUtils.hasAnyRole(user, [UserRole.ADMIN, UserRole.SPECIALIST])) {
       throw new ForbiddenException('Only admin and specialist can verify documents');
     }
 
@@ -96,7 +97,7 @@ export class VisaExtensionDocumentService {
     const visaExtension = await this.visaExtensionService.findOne(document.visaExtensionId, user);
     
     if (
-      user.role !== UserRole.ADMIN &&
+      !UserUtils.hasRole(user, UserRole.ADMIN) &&
       visaExtension.applicantId !== user.id
     ) {
       throw new ForbiddenException('Cannot delete this document');
@@ -106,7 +107,7 @@ export class VisaExtensionDocumentService {
     if (
       visaExtension.status !== 'draft' &&
       visaExtension.status !== 'additional_required' &&
-      user.role !== UserRole.ADMIN
+      !UserUtils.hasRole(user, UserRole.ADMIN)
     ) {
       throw new BadRequestException('Cannot delete document in current status');
     }

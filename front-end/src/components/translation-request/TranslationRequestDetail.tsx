@@ -259,11 +259,11 @@ export default function TranslationRequestDetail({
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <Label className="font-medium">Loại tài liệu</Label>
-              <p>{DOCUMENT_TYPE_LABELS[request.documentType]}</p>
+              <p>{request.documentType ? DOCUMENT_TYPE_LABELS[request.documentType] : 'Không xác định'}</p>
             </div>
             <div>
               <Label className="font-medium">Cặp ngôn ngữ</Label>
-              <p>{LANGUAGE_PAIR_LABELS[request.languagePair]}</p>
+              <p>{request.languagePair ? LANGUAGE_PAIR_LABELS[request.languagePair as keyof typeof LANGUAGE_PAIR_LABELS] : 'Không xác định'}</p>
             </div>
             <div>
               <Label className="font-medium">Đơn vị nộp</Label>
@@ -271,7 +271,7 @@ export default function TranslationRequestDetail({
             </div>
             <div>
               <Label className="font-medium">Ngày nộp</Label>
-              <p>{formatDate(request.createdAt)}</p>
+              <p>{request.createdAt ? formatDate(request.createdAt) : 'Không xác định'}</p>
             </div>
             {request.approvedAt && (
               <div>

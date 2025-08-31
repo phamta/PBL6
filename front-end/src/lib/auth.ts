@@ -1,4 +1,63 @@
+import { authApi } from './api';
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  username: string;
+  role: string;
+  name?: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  user: User;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  data?: AuthResponse;
+  message?: string;
+  errors?: string[];
+}
+
 export const authHelpers = {
+  // Login with API
+  login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
+    try {
+      console.log('🔑 Attempting login...', { email: credentials.email });
+      const response = await authApi.login(credentials);
+      
+      // Backend trả về trực tiếp { access_token, user }, không có wrapper
+      if (response.access_token && response.user) {
+        authHelpers.setToken(response.access_token);
+        authHelpers.setUser(response.user);
+        console.log('✅ Login successful');
+        return {
+          success: true,
+          data: response,
+          message: 'Login successful'
+        };
+      }
+      
+      console.log('❌ Login failed: Invalid response format');
+      return {
+        success: false,
+        message: 'Invalid response from server'
+      };
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || error.message || 'Login failed',
+        errors: error.response?.data?.errors || [error.message],
+      };
+    }
+  },
   // Token management
   setToken: (token: string) => {
     if (typeof window !== 'undefined') {

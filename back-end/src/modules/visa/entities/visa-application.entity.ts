@@ -15,6 +15,8 @@ import { VisaReminder } from './visa-reminder.entity';
 
 export enum VisaStatus {
   PENDING = 'pending',
+  SPECIALIST_REVIEW = 'specialist_review',
+  PENDING_MANAGER_APPROVAL = 'pending_manager_approval',
   APPROVED = 'approved',
   REJECTED = 'rejected',
   PROCESSING = 'processing',

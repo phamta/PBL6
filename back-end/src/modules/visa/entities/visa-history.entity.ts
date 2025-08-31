@@ -22,6 +22,9 @@ export class VisaHistory {
   @Column('uuid', { name: 'updated_by' })
   updatedBy: string;
 
+  @Column({ type: 'text', nullable: true })
+  notes?: string;
+
   @Column({ name: 'updated_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
 

@@ -59,7 +59,7 @@ export class ReportService {
         status: mou.status,
         createdAt: mou.createdAt?.toLocaleDateString('vi-VN'),
         signedDate: mou.signedDate?.toLocaleDateString('vi-VN') || '',
-        expiryDate: mou.expiryDate?.toLocaleDateString('vi-VN') || '',
+        expiryDate: mou.endDate?.toLocaleDateString('vi-VN') || '',
         department: mou.department || '',
       });
     });
