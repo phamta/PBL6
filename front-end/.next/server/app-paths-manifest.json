@@ -1,6 +1,12 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
+  "/dashboard/admin/logs/page": "app/dashboard/admin/logs/page.js",
   "/dashboard/admin/page": "app/dashboard/admin/page.js",
-  "/dashboard/admin/roles/page": "app/dashboard/admin/roles/page.js",
   "/dashboard/admin/users/page": "app/dashboard/admin/users/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/dashboard/manager/page": "app/dashboard/manager/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/specialist/page": "app/dashboard/specialist/page.js",
+  "/dashboard/user/page": "app/dashboard/user/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js"
 }

@@ -42,12 +42,12 @@ interface User {
   email: string;
   fullName: string;
   phone?: string;
+  department?: string;
   createdAt: string;
-  userRoles: Array<{
-    role: {
-      id: string;
-      roleName: string;
-    };
+  updatedAt: string;
+  roles?: Array<{
+    id: string;
+    roleName: string;
   }>;
 }
 
@@ -75,7 +75,7 @@ export default function AdminUsersPage() {
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch(
-        `http://localhost:3001/api/v1/admin/users?page=${currentPage}&limit=10`,
+        `http://localhost:3001/api/v1/users`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -84,9 +84,10 @@ export default function AdminUsersPage() {
       );
 
       if (response.ok) {
-        const data: UsersResponse = await response.json();
-        setUsers(data.users);
-        setTotalPages(data.totalPages);
+        const data = await response.json();
+        // API trả về array của users, không phải object với users property
+        setUsers(Array.isArray(data) ? data : []);
+        setTotalPages(1); // Tạm thời set là 1 vì API chưa có pagination
       } else {
         toast.error('Không thể tải danh sách người dùng');
       }
@@ -105,7 +106,7 @@ export default function AdminUsersPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3001/api/v1/admin/users/${userId}`, {
+      const response = await fetch(`http://localhost:3001/api/v1/users/${userId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -276,16 +277,16 @@ export default function AdminUsersPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {user.userRoles.map((userRole, index) => (
+                          {user.roles?.map((role, index) => (
                             <Badge
                               key={index}
                               variant="secondary"
-                              className={getRoleBadgeColor(userRole.role.roleName)}
+                              className={getRoleBadgeColor(role.roleName)}
                             >
-                              {getRoleDisplayName(userRole.role.roleName)}
+                              {getRoleDisplayName(role.roleName)}
                             </Badge>
                           ))}
-                          {user.userRoles.length === 0 && (
+                          {(!user.roles || user.roles.length === 0) && (
                             <Badge variant="outline" className="border-orange-200 text-orange-600">
                               Chưa được phân quyền
                             </Badge>
@@ -365,7 +366,7 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/v1/admin/users', {
+      const response = await fetch('http://localhost:3001/api/v1/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
