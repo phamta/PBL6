@@ -9,6 +9,7 @@ import {
   JoinTable,
 } from 'typeorm';
 import { Role } from './role.entity';
+import { UserRole as UserRoleEntity } from './user-role.entity';
 import { UserRole, UserStatus } from '../../../common/enums/user.enum';
 
 @Entity('user')
@@ -49,4 +50,8 @@ export class User {
     inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
   })
   roles: Role[];
+
+  // Relation với UserRole entity
+  @OneToMany(() => UserRoleEntity, (userRole) => userRole.user)
+  userRoles: UserRoleEntity[];
 }

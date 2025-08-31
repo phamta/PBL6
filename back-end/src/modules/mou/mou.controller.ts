@@ -15,9 +15,9 @@ import { MouService } from './mou.service';
 import { CreateMouDto } from './dto/create-mou.dto';
 import { UpdateMouDto } from './dto/update-mou.dto';
 import { ReviewMouDto, ApproveMouDto, SignMouDto, FilterMouDto } from './dto/workflow-mou.dto';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../auth/guards/permissions.guard';
-import { Permissions } from '../../auth/decorators/permissions.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { Permission } from '../../common/enums/permission.enum';
 
 @Controller('mou')

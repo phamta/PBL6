@@ -1,60 +1,44 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { VisaApplication } from './entities/visa-application.entity';
-import { CreateVisaApplicationDto } from './dto/create-visa-application.dto';
-import { UpdateVisaApplicationDto } from './dto/update-visa-application.dto';
+import { VisaApplication, VisaDocument, VisaHistory } from './entities';
 
 @Injectable()
 export class VisaService {
   constructor(
     @InjectRepository(VisaApplication)
-    private visaRepository: Repository<VisaApplication>,
+    private readonly visaApplicationRepository: Repository<VisaApplication>,
+    @InjectRepository(VisaDocument)
+    private readonly visaDocumentRepository: Repository<VisaDocument>,
+    @InjectRepository(VisaHistory)
+    private readonly visaHistoryRepository: Repository<VisaHistory>,
   ) {}
 
-  async create(createVisaApplicationDto: CreateVisaApplicationDto, userId: string): Promise<VisaApplication> {
-    const visaApplication = this.visaRepository.create({
-      ...createVisaApplicationDto,
-      userId,
-    });
-
-    return this.visaRepository.save(visaApplication);
-  }
-
+  // Placeholder methods - implement as needed
   async findAll(): Promise<VisaApplication[]> {
-    return this.visaRepository.find({
-      relations: ['user'],
+    return this.visaApplicationRepository.find({
+      relations: ['documents', 'history'],
     });
   }
 
   async findOne(id: string): Promise<VisaApplication> {
-    const visaApplication = await this.visaRepository.findOne({
+    return this.visaApplicationRepository.findOne({
       where: { id },
-      relations: ['user'],
-    });
-
-    if (!visaApplication) {
-      throw new NotFoundException('Visa application not found');
-    }
-
-    return visaApplication;
-  }
-
-  async findByUser(userId: string): Promise<VisaApplication[]> {
-    return this.visaRepository.find({
-      where: { userId },
-      relations: ['user'],
+      relations: ['documents', 'history'],
     });
   }
 
-  async update(id: string, updateVisaApplicationDto: UpdateVisaApplicationDto): Promise<VisaApplication> {
-    const visaApplication = await this.findOne(id);
-    Object.assign(visaApplication, updateVisaApplicationDto);
-    return this.visaRepository.save(visaApplication);
+  async create(visaData: Partial<VisaApplication>): Promise<VisaApplication> {
+    const visa = this.visaApplicationRepository.create(visaData);
+    return this.visaApplicationRepository.save(visa);
+  }
+
+  async update(id: string, updateData: Partial<VisaApplication>): Promise<VisaApplication> {
+    await this.visaApplicationRepository.update(id, updateData);
+    return this.findOne(id);
   }
 
   async remove(id: string): Promise<void> {
-    const visaApplication = await this.findOne(id);
-    await this.visaRepository.remove(visaApplication);
+    await this.visaApplicationRepository.delete(id);
   }
 }

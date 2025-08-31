@@ -9,6 +9,9 @@ import {
   OneToMany,
 } from 'typeorm';
 import { User } from '../../user/entities/user.entity';
+import { VisaDocument } from './visa-document.entity';
+import { VisaHistory } from './visa-history.entity';
+import { VisaReminder } from './visa-reminder.entity';
 
 export enum VisaStatus {
   PENDING = 'pending',
@@ -21,6 +24,9 @@ export enum VisaStatus {
 export class VisaApplication {
   @PrimaryGeneratedColumn('uuid', { name: 'visa_id' })
   id: string;
+
+  @Column('uuid', { name: 'user_id' })
+  userId: string;
 
   @Column({ name: 'passport_no', length: 50 })
   passportNo: string;
@@ -47,100 +53,17 @@ export class VisaApplication {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
-  // Temporary properties for backward compatibility
-  applicantName?: string;
-  nationality?: string;
-  passportNumber?: string;
-  currentVisaExpiry?: Date;
-  requestedExtensionDate?: Date;
-  purpose?: string;
-  notes?: string;
-  documents?: string[];
-
   // Relations
-  @Column('uuid', { name: 'user_id' })
-  userId: string;
-
   @ManyToOne(() => User)
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @OneToMany(() => VisaDocument, (document) => document.visaApplication)
-  documents_rel: VisaDocument[];
+  @OneToMany(() => VisaDocument, (document) => document.visaApplication, { cascade: true })
+  documents: VisaDocument[];
 
-  @OneToMany(() => VisaHistory, (history) => history.visaApplication)
+  @OneToMany(() => VisaHistory, (history) => history.visaApplication, { cascade: true })
   history: VisaHistory[];
 
-  @OneToMany(() => VisaReminder, (reminder) => reminder.visaApplication)
+  @OneToMany(() => VisaReminder, (reminder) => reminder.visaApplication, { cascade: true })
   reminders: VisaReminder[];
-}
-
-@Entity('visa_document')
-export class VisaDocument {
-  @PrimaryGeneratedColumn('uuid', { name: 'doc_id' })
-  id: string;
-
-  @Column({ name: 'doc_type', length: 100 })
-  docType: string;
-
-  @Column({ name: 'file_path', length: 500 })
-  filePath: string;
-
-  @Column({ name: 'uploaded_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  uploadedAt: Date;
-
-  @Column('uuid', { name: 'visa_id' })
-  visaId: string;
-
-  @ManyToOne(() => VisaApplication, (visa) => visa.documents_rel)
-  @JoinColumn({ name: 'visa_id' })
-  visaApplication: VisaApplication;
-}
-
-@Entity('visa_history')
-export class VisaHistory {
-  @PrimaryGeneratedColumn('uuid', { name: 'history_id' })
-  id: string;
-
-  @Column({ length: 50 })
-  status: string;
-
-  @Column({ name: 'updated_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  updatedAt: Date;
-
-  @Column('uuid', { name: 'visa_id' })
-  visaId: string;
-
-  @Column('uuid', { name: 'updated_by' })
-  updatedBy: string;
-
-  @ManyToOne(() => VisaApplication, (visa) => visa.history)
-  @JoinColumn({ name: 'visa_id' })
-  visaApplication: VisaApplication;
-
-  @ManyToOne(() => User)
-  @JoinColumn({ name: 'updated_by' })
-  user: User;
-}
-
-@Entity('visa_reminder')
-export class VisaReminder {
-  @PrimaryGeneratedColumn('uuid', { name: 'reminder_id' })
-  id: string;
-
-  @Column({ name: 'reminder_type', length: 100 })
-  reminderType: string;
-
-  @Column({ name: 'remind_date', type: 'date' })
-  remindDate: Date;
-
-  @Column({ name: 'created_at', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt: Date;
-
-  @Column('uuid', { name: 'visa_id' })
-  visaId: string;
-
-  @ManyToOne(() => VisaApplication, (visa) => visa.reminders)
-  @JoinColumn({ name: 'visa_id' })
-  visaApplication: VisaApplication;
 }

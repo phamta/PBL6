@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 5, "column": 0}, "map": {"version":3,"sources":["file:///F:/pbl6_ql_htqt/front-end/src/app/dashboard/layout.tsx"],"sourcesContent":["import React from 'react';\r\n\r\nexport default function DashboardLayout({\r\n  children,\r\n}: {\r\n  children: React.ReactNode;\r\n}) {\r\n  return (\r\n    <div className=\"dashboard-layout\">\r\n      <header className=\"bg-blue-600 text-white p-4\">\r\n        <h1 className=\"text-xl font-semibold\">Dashboard</h1>\r\n      </header>\r\n      <main className=\"container mx-auto p-4\">\r\n        {children}\r\n      </main>\r\n    </div>\r\n  );\r\n}\r\n"],"names":[],"mappings":";;;;;AAEe,SAAS,gBAAgB,EACtC,QAAQ,EAGT;IACC,qBACE,8OAAC;QAAI,WAAU;;0BACb,8OAAC;gBAAO,WAAU;0BAChB,cAAA,8OAAC;oBAAG,WAAU;8BAAwB;;;;;;;;;;;0BAExC,8OAAC;gBAAK,WAAU;0BACb;;;;;;;;;;;;AAIT","debugId":null}}]
+}

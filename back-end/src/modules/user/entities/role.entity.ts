@@ -3,8 +3,10 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToMany,
+  OneToMany,
 } from 'typeorm';
 import { User } from './user.entity';
+import { UserRole } from './user-role.entity';
 
 @Entity('role')
 export class Role {
@@ -16,4 +18,8 @@ export class Role {
 
   @ManyToMany(() => User, (user) => user.roles)
   users: User[];
+
+  // Relation với UserRole entity  
+  @OneToMany(() => UserRole, (userRole) => userRole.role)
+  userRoles: UserRole[];
 }
