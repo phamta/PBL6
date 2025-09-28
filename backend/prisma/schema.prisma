@@ -1,0 +1,460 @@
+// This is your Prisma schema file
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== IDENTITY SERVICE MODELS ====================
+
+model Unit {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String?  @unique
+  parentId  String?
+  level     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  parent   Unit?  @relation("UnitHierarchy", fields: [parentId], references: [id])
+  children Unit[] @relation("UnitHierarchy")
+  users    User[]
+
+  @@map("units")
+}
+
+enum UserRole {
+  SYSTEM_ADMIN      // Quản trị hệ thống
+  DEPARTMENT_OFFICER // Cán bộ phòng KHCN&ĐN
+  LEADERSHIP        // Lãnh đạo
+  FACULTY_STAFF     // Cán bộ khoa/viện
+  STUDENT           // Sinh viên
+
+  @@map("user_role")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  password     String
+  fullName     String
+  phoneNumber  String?
+  avatar       String?
+  role         UserRole  @default(STUDENT)
+  unitId       String?
+  isActive     Boolean   @default(true)
+  isVerified   Boolean   @default(false)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  unit                    Unit?                    @relation(fields: [unitId], references: [id])
+  refreshTokens           RefreshToken[]
+  documentsCreated        Document[]               @relation("DocumentCreatedBy")
+  documentsApproved       Document[]               @relation("DocumentApprovedBy")
+  visasCreated            Visa[]                   @relation("VisaCreatedBy")
+  visasApproved           Visa[]                   @relation("VisaApprovedBy")
+  guestsCreated           Guest[]                  @relation("GuestCreatedBy")
+  guestsApproved          Guest[]                  @relation("GuestApprovedBy")
+  translationsCreated     Translation[]            @relation("TranslationCreatedBy")
+  translationsApproved    Translation[]            @relation("TranslationApprovedBy")
+  activityLogs            ActivityLog[]
+  reportLogsCreated       ReportLog[]              @relation("ReportCreatedBy")
+  systemConfigs           SystemConfig[]
+  notificationsSent       NotificationLog[]        @relation("NotificationSentBy")
+  notificationsReceived   UserNotification[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ==================== DOCUMENT SERVICE MODELS ====================
+
+enum DocumentType {
+  MOU        // Biên bản ghi nhớ
+  AGREEMENT  // Thỏa thuận
+  CONTRACT   // Hợp đồng
+  OTHER      // Khác
+
+  @@map("document_type")
+}
+
+enum DocumentStatus {
+  DRAFT       // Nháp
+  SUBMITTED   // Đã nộp
+  REVIEWING   // Đang duyệt
+  APPROVED    // Đã duyệt
+  SIGNED      // Đã ký kết
+  ACTIVE      // Đang hiệu lực
+  EXPIRED     // Hết hạn
+  CANCELLED   // Đã hủy
+
+  @@map("document_status")
+}
+
+model Document {
+  id              String         @id @default(cuid())
+  title           String
+  type            DocumentType   @default(MOU)
+  partnerName     String
+  partnerCountry  String
+  description     String?
+  content         String?
+  signedDate      DateTime?
+  effectiveDate   DateTime?
+  expirationDate  DateTime?
+  status          DocumentStatus @default(DRAFT)
+  attachments     Json?          // Array of file paths
+  createdById     String
+  approvedById    String?
+  approvedAt      DateTime?
+  reminderSent    Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  createdBy  User  @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  approvedBy User? @relation("DocumentApprovedBy", fields: [approvedById], references: [id])
+
+  @@map("documents")
+}
+
+// ==================== VISA SERVICE MODELS ====================
+
+enum VisaStatus {
+  ACTIVE     // Đang hiệu lực
+  EXPIRING   // Sắp hết hạn
+  EXPIRED    // Đã hết hạn
+  EXTENDED   // Đã gia hạn
+  CANCELLED  // Đã hủy
+
+  @@map("visa_status")
+}
+
+model Visa {
+  id              String      @id @default(cuid())
+  holderName      String
+  holderCountry   String
+  passportNumber  String
+  visaNumber      String      @unique
+  issueDate       DateTime
+  expirationDate  DateTime
+  purpose         String
+  sponsorUnit     String
+  status          VisaStatus  @default(ACTIVE)
+  attachments     Json?       // Array of file paths
+  createdById     String
+  approvedById    String?
+  approvedAt      DateTime?
+  reminderSent    Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  createdBy     User             @relation("VisaCreatedBy", fields: [createdById], references: [id])
+  approvedBy    User?            @relation("VisaApprovedBy", fields: [approvedById], references: [id])
+  extensions    VisaExtension[]
+
+  @@map("visas")
+}
+
+model VisaExtension {
+  id                String    @id @default(cuid())
+  visaId            String
+  newExpirationDate DateTime
+  reason            String
+  officialLetter    String?   // Path to generated NA5/NA6 document
+  status            String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  visa Visa @relation(fields: [visaId], references: [id], onDelete: Cascade)
+
+  @@map("visa_extensions")
+}
+
+// ==================== GUEST SERVICE MODELS ====================
+
+enum GuestStatus {
+  REGISTERED // Đã đăng ký
+  APPROVED   // Đã duyệt
+  ARRIVED    // Đã đến
+  DEPARTED   // Đã về
+  CANCELLED  // Đã hủy
+
+  @@map("guest_status")
+}
+
+model Guest {
+  id              String      @id @default(cuid())
+  groupName       String?     // Tên đoàn (nếu là đoàn)
+  purpose         String
+  arrivalDate     DateTime
+  departureDate   DateTime
+  contactPerson   String
+  contactEmail    String
+  contactPhone    String?
+  totalMembers    Int         @default(1)
+  status          GuestStatus @default(REGISTERED)
+  notes           String?
+  attachments     Json?       // Array of file paths
+  createdById     String
+  approvedById    String?
+  approvedAt      DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  // Relations
+  createdBy    User           @relation("GuestCreatedBy", fields: [createdById], references: [id])
+  approvedBy   User?          @relation("GuestApprovedBy", fields: [approvedById], references: [id])
+  members      GuestMember[]
+
+  @@map("guests")
+}
+
+model GuestMember {
+  id             String    @id @default(cuid())
+  guestId        String
+  fullName       String
+  nationality    String
+  passportNumber String
+  position       String?
+  organization   String?
+  email          String?
+  phoneNumber    String?
+  dateOfBirth    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  guest Guest @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@map("guest_members")
+}
+
+// ==================== TRANSLATION SERVICE MODELS ====================
+
+enum TranslationStatus {
+  PENDING    // Chờ duyệt
+  APPROVED   // Đã duyệt
+  REJECTED   // Từ chối
+  COMPLETED  // Hoàn thành
+
+  @@map("translation_status")
+}
+
+model Translation {
+  id                String            @id @default(cuid())
+  applicantName     String
+  applicantEmail    String
+  applicantPhone    String?
+  documentTitle     String
+  sourceLanguage    String
+  targetLanguage    String
+  documentType      String
+  purpose           String
+  urgentLevel       String            @default("NORMAL") // NORMAL, URGENT, VERY_URGENT
+  status            TranslationStatus @default(PENDING)
+  originalFile      String            // Path to original document
+  translatedFile    String?           // Path to translated document
+  certificationFile String?           // Path to certification document
+  attachments       Json?             // Array of additional file paths
+  notes             String?
+  createdById       String
+  approvedById      String?
+  approvedAt        DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  // Relations
+  createdBy  User  @relation("TranslationCreatedBy", fields: [createdById], references: [id])
+  approvedBy User? @relation("TranslationApprovedBy", fields: [approvedById], references: [id])
+
+  @@map("translations")
+}
+
+// ==================== NOTIFICATION SERVICE MODELS ====================
+
+enum NotificationType {
+  EMAIL       // Email
+  SYSTEM      // Thông báo hệ thống
+  SMS         // SMS (tương lai)
+
+  @@map("notification_type")
+}
+
+enum NotificationStatus {
+  PENDING     // Chờ gửi
+  SENT        // Đã gửi
+  FAILED      // Gửi thất bại
+  DELIVERED   // Đã nhận
+
+  @@map("notification_status")
+}
+
+model NotificationTemplate {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  type        NotificationType
+  subject     String?
+  content     String
+  variables   Json?    // Array of variable placeholders
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("notification_templates")
+}
+
+model NotificationLog {
+  id           String             @id @default(cuid())
+  type         NotificationType
+  recipient    String             // Email or phone number
+  subject      String?
+  content      String
+  status       NotificationStatus @default(PENDING)
+  sentById     String?
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  errorMessage String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  // Relations
+  sentBy User? @relation("NotificationSentBy", fields: [sentById], references: [id])
+
+  @@map("notification_logs")
+}
+
+model UserNotification {
+  id         String    @id @default(cuid())
+  userId     String
+  title      String
+  content    String
+  type       String    @default("INFO") // INFO, WARNING, ERROR, SUCCESS
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_notifications")
+}
+
+// ==================== CONFIG SERVICE MODELS ====================
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  dataType    String   @default("STRING") // STRING, NUMBER, BOOLEAN, JSON
+  category    String?
+  isEditable  Boolean  @default(true)
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  updatedBy User? @relation(fields: [updatedById], references: [id])
+
+  @@map("system_configs")
+}
+
+// ==================== ACTIVITY SERVICE MODELS ====================
+
+enum ActivityType {
+  CREATE     // Tạo mới
+  UPDATE     // Cập nhật
+  DELETE     // Xóa
+  APPROVE    // Duyệt
+  REJECT     // Từ chối
+  LOGIN      // Đăng nhập
+  LOGOUT     // Đăng xuất
+  EXPORT     // Xuất báo cáo
+  IMPORT     // Nhập dữ liệu
+
+  @@map("activity_type")
+}
+
+model ActivityLog {
+  id          String       @id @default(cuid())
+  userId      String
+  action      ActivityType
+  resource    String       // Table name or resource type
+  resourceId  String?      // ID of the affected resource
+  oldData     Json?        // Previous data (for updates)
+  newData     Json?        // New data
+  description String?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime     @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+// ==================== REPORT SERVICE MODELS ====================
+
+enum ReportType {
+  MOU_SUMMARY        // Tổng hợp MOU
+  VISA_SUMMARY       // Tổng hợp Visa
+  GUEST_SUMMARY      // Tổng hợp khách quốc tế
+  TRANSLATION_SUMMARY // Tổng hợp bản dịch
+  ACTIVITY_SUMMARY   // Tổng hợp hoạt động
+  CUSTOM            // Báo cáo tùy chỉnh
+
+  @@map("report_type")
+}
+
+enum ReportStatus {
+  GENERATING  // Đang tạo
+  COMPLETED   // Hoàn thành
+  FAILED      // Thất bại
+
+  @@map("report_status")
+}
+
+model ReportLog {
+  id          String       @id @default(cuid())
+  name        String
+  type        ReportType
+  parameters  Json?        // Report parameters (filters, date range, etc.)
+  status      ReportStatus @default(GENERATING)
+  filePath    String?      // Path to generated report file
+  fileSize    Int?         // File size in bytes
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  createdBy User @relation("ReportCreatedBy", fields: [createdById], references: [id])
+
+  @@map("report_logs")
+}
