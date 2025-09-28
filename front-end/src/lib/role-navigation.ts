@@ -113,6 +113,20 @@ export const canAccessRoute = (userRole: UserRoleType, route: string): boolean =
       '/dashboard/translation',
       '/dashboard/visitor'
     ],
+    [UserRole.ADMIN]: [
+      '/dashboard',
+      '/dashboard/admin',
+      '/dashboard/admin/users',
+      '/dashboard/admin/mou',
+      '/dashboard/admin/system-logs',
+      '/dashboard/admin/visa-extensions',
+      '/dashboard/admin/international-guests',
+      '/dashboard/admin/translation-certificates',
+      '/dashboard/visa',
+      '/dashboard/mou',
+      '/dashboard/translation',
+      '/dashboard/visitor'
+    ],
     [UserRole.VIEWER]: [
       '/dashboard',
       '/dashboard/viewer',

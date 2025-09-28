@@ -687,6 +687,20 @@ const canAccessRoute = (userRole, route)=>{
             '/dashboard/translation',
             '/dashboard/visitor'
         ],
+        [__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$hooks$2f$usePermissions$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["UserRole"].ADMIN]: [
+            '/dashboard',
+            '/dashboard/admin',
+            '/dashboard/admin/users',
+            '/dashboard/admin/mou',
+            '/dashboard/admin/system-logs',
+            '/dashboard/admin/visa-extensions',
+            '/dashboard/admin/international-guests',
+            '/dashboard/admin/translation-certificates',
+            '/dashboard/visa',
+            '/dashboard/mou',
+            '/dashboard/translation',
+            '/dashboard/visitor'
+        ],
         [__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$hooks$2f$usePermissions$2e$ts__$5b$app$2d$ssr$5d$__$28$ecmascript$29$__["UserRole"].VIEWER]: [
             '/dashboard',
             '/dashboard/viewer',

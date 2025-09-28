@@ -266,16 +266,16 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/dashboard/mou">
+            <Link href="/dashboard/admin/mou">
               <Button variant="outline" className="w-full justify-start">
                 <BookOpen className="mr-2 h-4 w-4" />
-                Tất cả MOU
+                Biểu mẫu MOU
               </Button>
             </Link>
-            <Link href="/dashboard/admin/mou-templates">
+            <Link href="/dashboard/mou">
               <Button variant="outline" className="w-full justify-start">
                 <Settings className="mr-2 h-4 w-4" />
-                Mẫu MOU
+                Tất cả MOU
               </Button>
             </Link>
           </CardContent>
@@ -285,20 +285,43 @@ export default function AdminDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center">
               <MessageSquare className="mr-2 h-5 w-5" />
-              Quản lý Dịch thuật
+              Dịch thuật & Báo cáo
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Link href="/dashboard/translation">
+            <Link href="/dashboard/admin/translation-certificates">
               <Button variant="outline" className="w-full justify-start">
                 <MessageSquare className="mr-2 h-4 w-4" />
-                Tất cả yêu cầu
+                Chứng thực dịch thuật
               </Button>
             </Link>
-            <Link href="/dashboard/admin/translators">
+            <Link href="/dashboard/admin/international-guests">
               <Button variant="outline" className="w-full justify-start">
                 <Users className="mr-2 h-4 w-4" />
-                Quản lý dịch giả
+                Báo cáo khách quốc tế
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Activity className="mr-2 h-5 w-5" />
+              Visa & Hệ thống
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Link href="/dashboard/admin/visa-extensions">
+              <Button variant="outline" className="w-full justify-start">
+                <FileText className="mr-2 h-4 w-4" />
+                Gia hạn tạm trú
+              </Button>
+            </Link>
+            <Link href="/dashboard/admin/system-logs">
+              <Button variant="outline" className="w-full justify-start">
+                <Activity className="mr-2 h-4 w-4" />
+                Nhật ký hoạt động
               </Button>
             </Link>
           </CardContent>

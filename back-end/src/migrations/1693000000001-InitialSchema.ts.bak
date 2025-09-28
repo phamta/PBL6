@@ -1,0 +1,230 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class InitialSchema1693000000001 implements MigrationInterface {
+  name = 'InitialSchema1693000000001';
+
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Create enum types
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "visa_extension_status_enum" AS ENUM(
+          'draft', 'submitted', 'under_review', 'additional_required', 
+          'pending', 'approved', 'rejected', 'extended'
+        );
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "visa_type_enum" AS ENUM(
+          'tourist', 'business', 'student', 'work', 'diplomatic', 'transit'
+        );
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "study_program_enum" AS ENUM(
+          'undergraduate', 'graduate', 'postgraduate', 'exchange', 'short_term', 'research'
+        );
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$ BEGIN
+        CREATE TYPE "document_type_enum" AS ENUM(
+          'passport', 'current_visa', 'photo', 'introduction_letter', 
+          'study_certificate', 'financial_proof', 'accommodation_proof', 
+          'health_insurance', 'other'
+        );
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
+
+    // Create visa_extensions table if not exists
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS "visa_extensions" (
+        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+        "application_number" character varying NOT NULL,
+        "full_name" character varying NOT NULL,
+        "passport_number" character varying NOT NULL,
+        "passport_issue_date" date NOT NULL,
+        "passport_expiry_date" date NOT NULL,
+        "passport_issue_place" character varying NOT NULL,
+        "nationality" character varying NOT NULL,
+        "date_of_birth" date NOT NULL,
+        "gender" character varying NOT NULL,
+        "current_visa_number" character varying NOT NULL,
+        "visa_type" "visa_type_enum" NOT NULL,
+        "visa_issue_date" date NOT NULL,
+        "visa_expiry_date" date NOT NULL,
+        "visa_issue_place" character varying NOT NULL,
+        "study_program" "study_program_enum",
+        "university_name" character varying,
+        "program_duration" character varying,
+        "expected_graduation_date" date,
+        "reason_for_extension" text NOT NULL,
+        "requested_extension_period" character varying NOT NULL,
+        "contact_address" text NOT NULL,
+        "contact_phone" character varying NOT NULL,
+        "contact_email" character varying NOT NULL,
+        "status" "visa_extension_status_enum" NOT NULL DEFAULT 'draft',
+        "submission_date" TIMESTAMP,
+        "review_date" TIMESTAMP,
+        "approval_date" TIMESTAMP,
+        "rejection_reason" text,
+        "additional_requirements" text,
+        "official_document_number" character varying,
+        "new_visa_expiry_date" date,
+        "processing_fee" decimal(10,2),
+        "payment_status" character varying NOT NULL DEFAULT 'unpaid',
+        "payment_date" TIMESTAMP,
+        "notes" text,
+        "applicant_id" uuid NOT NULL,
+        "reviewer_id" uuid,
+        "created_at" TIMESTAMP NOT NULL DEFAULT now(),
+        "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
+        CONSTRAINT "PK_visa_extensions" PRIMARY KEY ("id"),
+        CONSTRAINT "UQ_visa_extensions_application_number" UNIQUE ("application_number")
+      )
+    `);
+
+    // Create visa_extension_documents table if not exists
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS "visa_extension_documents" (
+        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+        "file_name" character varying NOT NULL,
+        "original_name" character varying NOT NULL,
+        "file_path" character varying NOT NULL,
+        "file_size" integer NOT NULL,
+        "mime_type" character varying NOT NULL,
+        "document_type" "document_type_enum" NOT NULL,
+        "is_required" boolean NOT NULL DEFAULT true,
+        "is_verified" boolean NOT NULL DEFAULT false,
+        "verification_notes" text,
+        "visa_extension_id" uuid NOT NULL,
+        "uploaded_at" TIMESTAMP NOT NULL DEFAULT now(),
+        CONSTRAINT "PK_visa_extension_documents" PRIMARY KEY ("id")
+      )
+    `);
+
+    // Create visa_extension_history table if not exists
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS "visa_extension_history" (
+        "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+        "from_status" "visa_extension_status_enum" NOT NULL,
+        "to_status" "visa_extension_status_enum" NOT NULL,
+        "comment" text,
+        "reason" text,
+        "visa_extension_id" uuid NOT NULL,
+        "changed_by_id" uuid NOT NULL,
+        "changed_at" TIMESTAMP NOT NULL DEFAULT now(),
+        CONSTRAINT "PK_visa_extension_history" PRIMARY KEY ("id")
+      )
+    `);
+
+    // Add foreign key constraints
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'FK_visa_extensions_applicant'
+        ) THEN
+          ALTER TABLE "visa_extensions"
+          ADD CONSTRAINT "FK_visa_extensions_applicant"
+          FOREIGN KEY ("applicant_id") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+        END IF;
+      END
+      $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'FK_visa_extensions_reviewer'
+        ) THEN
+          ALTER TABLE "visa_extensions"
+          ADD CONSTRAINT "FK_visa_extensions_reviewer"
+          FOREIGN KEY ("reviewer_id") REFERENCES "user"("id") ON DELETE SET NULL ON UPDATE NO ACTION;
+        END IF;
+      END
+      $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'FK_visa_extension_documents_visa_extension'
+        ) THEN
+          ALTER TABLE "visa_extension_documents"
+          ADD CONSTRAINT "FK_visa_extension_documents_visa_extension"
+          FOREIGN KEY ("visa_extension_id") REFERENCES "visa_extensions"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+        END IF;
+      END
+      $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'FK_visa_extension_history_visa_extension'
+        ) THEN
+          ALTER TABLE "visa_extension_history"
+          ADD CONSTRAINT "FK_visa_extension_history_visa_extension"
+          FOREIGN KEY ("visa_extension_id") REFERENCES "visa_extensions"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+        END IF;
+      END
+      $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.table_constraints 
+          WHERE constraint_name = 'FK_visa_extension_history_changed_by'
+        ) THEN
+          ALTER TABLE "visa_extension_history"
+          ADD CONSTRAINT "FK_visa_extension_history_changed_by"
+          FOREIGN KEY ("changed_by_id") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+        END IF;
+      END
+      $$;
+    `);
+
+    // Create indexes for better performance
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_visa_extensions_status" ON "visa_extensions" ("status")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_visa_extensions_applicant_id" ON "visa_extensions" ("applicant_id")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_visa_extensions_visa_expiry_date" ON "visa_extensions" ("visa_expiry_date")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_visa_extensions_submission_date" ON "visa_extensions" ("submission_date")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_visa_extension_documents_visa_extension_id" ON "visa_extension_documents" ("visa_extension_id")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_visa_extension_history_visa_extension_id" ON "visa_extension_history" ("visa_extension_id")`);
+  }
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    // Drop tables in reverse order
+    await queryRunner.query(`DROP TABLE IF EXISTS "visa_extension_history"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "visa_extension_documents"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "visa_extensions"`);
+
+    // Drop enum types
+    await queryRunner.query(`DROP TYPE IF EXISTS "document_type_enum"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "study_program_enum"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "visa_type_enum"`);
+    await queryRunner.query(`DROP TYPE IF EXISTS "visa_extension_status_enum"`);
+  }
+}

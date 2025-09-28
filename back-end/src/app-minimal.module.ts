@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { UserModule } from './modules/user/user.module';
+import { AuthModule } from './services/identity/auth/auth.module';
+import { UserModule } from './services/identity/user/user.module';
+import { AdminModule } from './services/identity/admin/admin.module';
 import { getConfig } from './config/app.config';
 
 @Module({
@@ -15,6 +16,7 @@ import { getConfig } from './config/app.config';
     DatabaseModule,
     AuthModule,
     UserModule,
+    AdminModule,
   ],
   controllers: [],
   providers: [],
