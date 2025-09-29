@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { UserRole } from '@prisma/client';
 
 /**
  * User Service - Xử lý quản lý người dùng
@@ -13,20 +12,24 @@ export class UserService {
   /**
    * Lấy danh sách tất cả người dùng (có phân trang)
    */
-  async findAll(page: number = 1, limit: number = 10, role?: UserRole) {
+  async findAll(page: number = 1, limit: number = 10) {
     const skip = (page - 1) * limit;
-
-    const where = role ? { role } : {};
 
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
-        where,
         skip,
         take: limit,
-        include: { unit: true },
+        include: { 
+          unit: true,
+          roles: {
+            include: {
+              role: true
+            }
+          }
+        },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.user.count({ where }),
+      this.prisma.user.count(),
     ]);
 
     // Remove passwords from response
@@ -103,26 +106,33 @@ export class UserService {
    * Lấy thống kê người dùng
    */
   async getUserStats() {
-    const stats = await this.prisma.user.groupBy({
-      by: ['role'],
-      _count: {
-        id: true,
-      },
-    });
-
     const totalUsers = await this.prisma.user.count();
     const activeUsers = await this.prisma.user.count({
       where: { isActive: true },
     });
 
+    // Thống kê theo roles (RBAC)
+    const roleStats = await this.prisma.role.findMany({
+      include: {
+        users: {
+          select: {
+            userId: true
+          }
+        }
+      }
+    });
+
+    const roleDistribution = roleStats.map(role => ({
+      role: role.name,
+      description: role.description,
+      count: role.users.length,
+    }));
+
     return {
       totalUsers,
       activeUsers,
       inactiveUsers: totalUsers - activeUsers,
-      roleDistribution: stats.map(stat => ({
-        role: stat.role,
-        count: stat._count.id,
-      })),
+      roleDistribution,
     };
   }
 

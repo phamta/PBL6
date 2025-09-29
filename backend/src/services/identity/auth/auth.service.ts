@@ -6,6 +6,7 @@ import { PrismaService } from '../../../database/prisma.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { User, RefreshToken } from '@prisma/client';
+import { RbacService } from '../../rbac/rbac.service';
 
 /**
  * Auth Service - Xử lý authentication và authorization
@@ -16,13 +17,14 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private rbacService: RbacService,
   ) {}
 
   /**
    * Đăng ký user mới
    */
   async register(registerDto: RegisterDto) {
-    const { email, password, fullName, unitId, role = 'STUDENT' } = registerDto;
+    const { email, password, fullName, unitId } = registerDto;
 
     // Kiểm tra email đã tồn tại
     const existingUser = await this.prisma.user.findUnique({
@@ -52,11 +54,15 @@ export class AuthService {
         email,
         password: hashedPassword,
         fullName,
-        role,
         unitId,
       },
       include: {
         unit: true,
+        roles: {
+          include: {
+            role: true,
+          },
+        },
       },
     });
 
@@ -81,7 +87,14 @@ export class AuthService {
     // Tìm user theo email
     const user = await this.prisma.user.findUnique({
       where: { email },
-      include: { unit: true },
+      include: { 
+        unit: true,
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
     });
 
     if (!user) {
@@ -170,7 +183,14 @@ export class AuthService {
   async validateUser(userId: string): Promise<Omit<User, 'password'> | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { unit: true },
+      include: { 
+        unit: true,
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
     });
 
     if (!user || !user.isActive) {
@@ -185,22 +205,28 @@ export class AuthService {
    * Tạo access token và refresh token
    */
   private async generateTokens(userId: string) {
-    const payload = { sub: userId };
+    // Load user permissions
+    const permissions = await this.rbacService.getUserActionCodes(userId);
+    
+    const payload = { 
+      sub: userId,
+      permissions,
+    };
 
     const [accessToken, refreshTokenValue] = await Promise.all([
       this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>('jwt.secret'),
-        expiresIn: this.configService.get<string>('jwt.accessTokenExpiry'),
+        expiresIn: this.configService.get<string>('jwt.accessTokenExpiresIn'),
       }),
-      this.jwtService.signAsync(payload, {
-        secret: this.configService.get<string>('jwt.refreshSecret'),
-        expiresIn: this.configService.get<string>('jwt.refreshTokenExpiry'),
+      this.jwtService.signAsync({ sub: userId }, { // Refresh token chỉ cần userId
+        secret: this.configService.get<string>('jwt.secret'), // Dùng chung secret
+        expiresIn: this.configService.get<string>('jwt.refreshTokenExpiresIn'),
       }),
     ]);
 
     // Lưu refresh token vào DB
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 30); // 30 ngày
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 ngày
 
     await this.prisma.refreshToken.create({
       data: {

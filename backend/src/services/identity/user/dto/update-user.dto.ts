@@ -1,10 +1,9 @@
 import { PartialType, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsEmail, IsEnum, IsBoolean, IsUUID } from 'class-validator';
-import { UserRole } from '@prisma/client';
+import { IsOptional, IsString, IsEmail, IsBoolean, IsUUID, IsArray } from 'class-validator';
 import { CreateUserDto } from './create-user.dto';
 
 /**
- * DTO cập nhật user
+ * DTO cập nhật user với RBAC
  */
 export class UpdateUserDto extends PartialType(CreateUserDto) {
   @ApiPropertyOptional({ description: 'Email mới', example: 'newemail@example.com' })
@@ -18,13 +17,14 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   fullName?: string;
 
   @ApiPropertyOptional({ 
-    description: 'Vai trò mới', 
-    enum: UserRole,
-    example: 'STAFF' 
+    description: 'Danh sách ID roles mới cho user', 
+    type: [String],
+    example: ['role-id-1', 'role-id-3'] 
   })
   @IsOptional()
-  @IsEnum(UserRole, { message: 'Vai trò không hợp lệ' })
-  role?: UserRole;
+  @IsArray({ message: 'Role IDs phải là mảng' })
+  @IsUUID(4, { each: true, message: 'Mỗi role ID phải là UUID hợp lệ' })
+  roleIds?: string[];
 
   @ApiPropertyOptional({ description: 'ID unit mới' })
   @IsOptional()

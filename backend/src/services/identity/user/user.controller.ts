@@ -25,9 +25,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto, ResetPasswordDto } from './dto/change-password.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../common/guards/roles.guard';
-import { Roles } from '../../../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { ActionGuard } from '../../../common/guards/action.guard';
+import { RequireAction } from '../../../decorators/require-action.decorator';
 
 /**
  * User Controller - Xử lý CRUD operations cho users
@@ -43,8 +42,8 @@ export class UserController {
    * Tạo user mới (cho admin/manager)
    */
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.DEPARTMENT_OFFICER)
+  @UseGuards(ActionGuard)
+  @RequireAction('user.create')
   @ApiOperation({
     summary: 'Tạo user mới',
     description: 'Tạo user mới trong hệ thống (chỉ admin/manager)',
@@ -87,7 +86,7 @@ export class UserController {
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'search', required: false, type: String })
-  @ApiQuery({ name: 'role', required: false, enum: UserRole })
+  @ApiQuery({ name: 'roleName', required: false, type: String })
   @ApiQuery({ name: 'unitId', required: false, type: String })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiQuery({ name: 'sortBy', required: false, type: String })
@@ -201,8 +200,8 @@ export class UserController {
    * Xóa user (soft delete)
    */
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SYSTEM_ADMIN)
+  @UseGuards(ActionGuard)
+  @RequireAction('user.delete')
   @ApiOperation({
     summary: 'Xóa user',
     description: 'Xóa user khỏi hệ thống (chỉ admin)',
@@ -243,8 +242,8 @@ export class UserController {
    * Reset mật khẩu (cho admin/manager)
    */
   @Put(':id/reset-password')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.DEPARTMENT_OFFICER)
+  @UseGuards(ActionGuard)
+  @RequireAction('user.reset_password')
   @ApiOperation({
     summary: 'Reset mật khẩu',
     description: 'Admin/Manager reset mật khẩu cho user khác',

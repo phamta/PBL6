@@ -1,0 +1,385 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  UseGuards,
+  Req,
+  HttpStatus,
+  ParseUUIDPipe,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiBearerAuth,
+  ApiBody,
+} from '@nestjs/swagger';
+import { VisaService, VisaUser } from './visa.service';
+import { CreateVisaDto, UpdateVisaDto, ExtendVisaDto, ApproveVisaDto, FilterVisaDto } from './dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { ActionGuard } from '../../common/guards/action.guard';
+import { RequireAction } from '../../decorators/require-action.decorator';
+import { Request } from 'express';
+
+interface AuthenticatedRequest extends Request {
+  user: VisaUser;
+}
+
+@ApiTags('Visa Management')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, ActionGuard)
+@Controller('visas')
+export class VisaController {
+  constructor(private readonly visaService: VisaService) {}
+
+  @Post()
+  @RequireAction('visa.create')
+  @ApiOperation({ 
+    summary: 'Create new visa application',
+    description: 'Create new visa applications. Requires visa.create action.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.CREATED, 
+    description: 'Visa application created successfully',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.BAD_REQUEST, 
+    description: 'Invalid input data or validation errors',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.CONFLICT, 
+    description: 'Visa number already exists',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.FORBIDDEN, 
+    description: 'Insufficient permissions',
+  })
+  @ApiBody({ type: CreateVisaDto })
+  async create(
+    @Body() createVisaDto: CreateVisaDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    // Set the createdBy field from authenticated user
+    createVisaDto.createdBy = req.user.id;
+    
+    const visa = await this.visaService.create(createVisaDto, req.user);
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Visa application created successfully',
+      data: visa,
+    };
+  }
+
+  @Get()
+  @RequireAction('visa.view_own')
+  @ApiOperation({ 
+    summary: 'Get all visas with filtering and pagination',
+    description: 'Retrieve visas with optional filtering, sorting, and pagination. Requires visa.view_own (minimum) action.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Visas retrieved successfully',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.BAD_REQUEST, 
+    description: 'Invalid filter parameters',
+  })
+  @ApiQuery({ name: 'search', required: false, description: 'Search by holder name or visa number' })
+  @ApiQuery({ name: 'status', required: false, enum: ['ACTIVE', 'EXPIRING', 'EXPIRED', 'EXTENDED', 'CANCELLED'] })
+  @ApiQuery({ name: 'holderCountry', required: false, description: 'Filter by holder country' })
+  @ApiQuery({ name: 'sponsorUnit', required: false, description: 'Filter by sponsor unit' })
+  @ApiQuery({ name: 'expiringWithinDays', required: false, description: 'Filter visas expiring within specified days' })
+  @ApiQuery({ name: 'page', required: false, description: 'Page number (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Items per page (default: 10, max: 100)' })
+  @ApiQuery({ name: 'sortBy', required: false, description: 'Sort field' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['asc', 'desc'], description: 'Sort order' })
+  async findAll(
+    @Query() filterDto: FilterVisaDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const result = await this.visaService.findAll(filterDto, req.user);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Visas retrieved successfully',
+      data: result,
+    };
+  }
+
+  @Get('statistics')
+  @Roles(UserRole.DEPARTMENT_OFFICER, UserRole.LEADERSHIP, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ 
+    summary: 'Get visa statistics',
+    description: 'Retrieve visa statistics including counts by status, expiring visas, and recent extensions.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Statistics retrieved successfully',
+  })
+  async getStatistics() {
+    const statistics = await this.visaService.getStatistics();
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Visa statistics retrieved successfully',
+      data: statistics,
+    };
+  }
+
+  @Get('expiring')
+  @Roles(UserRole.DEPARTMENT_OFFICER, UserRole.LEADERSHIP, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ 
+    summary: 'Check for expiring visas (UC004)',
+    description: 'Retrieve visas that are expiring soon and trigger reminder notifications.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Expiring visas checked and reminders sent',
+  })
+  @ApiQuery({ name: 'days', required: false, description: 'Days before expiration (default: 30)' })
+  async checkExpiringVisas(@Query('days') days?: string) {
+    const daysBeforeExpiration = days ? parseInt(days, 10) : 30;
+    const expiringVisas = await this.visaService.checkExpiringVisas(daysBeforeExpiration);
+    return {
+      statusCode: HttpStatus.OK,
+      message: `Found ${expiringVisas.length} expiring visas. Reminders have been sent.`,
+      data: {
+        count: expiringVisas.length,
+        visas: expiringVisas,
+        daysBeforeExpiration,
+      },
+    };
+  }
+
+  @Get('extensions')
+  @Roles(UserRole.DEPARTMENT_OFFICER, UserRole.LEADERSHIP, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ 
+    summary: 'Get all visa extensions',
+    description: 'Retrieve all visa extensions with optional filtering by visa ID.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Visa extensions retrieved successfully',
+  })
+  @ApiQuery({ name: 'visaId', required: false, description: 'Filter extensions by specific visa ID' })
+  async findAllExtensions(@Query('visaId') visaId?: string) {
+    const extensions = await this.visaService.findAllExtensions(visaId);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Visa extensions retrieved successfully',
+      data: {
+        count: extensions.length,
+        extensions,
+      },
+    };
+  }
+
+  @Get('extensions/:extensionId')
+  @Roles(UserRole.DEPARTMENT_OFFICER, UserRole.LEADERSHIP, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ 
+    summary: 'Get visa extension by ID',
+    description: 'Retrieve a specific visa extension by its ID.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Visa extension retrieved successfully',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.NOT_FOUND, 
+    description: 'Visa extension not found',
+  })
+  @ApiParam({ name: 'extensionId', description: 'Visa extension ID', type: 'string' })
+  async findExtension(@Param('extensionId', ParseUUIDPipe) extensionId: string) {
+    const extension = await this.visaService.findExtension(extensionId);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Visa extension retrieved successfully',
+      data: extension,
+    };
+  }
+
+  @Get(':id')
+  @Roles(UserRole.FACULTY_STAFF, UserRole.DEPARTMENT_OFFICER, UserRole.LEADERSHIP, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ 
+    summary: 'Get visa by ID',
+    description: 'Retrieve a specific visa by its ID with all related information.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Visa retrieved successfully',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.NOT_FOUND, 
+    description: 'Visa not found',
+  })
+  @ApiParam({ name: 'id', description: 'Visa ID', type: 'string' })
+  async findOne(@Param('id', ParseUUIDPipe) id: string) {
+    const visa = await this.visaService.findOne(id);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Visa retrieved successfully',
+      data: visa,
+    };
+  }
+
+  @Post(':id/extend')
+  @Roles(UserRole.DEPARTMENT_OFFICER)
+  @ApiOperation({ 
+    summary: 'Create visa extension request (UC005)',
+    description: 'Department officers can create visa extension requests for existing visas.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.CREATED, 
+    description: 'Visa extension request created successfully',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.BAD_REQUEST, 
+    description: 'Invalid extension data or visa cannot be extended',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.FORBIDDEN, 
+    description: 'Insufficient permissions',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.NOT_FOUND, 
+    description: 'Visa not found',
+  })
+  @ApiParam({ name: 'id', description: 'Visa ID', type: 'string' })
+  @ApiBody({ type: ExtendVisaDto })
+  async createExtension(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() extendVisaDto: ExtendVisaDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    // Set the visa ID from the route parameter
+    extendVisaDto.visaId = id;
+    
+    const extension = await this.visaService.createExtension(extendVisaDto, req.user.role);
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Visa extension request created successfully',
+      data: extension,
+    };
+  }
+
+  @Post('extensions/:extensionId/approve')
+  @Roles(UserRole.LEADERSHIP)
+  @ApiOperation({ 
+    summary: 'Approve or reject visa extension',
+    description: 'Leadership can approve or reject visa extension requests. Generates NA5/NA6 documents if approved.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Visa extension processed successfully',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.BAD_REQUEST, 
+    description: 'Extension already processed or invalid approval data',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.FORBIDDEN, 
+    description: 'Insufficient permissions',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.NOT_FOUND, 
+    description: 'Visa extension not found',
+  })
+  @ApiParam({ name: 'extensionId', description: 'Visa extension ID', type: 'string' })
+  @ApiBody({ type: ApproveVisaDto })
+  async approveExtension(
+    @Param('extensionId', ParseUUIDPipe) extensionId: string,
+    @Body() approveVisaDto: ApproveVisaDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    // Set the approved by field from authenticated user
+    approveVisaDto.approvedBy = req.user.id;
+    
+    const extension = await this.visaService.approveExtension(extensionId, approveVisaDto, req.user.role);
+    return {
+      statusCode: HttpStatus.OK,
+      message: `Visa extension ${approveVisaDto.action.toLowerCase()}d successfully`,
+      data: extension,
+    };
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.FACULTY_STAFF, UserRole.DEPARTMENT_OFFICER, UserRole.LEADERSHIP)
+  @ApiOperation({ 
+    summary: 'Update visa information',
+    description: 'Update visa details. Faculty staff can update their own visas, officers and leadership can update any.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Visa updated successfully',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.BAD_REQUEST, 
+    description: 'Invalid update data',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.FORBIDDEN, 
+    description: 'Insufficient permissions to update this visa',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.NOT_FOUND, 
+    description: 'Visa not found',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.CONFLICT, 
+    description: 'Visa number already exists',
+  })
+  @ApiParam({ name: 'id', description: 'Visa ID', type: 'string' })
+  @ApiBody({ type: UpdateVisaDto })
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateVisaDto: UpdateVisaDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const visa = await this.visaService.update(id, updateVisaDto, req.user.id, req.user.role);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Visa updated successfully',
+      data: visa,
+    };
+  }
+
+  @Delete(':id')
+  @Roles(UserRole.FACULTY_STAFF, UserRole.LEADERSHIP)
+  @ApiOperation({ 
+    summary: 'Cancel visa (soft delete)',
+    description: 'Cancel a visa by setting its status to CANCELLED. Faculty staff can cancel their own visas, leadership can cancel any.',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.OK, 
+    description: 'Visa cancelled successfully',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.BAD_REQUEST, 
+    description: 'Visa is already cancelled',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.FORBIDDEN, 
+    description: 'Insufficient permissions to cancel this visa',
+  })
+  @ApiResponse({ 
+    status: HttpStatus.NOT_FOUND, 
+    description: 'Visa not found',
+  })
+  @ApiParam({ name: 'id', description: 'Visa ID', type: 'string' })
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const visa = await this.visaService.remove(id, req.user.id, req.user.role);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Visa cancelled successfully',
+      data: visa,
+    };
+  }
+}

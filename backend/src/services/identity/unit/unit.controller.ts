@@ -25,16 +25,15 @@ import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { QueryUnitsDto } from './dto/query-units.dto';
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../../common/guards/roles.guard';
-import { Roles } from '../../../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { ActionGuard } from '../../../common/guards/action.guard';
+import { RequireAction } from '../../../decorators/require-action.decorator';
 
 /**
- * Unit Controller - Xử lý CRUD operations cho units
+ * Unit Controller - Xử lý CRUD operations cho units với RBAC
  */
 @ApiTags('Unit Management')
 @Controller('units')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, ActionGuard)
 @ApiBearerAuth()
 export class UnitController {
   constructor(private readonly unitService: UnitService) {}
@@ -43,8 +42,7 @@ export class UnitController {
    * Tạo unit mới
    */
   @Post()
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.DEPARTMENT_OFFICER)
+  @RequireAction('unit.create')
   @ApiOperation({
     summary: 'Tạo đơn vị mới',
     description: 'Tạo đơn vị mới trong hệ thống (chỉ admin/department officer)',
@@ -204,8 +202,8 @@ export class UnitController {
    * Cập nhật unit
    */
   @Put(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.DEPARTMENT_OFFICER)
+  
+  @RequireAction('unit.manage')
   @ApiOperation({
     summary: 'Cập nhật đơn vị',
     description: 'Cập nhật thông tin đơn vị',
@@ -244,8 +242,8 @@ export class UnitController {
    * Thay đổi trạng thái unit (kích hoạt/vô hiệu hóa)
    */
   @Patch(':id/toggle-status')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.DEPARTMENT_OFFICER)
+  
+  @RequireAction('unit.manage')
   @ApiOperation({
     summary: 'Thay đổi trạng thái đơn vị',
     description: 'Kích hoạt hoặc vô hiệu hóa đơn vị',
@@ -275,8 +273,8 @@ export class UnitController {
    * Xóa unit
    */
   @Delete(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.SYSTEM_ADMIN)
+  
+  @RequireAction('unit.delete')
   @ApiOperation({
     summary: 'Xóa đơn vị',
     description: 'Xóa đơn vị khỏi hệ thống (chỉ system admin)',

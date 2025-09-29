@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { RefreshTokenStrategy } from './refresh-token.strategy';
 import { PrismaModule } from '../../../database/prisma.module';
+import { RbacModule } from '../../rbac/rbac.module';
 
 /**
  * Auth Module - Module xử lý authentication
@@ -14,6 +15,7 @@ import { PrismaModule } from '../../../database/prisma.module';
 @Module({
   imports: [
     PrismaModule,
+    RbacModule,
     PassportModule,
     ConfigModule,
     JwtModule.registerAsync({

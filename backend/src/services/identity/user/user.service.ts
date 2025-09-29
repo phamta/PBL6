@@ -11,7 +11,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangePasswordDto, ResetPasswordDto } from './dto/change-password.dto';
 import { QueryUsersDto } from './dto/query-users.dto';
-import { User, UserRole } from '@prisma/client';
+import { User } from '@prisma/client';
 
 /**
  * User Service - Xử lý CRUD operations cho users
@@ -21,15 +21,15 @@ export class UserService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Tạo user mới (cho admin)
+   * Tạo user mới (cho admin) với RBAC
    */
   async createUser(createUserDto: CreateUserDto, currentUser: any) {
-    // Chỉ SYSTEM_ADMIN và DEPARTMENT_OFFICER có thể tạo user
-    if (!['SYSTEM_ADMIN', 'DEPARTMENT_OFFICER'].includes(currentUser.role)) {
+    // Kiểm tra quyền tạo user thông qua actions
+    if (!currentUser.actions || !currentUser.actions.includes('user.create')) {
       throw new ForbiddenException('Không có quyền tạo user');
     }
 
-    const { email, fullName, role, unitId, isActive } = createUserDto;
+    const { email, fullName, roleIds, unitId, isActive } = createUserDto;
 
     // Kiểm tra email đã tồn tại
     const existingUser = await this.prisma.user.findUnique({
@@ -50,26 +50,42 @@ export class UserService {
       }
     }
 
-    // DEPARTMENT_OFFICER chỉ có thể tạo user có role thấp hơn
-    if (currentUser.role === 'DEPARTMENT_OFFICER' && ['SYSTEM_ADMIN', 'DEPARTMENT_OFFICER'].includes(role)) {
-      throw new ForbiddenException('Không có quyền tạo user với role này');
+    // Kiểm tra các roles có tồn tại
+    const roles = await this.prisma.role.findMany({
+      where: { id: { in: roleIds } }
+    });
+
+    if (roles.length !== roleIds.length) {
+      throw new BadRequestException('Một hoặc nhiều role không tồn tại');
     }
 
     // Tạo password mặc định
     const defaultPassword = this.generateDefaultPassword();
     const hashedPassword = await bcrypt.hash(defaultPassword, 12);
 
+    // Tạo user với roles
     const user = await this.prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         fullName,
-        role,
         unitId,
         isActive: isActive ?? true,
+        roles: {
+          create: roleIds.map(roleId => ({
+            roleId: roleId
+          }))
+        }
       },
       include: {
         unit: true,
+        roles: {
+          include: {
+            role: {
+              select: { id: true, name: true, description: true }
+            }
+          }
+        }
       },
     });
 
@@ -83,14 +99,14 @@ export class UserService {
   }
 
   /**
-   * Lấy danh sách users với pagination và filter
+   * Lấy danh sách users với pagination và filter (RBAC)
    */
   async findUsers(queryDto: QueryUsersDto, currentUser: any) {
     const {
       page,
       limit,
       search,
-      role,
+      roleName,
       unitId,
       isActive,
       sortBy,
@@ -110,9 +126,15 @@ export class UserService {
       ];
     }
 
-    // Filter theo role
-    if (role) {
-      where.role = role;
+    // Filter theo role name
+    if (roleName) {
+      where.roles = {
+        some: {
+          role: {
+            name: { contains: roleName, mode: 'insensitive' }
+          }
+        }
+      };
     }
 
     // Filter theo unitId
@@ -125,9 +147,14 @@ export class UserService {
       where.isActive = isActive;
     }
 
-    // Phân quyền: DEPARTMENT_OFFICER chỉ xem được user trong unit của mình
-    if (currentUser.role === 'DEPARTMENT_OFFICER') {
-      where.unitId = currentUser.unitId;
+    // Phân quyền: kiểm tra permission để xem users
+    if (!currentUser.actions || !currentUser.actions.includes('user.view_all')) {
+      // Nếu không có quyền view all, chỉ xem được user của unit mình
+      if (currentUser.actions && currentUser.actions.includes('user.view_unit')) {
+        where.unitId = currentUser.unitId;
+      } else {
+        throw new ForbiddenException('Không có quyền xem danh sách user');
+      }
     }
 
     const [users, total] = await Promise.all([
@@ -137,6 +164,13 @@ export class UserService {
           unit: {
             select: { id: true, name: true, code: true },
           },
+          roles: {
+            include: {
+              role: {
+                select: { id: true, name: true, description: true }
+              }
+            }
+          }
         },
         skip,
         take: limit,
@@ -177,20 +211,13 @@ export class UserService {
       throw new NotFoundException('User không tồn tại');
     }
 
-    // Phân quyền: chỉ system_admin/department_officer hoặc chính user đó mới xem được
-    if (
-      !['SYSTEM_ADMIN', 'DEPARTMENT_OFFICER'].includes(currentUser.role) &&
-      currentUser.id !== id
-    ) {
-      throw new ForbiddenException('Không có quyền xem thông tin user này');
-    }
+    // Phân quyền RBAC: kiểm tra action permissions
+    const canViewAll = currentUser.actions && currentUser.actions.includes('user.view_all');
+    const canViewSelf = currentUser.actions && currentUser.actions.includes('user.view_self') && currentUser.id === id;
+    const canViewUnit = currentUser.actions && currentUser.actions.includes('user.view_unit') && 
+                        currentUser.id !== id && user.unitId === currentUser.unitId;
 
-    // DEPARTMENT_OFFICER chỉ xem được user trong unit của mình
-    if (
-      currentUser.role === 'DEPARTMENT_OFFICER' &&
-      currentUser.id !== id &&
-      user.unitId !== currentUser.unitId
-    ) {
+    if (!canViewAll && !canViewSelf && !canViewUnit) {
       throw new ForbiddenException('Không có quyền xem thông tin user này');
     }
 
@@ -199,11 +226,18 @@ export class UserService {
   }
 
   /**
-   * Cập nhật user
+   * Cập nhật user (RBAC)
    */
   async updateUser(id: string, updateUserDto: UpdateUserDto, currentUser: any) {
     const user = await this.prisma.user.findUnique({
       where: { id },
+      include: {
+        roles: {
+          include: {
+            role: true
+          }
+        }
+      }
     });
 
     if (!user) {
@@ -215,7 +249,7 @@ export class UserService {
       throw new ForbiddenException('Không có quyền cập nhật user này');
     }
 
-    const { email, unitId, role, ...otherFields } = updateUserDto;
+    const { email, unitId, roleIds, ...otherFields } = updateUserDto;
 
     // Kiểm tra email mới có trùng không
     if (email && email !== user.email) {
@@ -237,27 +271,65 @@ export class UserService {
       }
     }
 
-    // Kiểm tra quyền thay đổi role
-    if (role && role !== user.role) {
-      if (!this.canChangeRole(currentUser, user.role, role)) {
-        throw new ForbiddenException('Không có quyền thay đổi role này');
+    // Kiểm tra quyền thay đổi roles
+    if (roleIds && roleIds.length > 0) {
+      if (!this.canChangeRoles(currentUser, roleIds)) {
+        throw new ForbiddenException('Không có quyền thay đổi roles này');
       }
     }
 
-    const updatedUser = await this.prisma.user.update({
-      where: { id },
-      data: {
-        email,
-        unitId,
-        role,
-        ...otherFields,
-      },
-      include: {
-        unit: true,
-      },
+    // Transaction để cập nhật user và roles
+    const updatedUser = await this.prisma.$transaction(async (tx) => {
+      // Cập nhật thông tin user
+      const updated = await tx.user.update({
+        where: { id },
+        data: {
+          email,
+          unitId,
+          ...otherFields,
+        },
+        include: {
+          unit: true,
+        },
+      });
+
+      // Cập nhật roles nếu có
+      if (roleIds && roleIds.length > 0) {
+        // Xóa roles cũ
+        await tx.userRole.deleteMany({
+          where: { userId: id }
+        });
+
+        // Thêm roles mới
+        await tx.userRole.createMany({
+          data: roleIds.map(roleId => ({
+            userId: id,
+            roleId
+          }))
+        });
+      }
+
+      return updated;
     });
 
-    const { password, ...userWithoutPassword } = updatedUser;
+    // Trả về user với roles mới
+    const userWithRoles = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        unit: {
+          select: { id: true, name: true, code: true },
+        },
+        roles: {
+          include: {
+            role: {
+              select: { id: true, name: true, description: true }
+            }
+          }
+        }
+      }
+    });
+
+    const { password, ...userWithoutPassword } = userWithRoles;
     return userWithoutPassword;
   }
 
@@ -273,8 +345,8 @@ export class UserService {
       throw new NotFoundException('User không tồn tại');
     }
 
-    // Chỉ SYSTEM_ADMIN có thể xóa user
-    if (currentUser.role !== 'SYSTEM_ADMIN') {
+    // Kiểm tra quyền xóa user
+    if (!currentUser.actions || !currentUser.actions.includes('user.delete')) {
       throw new ForbiddenException('Không có quyền xóa user');
     }
 
@@ -353,11 +425,6 @@ export class UserService {
     resetPasswordDto: ResetPasswordDto,
     currentUser: any,
   ) {
-    // Chỉ SYSTEM_ADMIN và DEPARTMENT_OFFICER có thể reset password
-    if (!['SYSTEM_ADMIN', 'DEPARTMENT_OFFICER'].includes(currentUser.role)) {
-      throw new ForbiddenException('Không có quyền reset mật khẩu');
-    }
-
     const user = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -366,14 +433,13 @@ export class UserService {
       throw new NotFoundException('User không tồn tại');
     }
 
-    // DEPARTMENT_OFFICER chỉ có thể reset password user trong unit của mình
-    if (
-      currentUser.role === 'DEPARTMENT_OFFICER' &&
-      user.unitId !== currentUser.unitId
-    ) {
-      throw new ForbiddenException(
-        'Không có quyền reset mật khẩu user ngoài unit',
-      );
+    // Kiểm tra quyền reset password
+    const canResetAll = currentUser.actions && currentUser.actions.includes('user.reset_password_all');
+    const canResetUnit = currentUser.actions && currentUser.actions.includes('user.reset_password_unit') && 
+                         user.unitId === currentUser.unitId;
+
+    if (!canResetAll && !canResetUnit) {
+      throw new ForbiddenException('Không có quyền reset mật khẩu user này');
     }
 
     const { newPassword, forceChangeOnNextLogin } = resetPasswordDto;
@@ -395,18 +461,23 @@ export class UserService {
   }
 
   /**
-   * Kiểm tra quyền cập nhật user
+   * Kiểm tra quyền cập nhật user (RBAC)
    */
-  private canUpdateUser(currentUser: any, targetUser: User): boolean {
-    // SYSTEM_ADMIN có thể cập nhật tất cả
-    if (currentUser.role === 'SYSTEM_ADMIN') return true;
+  private canUpdateUser(currentUser: any, targetUser: any): boolean {
+    // Kiểm tra permission user.update_all
+    if (currentUser.actions && currentUser.actions.includes('user.update_all')) {
+      return true;
+    }
 
-    // User có thể cập nhật thông tin của chính mình (trừ role)
-    if (currentUser.id === targetUser.id) return true;
+    // User có thể cập nhật thông tin của chính mình
+    if (currentUser.id === targetUser.id) {
+      return currentUser.actions && currentUser.actions.includes('user.update_self');
+    }
 
-    // DEPARTMENT_OFFICER có thể cập nhật user trong unit của mình
+    // Kiểm tra permission cập nhật user trong unit
     if (
-      currentUser.role === 'DEPARTMENT_OFFICER' &&
+      currentUser.actions && 
+      currentUser.actions.includes('user.update_unit') &&
       targetUser.unitId === currentUser.unitId
     ) {
       return true;
@@ -416,18 +487,19 @@ export class UserService {
   }
 
   /**
-   * Kiểm tra quyền thay đổi role
+   * Kiểm tra quyền thay đổi roles (RBAC)
    */
-  private canChangeRole(
+  private canChangeRoles(
     currentUser: any,
-    oldRole: UserRole,
-    newRole: UserRole,
+    roleIds: string[],
   ): boolean {
-    // Chỉ SYSTEM_ADMIN có thể thay đổi role
-    if (currentUser.role !== 'SYSTEM_ADMIN') return false;
+    // Kiểm tra permission user.assign_roles
+    if (!currentUser.actions || !currentUser.actions.includes('user.assign_roles')) {
+      return false;
+    }
 
-    // Không cho phép tự thay đổi role của mình
-    if (currentUser.role === oldRole) return false;
+    // Có thể thêm logic kiểm tra specific roles nếu cần
+    // VD: chỉ cho phép assign những roles không cao hơn role của mình
 
     return true;
   }

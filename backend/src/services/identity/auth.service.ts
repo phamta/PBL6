@@ -8,6 +8,23 @@ import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UpdateUserDto, ChangePasswordDto } from './dto/update-user.dto';
 
+// Interface for user with roles and permissions
+export interface UserWithRoles {
+  roles: Array<{
+    role: {
+      permissions: Array<{
+        permission: {
+          actions: Array<{
+            action: {
+              code: string;
+            };
+          }>;
+        };
+      }>;
+    };
+  }>;
+}
+
 /**
  * Auth Service - Xử lý authentication và authorization
  * Bao gồm đăng nhập, đăng ký, refresh token, quản lý người dùng
@@ -26,10 +43,33 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    // Tìm user
+    // Tìm user và load permissions/actions
     const user = await this.prisma.user.findUnique({
       where: { email },
-      include: { unit: true },
+      include: { 
+        unit: true,
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: {
+                      include: {
+                        actions: {
+                          include: {
+                            action: true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
     });
 
     if (!user || !user.isActive) {
@@ -42,8 +82,11 @@ export class AuthService {
       throw new UnauthorizedException('Email hoặc mật khẩu không đúng');
     }
 
-    // Tạo tokens
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    // Lấy danh sách actions của user
+    const userActions = this.extractUserActions(user.roles);
+
+    // Tạo tokens với actions
+    const tokens = await this.generateTokens(user.id, user.email, userActions);
 
     // Cập nhật thời gian đăng nhập
     await this.prisma.user.update({
@@ -56,8 +99,8 @@ export class AuthService {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        role: user.role,
         unit: user.unit,
+        actions: userActions,
       },
       ...tokens,
     };
@@ -67,7 +110,7 @@ export class AuthService {
    * Đăng ký
    */
   async register(registerDto: RegisterDto) {
-    const { email, password, fullName, phoneNumber, role, unitId } = registerDto;
+    const { email, password, fullName, phoneNumber, unitId } = registerDto;
 
     // Kiểm tra email đã tồn tại
     const existingUser = await this.prisma.user.findUnique({
@@ -88,21 +131,22 @@ export class AuthService {
         password: hashedPassword,
         fullName,
         phoneNumber,
-        role,
         unitId,
       },
       include: { unit: true },
     });
 
-    const tokens = await this.generateTokens(user.id, user.email, user.role);
+    // User mới sẽ có empty actions ban đầu, cần assign role sau
+    const userActions: string[] = [];
+    const tokens = await this.generateTokens(user.id, user.email, userActions);
 
     return {
       user: {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        role: user.role,
         unit: user.unit,
+        actions: userActions,
       },
       ...tokens,
     };
@@ -133,11 +177,14 @@ export class AuthService {
         where: { id: storedToken.id },
       });
 
+      // Load lại actions của user từ database
+      const userActions = await this.loadUserActions(storedToken.user.id);
+
       // Tạo tokens mới
       const tokens = await this.generateTokens(
         storedToken.user.id,
         storedToken.user.email,
-        storedToken.user.role,
+        userActions,
       );
 
       return tokens;
@@ -242,10 +289,65 @@ export class AuthService {
   }
 
   /**
+   * Trích xuất danh sách actions từ roles của user
+   */
+  private extractUserActions(userRoles: UserWithRoles['roles']): string[] {
+    const actionsSet = new Set<string>();
+
+    for (const userRole of userRoles) {
+      for (const rolePermission of userRole.role.permissions) {
+        for (const permissionAction of rolePermission.permission.actions) {
+          actionsSet.add(permissionAction.action.code);
+        }
+      }
+    }
+
+    return Array.from(actionsSet);
+  }
+
+  /**
+   * Load user permissions/actions for existing user
+   */
+  async loadUserActions(userId: string): Promise<string[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        roles: {
+          include: {
+            role: {
+              include: {
+                permissions: {
+                  include: {
+                    permission: {
+                      include: {
+                        actions: {
+                          include: {
+                            action: true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+
+    return this.extractUserActions(user.roles);
+  }
+
+  /**
    * Tạo access và refresh token
    */
-  private async generateTokens(userId: string, email: string, role: string) {
-    const payload = { sub: userId, email, role };
+  private async generateTokens(userId: string, email: string, actions: string[]) {
+    const payload = { sub: userId, email, actions };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {

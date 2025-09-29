@@ -15,9 +15,17 @@ import jwtConfig from './config/jwt.config';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 
-// Services
+// Controllers
+import { AppController } from './app.controller';
+
+// Services  
 import { IdentityModule } from './services/identity/identity.module';
 import { DocumentModule } from './services/document/document.module';
+import { VisaModule } from './services/visa/visa.module';
+import { GuestModule } from './services/guest/guest.module';
+import { TranslationModule } from './services/translation/translation.module';
+import { NotificationModule } from './services/notification/notification.module';
+import { ReportModule } from './services/report/report.module';
 // Import other service modules here when they're complete
 
 /**
@@ -43,16 +51,17 @@ import { DocumentModule } from './services/document/document.module';
     // Business Services
     IdentityModule,
     DocumentModule,
+    VisaModule,
+    GuestModule,
+    TranslationModule,
+    NotificationModule,
+    ReportModule,
 
     // TODO: Add other service modules:
-    // VisaModule,
-    // GuestModule,
-    // TranslationModule,
-    // ReportModule,
     // SystemConfigModule,
-    // NotificationModule,
     // ActivityModule,
   ],
+  controllers: [AppController],
   providers: [
     // Global Exception Filter
     {

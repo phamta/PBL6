@@ -1,10 +1,9 @@
 import { Type } from 'class-transformer';
-import { IsOptional, IsInt, Min, Max, IsString, IsEnum } from 'class-validator';
+import { IsOptional, IsInt, Min, Max, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
 
 /**
- * DTO query users với pagination và filter
+ * DTO query users với pagination và filter (RBAC)
  */
 export class QueryUsersDto {
   @ApiPropertyOptional({ 
@@ -42,13 +41,12 @@ export class QueryUsersDto {
   search?: string;
 
   @ApiPropertyOptional({ 
-    description: 'Lọc theo vai trò',
-    enum: UserRole,
-    example: 'STUDENT'
+    description: 'Lọc theo tên role',
+    example: 'Student'
   })
   @IsOptional()
-  @IsEnum(UserRole, { message: 'Vai trò không hợp lệ' })
-  role?: UserRole;
+  @IsString({ message: 'Role name phải là chuỗi' })
+  roleName?: string;
 
   @ApiPropertyOptional({ 
     description: 'Lọc theo ID unit',

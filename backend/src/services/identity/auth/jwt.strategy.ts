@@ -26,15 +26,25 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: any) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      include: { unit: true },
+      include: { 
+        unit: true,
+        roles: {
+          include: {
+            role: true,
+          },
+        },
+      },
     });
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('User không tồn tại hoặc đã bị vô hiệu hóa');
     }
 
-    // Loại bỏ password khỏi response
+    // Loại bỏ password khỏi response và thêm permissions từ JWT
     const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    return {
+      ...userWithoutPassword,
+      permissions: payload.permissions || [],
+    };
   }
 }

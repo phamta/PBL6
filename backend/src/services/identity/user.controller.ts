@@ -10,17 +10,16 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { ActionGuard } from '../../common/guards/action.guard';
+import { RequireAction } from '../../decorators/require-action.decorator';
 
 /**
- * User Controller - Quản lý người dùng
- * Chỉ dành cho admin và quản lý
+ * User Controller - Quản lý người dùng với RBAC
+ * Sử dụng action-based permissions thay vì UserRole enum
  */
 @ApiTags('User Management')
 @Controller('users')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, ActionGuard)
 @ApiBearerAuth()
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -29,26 +28,26 @@ export class UserController {
    * Lấy danh sách tất cả người dùng
    */
   @Get()
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.DEPARTMENT_OFFICER)
-  @ApiOperation({ summary: 'Lấy danh sách người dùng (Admin only)' })
+  @RequireAction('user.view_all')
+  @ApiOperation({ summary: 'Lấy danh sách người dùng' })
   @ApiQuery({ name: 'page', required: false, description: 'Trang hiện tại' })
   @ApiQuery({ name: 'limit', required: false, description: 'Số lượng mỗi trang' })
-  @ApiQuery({ name: 'role', required: false, enum: UserRole, description: 'Lọc theo vai trò' })
+  @ApiQuery({ name: 'role', required: false, description: 'Lọc theo vai trò (string)' })
   @ApiResponse({ status: 200, description: 'Lấy danh sách thành công' })
   async findAll(
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '10',
-    @Query('role') role?: UserRole,
+    @Query('role') role?: string,
   ) {
-    return this.userService.findAll(parseInt(page), parseInt(limit), role);
+    return this.userService.findAll(parseInt(page), parseInt(limit));
   }
 
   /**
    * Tìm kiếm người dùng
    */
   @Get('search')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.DEPARTMENT_OFFICER)
-  @ApiOperation({ summary: 'Tìm kiếm người dùng (Admin only)' })
+  @RequireAction('user.search')
+  @ApiOperation({ summary: 'Tìm kiếm người dùng' })
   @ApiQuery({ name: 'q', description: 'Từ khóa tìm kiếm' })
   @ApiQuery({ name: 'page', required: false, description: 'Trang hiện tại' })
   @ApiQuery({ name: 'limit', required: false, description: 'Số lượng mỗi trang' })
@@ -65,8 +64,8 @@ export class UserController {
    * Lấy thống kê người dùng
    */
   @Get('stats')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.DEPARTMENT_OFFICER)
-  @ApiOperation({ summary: 'Lấy thống kê người dùng (Admin only)' })
+  @RequireAction('user.view_stats')
+  @ApiOperation({ summary: 'Lấy thống kê người dùng' })
   @ApiResponse({ status: 200, description: 'Lấy thống kê thành công' })
   async getUserStats() {
     return this.userService.getUserStats();
@@ -76,8 +75,8 @@ export class UserController {
    * Lấy thông tin một người dùng
    */
   @Get(':id')
-  @Roles(UserRole.SYSTEM_ADMIN, UserRole.DEPARTMENT_OFFICER)
-  @ApiOperation({ summary: 'Lấy thông tin người dùng (Admin only)' })
+  @RequireAction('user.view_detail')
+  @ApiOperation({ summary: 'Lấy thông tin người dùng' })
   @ApiResponse({ status: 200, description: 'Lấy thông tin thành công' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng' })
   async findOne(@Param('id') id: string) {
@@ -88,8 +87,8 @@ export class UserController {
    * Kích hoạt/vô hiệu hóa người dùng
    */
   @Patch(':id/toggle-status')
-  @Roles(UserRole.SYSTEM_ADMIN)
-  @ApiOperation({ summary: 'Kích hoạt/vô hiệu hóa người dùng (System Admin only)' })
+  @RequireAction('user.manage_status')
+  @ApiOperation({ summary: 'Kích hoạt/vô hiệu hóa người dùng' })
   @ApiResponse({ status: 200, description: 'Cập nhật trạng thái thành công' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng' })
   async toggleUserStatus(@Param('id') id: string) {
@@ -100,8 +99,8 @@ export class UserController {
    * Xóa người dùng
    */
   @Delete(':id')
-  @Roles(UserRole.SYSTEM_ADMIN)
-  @ApiOperation({ summary: 'Xóa người dùng (System Admin only)' })
+  @RequireAction('user.delete')
+  @ApiOperation({ summary: 'Xóa người dùng' })
   @ApiResponse({ status: 200, description: 'Xóa người dùng thành công' })
   @ApiResponse({ status: 404, description: 'Không tìm thấy người dùng' })
   async remove(@Param('id') id: string) {

@@ -1,9 +1,8 @@
-import { IsString, IsEmail, IsOptional, IsUUID, IsEnum, IsBoolean } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsUUID, IsBoolean, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
 
 /**
- * DTO tạo user mới
+ * DTO tạo user mới với RBAC
  */
 export class CreateUserDto {
   @ApiProperty({ description: 'Email của user', example: 'user@example.com' })
@@ -15,12 +14,13 @@ export class CreateUserDto {
   fullName: string;
 
   @ApiProperty({ 
-    description: 'Vai trò của user', 
-    enum: UserRole,
-    example: 'STUDENT' 
+    description: 'Danh sách ID của các role được gán cho user', 
+    type: [String],
+    example: ['role-id-1', 'role-id-2'] 
   })
-  @IsEnum(UserRole, { message: 'Vai trò không hợp lệ' })
-  role: UserRole;
+  @IsArray({ message: 'Role IDs phải là mảng' })
+  @IsUUID(4, { each: true, message: 'Mỗi role ID phải là UUID hợp lệ' })
+  roleIds: string[];
 
   @ApiPropertyOptional({ description: 'ID của unit/đơn vị' })
   @IsOptional()

@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, MinLength, IsString, IsOptional, IsEnum } from 'class-validator';
-import { UserRole } from '@prisma/client';
+import { IsEmail, IsNotEmpty, MinLength, IsString, IsOptional } from 'class-validator';
 
 /**
  * DTO đăng ký người dùng mới
+ * Roles sẽ được assign thông qua RBAC service sau khi tạo user
  */
 export class RegisterDto {
   @ApiProperty({
@@ -40,15 +40,6 @@ export class RegisterDto {
   @IsOptional()
   @IsString({ message: 'Số điện thoại phải là chuỗi' })
   phoneNumber?: string;
-
-  @ApiProperty({
-    description: 'Vai trò người dùng',
-    enum: UserRole,
-    default: UserRole.STUDENT,
-  })
-  @IsOptional()
-  @IsEnum(UserRole, { message: 'Vai trò không hợp lệ' })
-  role?: UserRole;
 
   @ApiProperty({
     description: 'ID đơn vị',

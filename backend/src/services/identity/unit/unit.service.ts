@@ -3,7 +3,6 @@ import { PrismaService } from '../../../database/prisma.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { QueryUnitsDto } from './dto/query-units.dto';
-import { Unit } from '@prisma/client';
 
 /**
  * Unit Service - Xử lý logic business cho units
@@ -18,8 +17,8 @@ export class UnitService {
   async createUnit(createUnitDto: CreateUnitDto, currentUser: any) {
     const { name, code, parentId, level = 0, isActive = true } = createUnitDto;
 
-    // Chỉ SYSTEM_ADMIN và DEPARTMENT_OFFICER có thể tạo unit
-    if (!['SYSTEM_ADMIN', 'DEPARTMENT_OFFICER'].includes(currentUser.role)) {
+    // Kiểm tra quyền tạo unit thông qua actions
+    if (!currentUser.actions || !currentUser.actions.includes('unit.create')) {
       throw new ForbiddenException('Không có quyền tạo đơn vị');
     }
 
@@ -144,8 +143,14 @@ export class UnitService {
           id: true,
           email: true,
           fullName: true,
-          role: true,
           isActive: true,
+          roles: {
+            include: {
+              role: {
+                select: { id: true, name: true, description: true }
+              }
+            }
+          }
         },
       };
     }
@@ -193,8 +198,14 @@ export class UnitService {
             id: true,
             email: true,
             fullName: true,
-            role: true,
             isActive: true,
+            roles: {
+              include: {
+                role: {
+                  select: { id: true, name: true, description: true }
+                }
+              }
+            }
           },
         },
         _count: {
@@ -255,8 +266,8 @@ export class UnitService {
    * Cập nhật unit
    */
   async updateUnit(id: string, updateUnitDto: UpdateUnitDto, currentUser: any) {
-    // Chỉ SYSTEM_ADMIN và DEPARTMENT_OFFICER có thể cập nhật unit
-    if (!['SYSTEM_ADMIN', 'DEPARTMENT_OFFICER'].includes(currentUser.role)) {
+    // Kiểm tra quyền cập nhật unit thông qua actions
+    if (!currentUser.actions || !currentUser.actions.includes('unit.manage')) {
       throw new ForbiddenException('Không có quyền cập nhật đơn vị');
     }
 
@@ -337,8 +348,8 @@ export class UnitService {
    * Xóa unit (soft delete)
    */
   async deleteUnit(id: string, currentUser: any) {
-    // Chỉ SYSTEM_ADMIN có thể xóa unit
-    if (currentUser.role !== 'SYSTEM_ADMIN') {
+    // Kiểm tra quyền xóa unit thông qua actions
+    if (!currentUser.actions || !currentUser.actions.includes('unit.delete')) {
       throw new ForbiddenException('Không có quyền xóa đơn vị');
     }
 
@@ -376,8 +387,8 @@ export class UnitService {
    * Vô hiệu hóa/kích hoạt unit
    */
   async toggleUnitStatus(id: string, currentUser: any) {
-    // Chỉ SYSTEM_ADMIN và DEPARTMENT_OFFICER có thể thay đổi trạng thái
-    if (!['SYSTEM_ADMIN', 'DEPARTMENT_OFFICER'].includes(currentUser.role)) {
+    // Kiểm tra quyền thay đổi trạng thái unit thông qua actions
+    if (!currentUser.actions || !currentUser.actions.includes('unit.manage')) {
       throw new ForbiddenException('Không có quyền thay đổi trạng thái đơn vị');
     }
 

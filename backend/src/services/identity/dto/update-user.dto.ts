@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsEmail } from 'class-validator';
-import { UserRole } from '@prisma/client';
+import { IsString, IsNotEmpty, IsOptional, IsEmail } from 'class-validator';
 
 /**
- * DTO cập nhật thông tin người dùng
+ * DTO cập nhật thông tin người dùng (Profile update)
+ * Không bao gồm role assignment - dành cho user tự cập nhật profile
  */
 export class UpdateUserDto {
   @ApiProperty({
@@ -29,15 +29,6 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString({ message: 'Số điện thoại phải là chuỗi' })
   phoneNumber?: string;
-
-  @ApiProperty({
-    description: 'Vai trò người dùng',
-    enum: UserRole,
-    required: false,
-  })
-  @IsOptional()
-  @IsEnum(UserRole, { message: 'Vai trò không hợp lệ' })
-  role?: UserRole;
 
   @ApiProperty({
     description: 'ID đơn vị',
