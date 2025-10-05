@@ -1,6 +1,4 @@
-# Admin Dashboard UI Design
-
-This is a code bundle for Admin Dashboard UI Design restructured for Next.js. The original project is available at https://www.figma.com/design/yHEcCqORvjZtQfN6zSMIBT/Admin-Dashboard-UI-Design.
+# Dashboard UI Design
 
 ## Running the code
 
