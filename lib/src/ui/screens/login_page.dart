@@ -98,8 +98,7 @@ class LoginScreen extends StatelessWidget {
                     }
                     if (state is LoginSuccess) {
                       final user = state.user;
-                      // Kiểm tra roles, nếu có role code là 'STAFF' thì sang HomeStaffPage, ngược lại sang HomeSVPage
-                      final roles = user.roles; // List hoặc List<dynamic>
+                      final roles = user.roles;
                       final isStaff = roles.any(
                         (role) =>
                             (role['code'] ?? role['role']?['code'] ?? '')
