@@ -32,9 +32,7 @@ export default function AdminLayout({
       router.push(`${base}/${page}`);
     }
   };
-  const switchToStaff = () => {
-    router.push("/dashboard/staff");
-  };
+
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -69,9 +67,6 @@ export default function AdminLayout({
             <span className="text-sm text-muted-foreground">Current Role:</span>
             <Badge variant="default">Admin</Badge>
           </div>
-          <Button size="sm" variant="outline" onClick={switchToStaff}>
-            Chuyển sang Staff View
-          </Button>
         </motion.div>
 
         {/* Page Content with transitions */}

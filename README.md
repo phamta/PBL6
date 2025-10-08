@@ -457,4 +457,45 @@ Nếu gặp vấn đề, vui lòng:
 
 ---
 
+## 🔗 API Integration
+
+### ✅ Frontend-Backend đã được tích hợp hoàn chỉnh!
+
+Hệ thống đã có sẵn infrastructure để gọi API từ frontend:
+
+- **API Client**: Axios với auto token refresh
+- **Type Safety**: Full TypeScript support
+- **Auth Context**: Global authentication state
+- **Custom Hooks**: Reusable data fetching hooks
+- **Examples**: 15+ ví dụ thực tế
+
+#### Quick Start API:
+
+```tsx
+// 1. Sử dụng Auth Context
+import { useAuth } from "@/contexts/AuthContext";
+const { user, login, logout } = useAuth();
+
+// 2. Gọi API
+import * as documentsApi from "@/lib/api/documents";
+const documents = await documentsApi.getDocuments();
+
+// 3. Sử dụng Hooks
+import { usePaginatedFetch } from "@/hooks/useAPI";
+const { data, loading, setPage } = usePaginatedFetch(documentsApi.getDocuments);
+```
+
+#### Tài liệu chi tiết:
+
+- 📖 [API Integration Guide](./frontend/API_INTEGRATION_GUIDE.md) - Hướng dẫn chi tiết
+- 📋 [Integration Summary](./INTEGRATION_SUMMARY.md) - Tổng quan
+- ⚡ [Quick Start](./QUICK_START.md) - Bắt đầu nhanh trong 5 phút
+- ✅ [Checklist](./CHECKLIST.md) - Danh sách đầy đủ
+
+#### Test API:
+
+Mở `http://localhost:3000/api-test` để test các API calls
+
+---
+
 _Cập nhật lần cuối: August 31, 2025_
