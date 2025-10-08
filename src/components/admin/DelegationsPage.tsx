@@ -20,6 +20,7 @@ import {
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { Breadcrumbs } from "../Breadcrumbs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
   Dialog,
@@ -41,6 +42,7 @@ import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { ScrollArea } from "../ui/scroll-area";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 const delegationsData = [
   {
@@ -167,7 +169,12 @@ export function DelegationsPage() {
       rejected: { variant: "destructive", label: "Rejected" },
     };
     const config = variants[status] || { variant: "outline" as const, label: status };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    return  <Badge
+      variant={config.variant}
+      className="w-[78px] h-[31px] flex items-center justify-center text-sm"
+    >
+      {config.label}
+    </Badge>;
   };
 
   const handleExportReport = (format: "pdf" | "excel") => {
@@ -182,6 +189,7 @@ export function DelegationsPage() {
 
   return (
     <div className="space-y-6">
+       <Breadcrumbs items={[{ label: "Quản lý đoàn công tác" }]} />
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>

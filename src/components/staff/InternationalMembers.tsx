@@ -2,6 +2,8 @@
 
 import React from "react";
 import { useState } from "react";
+import { useRef } from "react";
+import FileUploadBox from "@/components/FileUploadBox";
 import {
   GraduationCap,
   Search,
@@ -51,6 +53,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { ScrollArea } from "../ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Breadcrumbs } from "../Breadcrumbs";
 import {
   ChartContainer,
   ChartTooltip,
@@ -207,9 +210,12 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
       color: "hsl(var(--chart-1))",
     },
   };
-
+  const handleFile = (file: File | null) => {
+    console.log("File nhận được:", file);
+  };
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Sinh viên quốc tế" }]} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -301,35 +307,38 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                       <TableCell>{getStatusBadge(member.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedMember(member)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            Xem
-                          </Button>
                           {member.status === "extension-requested" ? (
                             <Button
                               size="sm"
                               variant="outline"
                               className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                              onClick={() => setSelectedMember(member)}
                             >
                               <FileText className="w-4 h-4 mr-2" />
                               Xem đơn gia hạn
                             </Button>
                           ) : (
-                            <Button
-                              size="sm"
-                              className="bg-primary"
-                              onClick={() => {
-                                setSelectedForExtension(member);
-                                setIsVisaExtensionOpen(true);
-                              }}
-                            >
-                              <RefreshCw className="w-4 h-4 mr-2" />
-                              Lập đơn gia hạn visa
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSelectedMember(member)}
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Xem
+                              </Button>
+                              <Button
+                                size="sm"
+                                className="bg-primary"
+                                onClick={() => {
+                                  setSelectedForExtension(member);
+                                  setIsVisaExtensionOpen(true);
+                                }}
+                              >
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Lập đơn gia hạn visa
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>
@@ -994,7 +1003,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                   </div>
                   <div>
                     <Label htmlFor="reg-department">
-                      Receiving Department/Faculty *
+                      Receiving Faculty *
                     </Label>
                     <Input
                       id="reg-department"
@@ -1054,7 +1063,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                     </div>
                   </div>
 
-                  <div>
+                  {/* <div>
                     <Label>Supporting Documents</Label>
                     <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
                       <FileText className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
@@ -1065,8 +1074,9 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                         PDF, DOC, DOCX up to 10MB
                       </p>
                     </div>
-                  </div>
-                </div>
+                  </div> */}
+                <FileUploadBox label="Supporting Documents" onFileSelect={handleFile} />
+              </div>
               </TabsContent>
             </Tabs>
           </div>
@@ -1087,7 +1097,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
         open={!!selectedMember}
         onOpenChange={(open) => !open && setSelectedMember(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[90vh]">
+        <DialogContent className="max-w-3xl dialog-content">
           <DialogHeader>
             <DialogTitle>Member Details</DialogTitle>
             <DialogDescription>
@@ -1095,7 +1105,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
             </DialogDescription>
           </DialogHeader>
           {selectedMember && (
-            <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="dialog-body overflow-y-auto max-h-[60vh] pr-4">
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1155,7 +1165,6 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                     <p className="mt-1">{selectedMember.expectedEndDate}</p>
                   </div>
                 </div>
-
                 {selectedMember.status === "extension-requested" && (
                   <Card className="p-4 bg-accent/50">
                     <h4 className="mb-2">Visa Extension Request</h4>
@@ -1166,9 +1175,9 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                   </Card>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="mt-4 border-t pt-4">
             <Button variant="outline" onClick={() => setSelectedMember(null)}>
               Close
             </Button>
@@ -1182,7 +1191,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
 
       {/* Visa Extension Request Dialog */}
       <Dialog open={isVisaExtensionOpen} onOpenChange={setIsVisaExtensionOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogContent className="max-w-4xl max-h-[90vh] dialog-content ">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RefreshCw className="w-5 h-5 text-primary" />
@@ -1193,8 +1202,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
               {selectedForExtension?.fullName}
             </DialogDescription>
           </DialogHeader>
-
-                <ScrollArea className="max-h-[60vh] pr-4">
+                <div className="dialog-body overflow-y-auto">
                   <div className="space-y-6 py-4">
                     {/* Student Information Summary */}
                     <Card className="p-4 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background border-blue-200">
@@ -1341,7 +1349,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                       </h4>
 
                       <div className="space-y-3">
-                        <div>
+                        {/* <div>
                           <Label>Current Passport Copy *</Label>
                           <motion.div
                             whileHover={{ scale: 1.01 }}
@@ -1355,9 +1363,9 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                               PDF, JPG, PNG up to 5MB
                             </p>
                           </motion.div>
-                        </div>
-
-                        <div>
+                        </div> */}
+                        <FileUploadBox label="Current Passport Copy*" onFileSelect={handleFile} />
+                        {/* <div>
                           <Label>Current Visa Page Copy *</Label>
                           <motion.div
                             whileHover={{ scale: 1.01 }}
@@ -1371,9 +1379,10 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                               PDF, JPG, PNG up to 5MB
                             </p>
                           </motion.div>
-                        </div>
+                        </div> */}
+                        <FileUploadBox label="Current Visa Page Copy*" onFileSelect={handleFile} />
 
-                        <div>
+                        {/* <div>
                           <Label>Academic Progress Report (Optional)</Label>
                           <motion.div
                             whileHover={{ scale: 1.01 }}
@@ -1387,9 +1396,10 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                               PDF, DOC up to 10MB
                             </p>
                           </motion.div>
-                        </div>
+                        </div> */}
+                        <FileUploadBox label="Academic Progress Report (Optional)" onFileSelect={handleFile} />
 
-                        <div>
+                        {/* <div>
                           <Label>Additional Documents (Optional)</Label>
                           <motion.div
                             whileHover={{ scale: 1.01 }}
@@ -1403,7 +1413,8 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                               Multiple files accepted
                             </p>
                           </motion.div>
-                        </div>
+                        </div> */}
+                        <FileUploadBox label="Additional Documents (Optional)" onFileSelect={handleFile} />
                       </div>
                     </div>
 
@@ -1439,9 +1450,9 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                       </div>
                     </Card>
                   </div>
-                </ScrollArea>
+                </div>
 
-          <DialogFooter className="gap-2 mt-4">
+          <DialogFooter className="mt-4 border-t pt-4 ">
             <Button
               variant="outline"
               onClick={() => {

@@ -17,6 +17,7 @@ import {
 } from "../ui/select";
 import { Badge } from "../ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 const requestsData = [
   {
@@ -109,6 +110,7 @@ export function TranslationsPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Quản lý dịch thuật" }]} />
       {/* Header */}
       <div>
         <h1>Translation Confirmation Requests</h1>

@@ -7,8 +7,8 @@ import { Checkbox } from "../ui/checkbox";
 import { ImageWithFallback } from "../image/ImageWithFallback";
 import { motion } from "motion/react";
 import logoImage from "@/assets/logo_dut.png";
-import campusAerialImage from "@/assets/pic.png";
-import campus50YearsImage from "@/assets/logo2.png";
+import campusAerialImage from "@/assets/pic.jpg";
+import campus50YearsImage from "@/assets/logo2.jpg";
 
 interface LoginPageProps {
   onLogin: () => void;

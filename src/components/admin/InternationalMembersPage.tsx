@@ -67,6 +67,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 const membersData = [
   {
@@ -310,6 +311,7 @@ export function InternationalMembersPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Sinh viên quốc tế" }]} />
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>

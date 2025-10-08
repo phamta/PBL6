@@ -26,11 +26,12 @@ import {
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 const rolesData = [
   {
     id: 1,
-    name: "Super Admin",
+    name: "Admin",
     description: "Full system access with all permissions",
     userCount: 2,
     color: "bg-red-100 text-red-700",
@@ -44,7 +45,7 @@ const rolesData = [
   },
   {
     id: 3,
-    name: "Coordinator",
+    name: "Specialist",
     description: "Coordinate international programs and manage members",
     userCount: 8,
     color: "bg-blue-100 text-blue-700",
@@ -120,6 +121,7 @@ export function RolesPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Phân quyền " }]} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

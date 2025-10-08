@@ -33,6 +33,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 const monthlyData = [
   { month: "Jan", users: 120, documents: 85, delegations: 12 },
@@ -85,6 +87,7 @@ export function StatisticsPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Thống kê & Báo cáo" }]} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

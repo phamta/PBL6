@@ -55,6 +55,7 @@ import { Label } from "../ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { ScrollArea } from "../ui/scroll-area";
 import { Separator } from "../ui/separator";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 const documentsData = [
   {
@@ -261,6 +262,7 @@ export function DocumentsPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Quản lý văn bản MOU" }]} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -593,57 +595,76 @@ export function DocumentsPage() {
                   <Button variant="outline" onClick={() => setSelectedDocument(null)}>
                     Close
                   </Button>
-                  <Button 
+                  <Button
                     variant="outline"
-                    onClick={() => setShowRevisionHistory(!showRevisionHistory)}
+                    onClick={() => setShowRevisionHistory(true)}
                   >
                     <Clock className="w-4 h-4 mr-2" />
-                    {showRevisionHistory ? "Hide" : "Show"} History
+                    Show History
                   </Button>
                 </DialogFooter>
               </div>
 
-              {/* Revision History Sidebar */}
-              {showRevisionHistory && (
-                <>
-                  <Separator orientation="vertical" className="h-auto" />
-                  <div className="w-80">
-                    <h4 className="mb-4">Revision History</h4>
-                    <ScrollArea className="h-[500px]">
-                      <div className="space-y-4">
-                        {revisionHistory.map((revision, index) => (
-                          <Card key={index} className="p-4">
-                            <div className="flex items-start gap-3">
-                              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                                <Clock className="w-4 h-4 text-primary" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1">
-                                  <Badge variant="outline">{revision.version}</Badge>
-                                  <span className="text-xs text-muted-foreground">
-                                    {revision.date.split(" ")[0]}
-                                  </span>
-                                </div>
-                                <p className="text-sm mb-1">{revision.action}</p>
-                                <p className="text-xs text-muted-foreground mb-1">
-                                  by {revision.author}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {revision.changes}
-                                </p>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </>
-              )}
+              
             </div>
           )}
         </DialogContent>
       </Dialog>
+      {/* Revision History Sidebar */}
+              <Dialog open={showRevisionHistory} onOpenChange={setShowRevisionHistory}>
+              <DialogContent
+                className="fixed right-0 top-0 h-full w-[400px] max-w-none rounded-none p-0 shadow-lg"
+                style={{ margin: 0 }}
+              >
+                <div className="flex flex-col h-full">
+                  <div className="p-4 border-b">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-lg">Revision History</h4>
+  
+                    </div>
+                  </div>
+
+                  <ScrollArea className="flex-1 p-4">
+                    <div className="space-y-4">
+                      {revisionHistory.map((revision, index) => (
+                        <Card key={index} className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                              <Clock className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <Badge variant="outline">{revision.version}</Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {revision.date.split(" ")[0]}
+                                </span>
+                              </div>
+                              <p className="text-sm mb-1">{revision.action}</p>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                by {revision.author}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {revision.changes}
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </ScrollArea>
+
+                  <div className="p-4 border-t">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => setShowRevisionHistory(false)}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
     </div>
   );
 }

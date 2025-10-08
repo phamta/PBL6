@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useState } from "react";
+import FileUploadBox from "@/components/FileUploadBox";
 import {
   FileText,
   Search,
@@ -160,7 +161,9 @@ export function DocumentManagement() {
     const config = variants[status] || { variant: "outline" as const, label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
-
+  const handleFile = (file: File | null) => {
+    console.log("File nhận được:", file);
+  };
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: "Quản lý văn bản MOU" }]} />
@@ -655,45 +658,11 @@ export function DocumentManagement() {
 
               <TabsContent value="files" className="space-y-4">
                 <div className="space-y-4">
-                  <div>
-                    <Label>Draft MOU/Agreement *</Label>
-                    <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
-                      <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        Click to upload or drag and drop
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        PDF, DOC, DOCX up to 10MB
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Invitation Letter</Label>
-                    <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
-                      <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        Upload invitation letter (optional)
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Partner Profile</Label>
-                    <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
-                      <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        Upload partner institution profile (optional)
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Email Correspondence</Label>
-                    <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
-                      <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        Upload relevant email exchanges (optional)
-                      </p>
-                    </div>
-                  </div>
+                  <FileUploadBox label="Draft MOU/Agreement *" accept=".pdf,.doc,.docx" maxSizeMB={10} onFileSelect={handleFile}/>
+                  <FileUploadBox label="Supporting Documents" accept=".pdf,.doc,.docx,.jpg,.png" maxSizeMB={10} onFileSelect={handleFile} />
+                  <FileUploadBox label="Institutional Profile" accept=".pdf,.doc,.docx,.jpg,.png" maxSizeMB={10}  onFileSelect={handleFile}/>
+                  <FileUploadBox label="Email Correspondence" accept=".pdf,.doc,.docx,.jpg,.png" maxSizeMB={10}  onFileSelect={handleFile}/>
+                
                 </div>
               </TabsContent>
             </Tabs>

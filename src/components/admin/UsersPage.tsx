@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Label } from "../ui/label";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 const usersData = [
   {
@@ -156,6 +157,7 @@ export function UsersPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Quản lý người dùng" }]} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

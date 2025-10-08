@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useState } from "react";
+import FileUploadBox from "@/components/FileUploadBox";
 import {
   Languages,
   Search,
@@ -186,6 +187,9 @@ export function TranslationConfirmation() {
       color: "hsl(var(--chart-1))",
     },
   };
+  const handleFile = (file: File | null) => {
+    console.log("File nhận được:", file);
+  };
 
   return (
     <div className="space-y-6">
@@ -339,7 +343,56 @@ export function TranslationConfirmation() {
               </Card>
             </motion.div>
           </div>
-
+                    {/* Workflow Steps Info */}
+          <Card className="p-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background">
+            <h4 className="mb-4">Quy trình xử lý xác nhận dịch thuật</h4>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                  1
+                </div>
+                <div>
+                  <h4 className="mb-1">Nộp đơn</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Cán bộ nộp đơn và tài liệu
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                  2
+                </div>
+                <div>
+                  <h4 className="mb-1">Xét duyệt</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Admin kiểm tra tài liệu
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                  3
+                </div>
+                <div>
+                  <h4 className="mb-1">Phê duyệt</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Ban giám hiệu phê duyệt
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                  4
+                </div>
+                <div>
+                  <h4 className="mb-1">Cấp thư</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Hoàn thành và cấp thư
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Card>
           {/* Translation Requests with Timeline */}
           <div className="space-y-4">
             <h3>Quy trình xử lý đơn xác nhận</h3>
@@ -454,56 +507,7 @@ export function TranslationConfirmation() {
             ))}
           </div>
 
-          {/* Workflow Steps Info */}
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background">
-            <h4 className="mb-4">Quy trình xử lý xác nhận dịch thuật</h4>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
-                  1
-                </div>
-                <div>
-                  <h4 className="mb-1">Nộp đơn</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Cán bộ nộp đơn và tài liệu
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
-                  2
-                </div>
-                <div>
-                  <h4 className="mb-1">Xét duyệt</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Admin kiểm tra tài liệu
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
-                  3
-                </div>
-                <div>
-                  <h4 className="mb-1">Phê duyệt</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Ban giám hiệu phê duyệt
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
-                  4
-                </div>
-                <div>
-                  <h4 className="mb-1">Cấp thư</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Hoàn thành và cấp thư
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Card>
+
         </TabsContent>
 
         {/* Statistics Tab */}
@@ -685,31 +689,8 @@ export function TranslationConfirmation() {
 
               {/* File Uploads */}
               <div className="space-y-4">
-                <div>
-                  <Label>Original Document *</Label>
-                  <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      Upload original document
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      PDF, DOC, DOCX up to 10MB
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Translated Document *</Label>
-                  <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      Upload translated document
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      PDF, DOC, DOCX up to 10MB
-                    </p>
-                  </div>
-                </div>
+                <FileUploadBox label="Original Document *" accept=".pdf,.doc,.docx" maxSizeMB={10} onFileSelect={handleFile} />
+                <FileUploadBox label="Translated Document *" accept=".pdf,.doc,.docx" maxSizeMB={10} onFileSelect={handleFile} />
               </div>
             </div>
           </div>
@@ -730,7 +711,7 @@ export function TranslationConfirmation() {
         open={!!selectedTranslation}
         onOpenChange={(open) => !open && setSelectedTranslation(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[90vh]">
+        <DialogContent className="max-w-3xl max-h-[90vh] dialog-content">
           <DialogHeader>
             <DialogTitle>Translation Details</DialogTitle>
             <DialogDescription>
@@ -738,7 +719,7 @@ export function TranslationConfirmation() {
             </DialogDescription>
           </DialogHeader>
           {selectedTranslation && (
-            <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="max-h-[60vh] pr-4 dialog-body overflow-y-auto">
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -816,9 +797,9 @@ export function TranslationConfirmation() {
                   </Card>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="mt-4 border-t pt-4">
             <Button variant="outline" onClick={() => setSelectedTranslation(null)}>
               Close
             </Button>

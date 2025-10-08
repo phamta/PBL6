@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import FileUploadBox from "@/components/FileUploadBox";
 import { useState } from "react";
 import {
   Users,
@@ -175,6 +176,9 @@ export function DelegationManagement() {
     };
     const config = variants[status] || { variant: "outline" as const, label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+  const handleFile = (file: File | null) => {
+    console.log("File nhận được:", file);
   };
 
   return (
@@ -567,21 +571,12 @@ export function DelegationManagement() {
               </div>
 
               {/* File Upload */}
-              <div>
-                <Label>Tải lên bản sao hộ chiếu</Label>
-                <motion.div
-                  whileHover={{ scale: 1.01 }}
-                  className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
-                >
-                  <FileText className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    Click để tải lên bản sao hộ chiếu
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    PDF, JPG, PNG tối đa 5MB
-                  </p>
-                </motion.div>
-              </div>
+              <FileUploadBox 
+                label="Tải lên bản sao hộ chiếu"
+                accept=".pdf,.jpg,.png"
+                maxSizeMB={5}
+                onFileSelect={handleFile}
+              /> 
             </div>
           </div>
           <DialogFooter className="mt-4 border-t pt-4">
@@ -601,7 +596,7 @@ export function DelegationManagement() {
         open={!!selectedVisitor}
         onOpenChange={(open) => !open && setSelectedVisitor(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[90vh]">
+        <DialogContent className="max-w-3xl max-h-[90vh] dialog-content overflow-y-auto ">
           <DialogHeader>
             <DialogTitle>Chi Tiết Khách</DialogTitle>
             <DialogDescription>
@@ -609,7 +604,7 @@ export function DelegationManagement() {
             </DialogDescription>
           </DialogHeader>
           {selectedVisitor && (
-            <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="max-h-[60vh] pr-4 overflow-y-auto dialog-body">
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -695,9 +690,9 @@ export function DelegationManagement() {
                   </Card>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           )}
-          <DialogFooter className="gap-2">
+          <DialogFooter className="mt-4 border-t pt-4">
             <Button variant="outline" onClick={() => setSelectedVisitor(null)}>
               Đóng
             </Button>

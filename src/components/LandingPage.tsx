@@ -32,8 +32,8 @@ import { motion } from "motion/react";
 import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import logoImage from "@/assets/logo_dut.png";
-import campusAerialImage from "@/assets/pic.png";
-import campus50YearsImage from "@/assets/logo2.png";
+import campusAerialImage from "@/assets/pic.jpg";
+import campus50YearsImage from "@/assets/logo2.jpg";
 
 interface EnhancedLandingPageProps {
   onLoginClick: () => void;
@@ -381,9 +381,9 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
             {features.map((feature, index) => {
               const colorClasses = {
                 blue: "from-blue-500 to-blue-600",
-                green: "from-green-500 to-green-600",
-                purple: "from-purple-500 to-purple-600",
-                orange: "from-orange-500 to-orange-600",
+                green: "from-blue-500 to-blue-600",
+                purple: "from-blue-500 to-blue-600",
+                orange: "from-blue-500 to-blue-600",
               };
 
               return (
@@ -486,7 +486,7 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                   <div className="hidden md:block absolute top-12 left-full w-full h-0.5 bg-gradient-to-r from-blue-600 to-blue-300 -z-10"></div>
                 )}
                 <div className="text-center">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white text-3xl mx-auto mb-4 shadow-lg">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg">
                     {process.step}
                   </div>
                   <h3 className="mb-2 text-gray-900">{process.title}</h3>
@@ -568,10 +568,10 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                 />
               </div>
               {/* Anniversary Badge */}
-              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-2xl shadow-xl">
+              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-blue-700 px-8 py-4 rounded-2xl shadow-xl">
                 <p className="text-center">
                   <span className="text-3xl block mb-1">1975 - 2025</span>
-                  <span className="text-sm text-blue-100">50 Năm Xây dựng và Phát triển</span>
+                  <span className="">50 Năm Xây dựng và Phát triển</span>
                 </p>
               </div>
             </motion.div>
@@ -615,7 +615,7 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                         <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                       ))}
                     </div>
-                    <p className="text-white mb-6 leading-relaxed italic">
+                    <p className="mb-6 leading-relaxed italic">
                       "{testimonial.quote}"
                     </p>
                     <div className="flex items-center gap-3">
