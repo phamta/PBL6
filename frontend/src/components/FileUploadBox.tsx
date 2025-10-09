@@ -7,6 +7,8 @@ interface FileUploadBoxProps {
   accept?: string;
   maxSizeMB?: number;
   onFileSelect?: (file: File | null) => void;
+  selectedFile?: File | null;  // Thêm prop selectedFile từ parent
+  onRemove?: () => void;  // Thêm callback remove
 }
 
 export default function FileUploadBox({
@@ -14,9 +16,10 @@ export default function FileUploadBox({
   accept = ".pdf,.doc,.docx",
   maxSizeMB = 10,
   onFileSelect,
+  selectedFile,  // Nhận từ parent
+  onRemove,  // Nhận từ parent
 }: FileUploadBoxProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleClick = () => fileInputRef.current?.click();
@@ -26,15 +29,20 @@ export default function FileUploadBox({
     if (file) {
       if (file.size > maxSizeMB * 1024 * 1024) {
         setError(`File must be smaller than ${maxSizeMB}MB`);
-        setSelectedFile(null);
         onFileSelect?.(null);
       } else {
         setError(null);
-        setSelectedFile(file);
         onFileSelect?.(file);
       }
     }
   };
+
+  const handleRemove = () => {
+    onRemove?.();  // Gọi callback từ parent
+  };
+
+  // Sử dụng selectedFile từ prop thay vì state internal
+  const fileToDisplay = selectedFile;
 
   return (
     <div>
@@ -45,20 +53,19 @@ export default function FileUploadBox({
           error ? "border-red-500" : "border-border hover:border-primary"
         }`}
       >
-        {selectedFile ? (
+        {fileToDisplay ? (
           <>
             <FileText className="w-8 h-8 mx-auto mb-2 text-primary" />
             <p className="text-sm font-medium text-primary">
-              {selectedFile.name}
+              {fileToDisplay.name}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+              {(fileToDisplay.size / 1024 / 1024).toFixed(2)} MB
             </p>
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setSelectedFile(null);
-                onFileSelect?.(null);
+                handleRemove();
               }}
               className="text-xs text-red-500 underline mt-2"
             >

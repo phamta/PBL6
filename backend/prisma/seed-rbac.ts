@@ -1415,6 +1415,93 @@ async function main() {
 
   console.log('✅ Created sample users');
 
+  // Create sample documents
+  console.log('Creating sample documents...');
+
+  // Documents: use findFirst + create because title is not a unique field in the schema
+  let sampleDocument1 = await prisma.document.findFirst({ where: { title: 'Biên bản ghi nhớ - Hợp tác CNTT' } });
+  if (!sampleDocument1) {
+    sampleDocument1 = await prisma.document.create({
+      data: {
+        title: 'Biên bản ghi nhớ - Hợp tác CNTT',
+        type: 'MOU',
+        partnerName: 'Đối tác A',
+        partnerCountry: 'Việt Nam',
+        description: 'Biên bản ghi nhớ hợp tác trong đào tạo và nghiên cứu',
+        content: 'Nội dung mẫu của biên bản ghi nhớ...',
+        signedDate: new Date(),
+        effectiveDate: new Date(),
+        expirationDate: new Date(new Date().setFullYear(new Date().getFullYear() + 3)),
+        status: 'APPROVED',
+        attachments: [{ path: '/files/mou-cntt.pdf' }],
+        proposingUnit: 'Khoa Công nghệ Thông tin',
+        signingLevel: 'Faculty',
+        signedBy: 'Trưởng khoa CNTT',
+        isHighLevelDelegation: false,
+        createdById: staffUser.id,
+        approvedById: leaderUser.id,
+        approvedAt: new Date(),
+        unitId: itFacultyUnit.id,
+      },
+    });
+  }
+
+  let sampleDocument2 = await prisma.document.findFirst({ where: { title: 'Hợp tác quốc tế - Đào tạo học viên' } });
+  if (!sampleDocument2) {
+    sampleDocument2 = await prisma.document.create({
+      data: {
+        title: 'Hợp tác quốc tế - Đào tạo học viên',
+        type: 'AGREEMENT',
+        partnerName: 'University B',
+        partnerCountry: 'Japan',
+        description: 'Thỏa thuận hợp tác trao đổi sinh viên',
+        content: 'Nội dung thỏa thuận mẫu...',
+        signedDate: new Date(),
+        effectiveDate: new Date(),
+        expirationDate: new Date(new Date().setFullYear(new Date().getFullYear() + 2)),
+        status: 'SIGNED',
+        attachments: [{ path: '/files/agreement-ub.pdf' }],
+        proposingUnit: 'Phòng Hợp tác Quốc tế',
+        signingLevel: 'University',
+        signedBy: 'Hiệu trưởng',
+        isHighLevelDelegation: true,
+        createdById: officerUser.id,
+        approvedById: adminUser.id,
+        approvedAt: new Date(),
+        unitId: internationalRelationsUnit.id,
+      },
+    });
+  }
+
+  let sampleDocument3 = await prisma.document.findFirst({ where: { title: 'Hợp đồng nghiên cứu - Cơ khí' } });
+  if (!sampleDocument3) {
+    sampleDocument3 = await prisma.document.create({
+      data: {
+        title: 'Hợp đồng nghiên cứu - Cơ khí',
+        type: 'CONTRACT',
+        partnerName: 'Công ty C',
+        partnerCountry: 'Vietnam',
+        description: 'Hợp đồng nghiên cứu ứng dụng với công ty C',
+        content: 'Nội dung hợp đồng mẫu...',
+        signedDate: new Date(),
+        effectiveDate: new Date(),
+        expirationDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+        status: 'ACTIVE',
+        attachments: [{ path: '/files/contract-c.pdf' }],
+        proposingUnit: 'Khoa Kỹ thuật Cơ khí',
+        signingLevel: 'Faculty',
+        signedBy: 'Trưởng khoa CK',
+        isHighLevelDelegation: false,
+        createdById: adminUser.id,
+        approvedById: leaderUser.id,
+        approvedAt: new Date(),
+        unitId: engineeringFacultyUnit.id,
+      },
+    });
+  }
+
+  console.log('✅ Created sample documents');
+
   console.log('🎉 RBAC seed data completed successfully!');
 
   // Display summary
@@ -1424,6 +1511,7 @@ async function main() {
     prisma.role.count(),
     prisma.permissionAction.count(),
     prisma.rolePermission.count(),
+    prisma.document.count(),
     prisma.unit.count(),
     prisma.user.count(),
     prisma.userRole.count(),
@@ -1435,9 +1523,10 @@ async function main() {
   console.log(`Roles: ${summary[2]}`);
   console.log(`Permission-Action Mappings: ${summary[3]}`);
   console.log(`Role-Permission Mappings: ${summary[4]}`);
-  console.log(`Units: ${summary[5]}`);
-  console.log(`Users: ${summary[6]}`);
-  console.log(`User-Role Assignments: ${summary[7]}`);
+  console.log(`Documents: ${summary[5]}`);
+  console.log(`Units: ${summary[6]}`);
+  console.log(`Users: ${summary[7]}`);
+  console.log(`User-Role Assignments: ${summary[8]}`);
   
   console.log('\n👥 Sample User Accounts:');
   console.log('1. System Admin: admin@dut.udn.vn / Admin@123');

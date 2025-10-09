@@ -175,7 +175,7 @@ export function TranslationConfirmation() {
       confirmed: { variant: "default", label: "Đã xác nhận" },
       "under-review": { variant: "secondary", label: "Đang xét duyệt" },
       pending: { variant: "outline", label: "Chờ xử lý" },
-      rejected: { variant: "destructive" as const, label: "Từ chối" },
+      rejected: { variant: "default" as const, label: "Từ chối" },
     };
     const config = variants[status] || { variant: "outline" as const, label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;

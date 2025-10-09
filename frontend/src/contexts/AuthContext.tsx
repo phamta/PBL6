@@ -78,23 +78,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsLoading(true);
       const response = await authService.login({ email, password });
-      
+
       // Debug: Log toàn bộ response
       console.log('🔐 Login response:', JSON.stringify(response, null, 2));
       console.log('👤 User object:', response.user);
       console.log('� User roles:', response.user?.roles);
-      
+
       // Kiểm tra response có hợp lệ không
       if (!response || !response.user) {
         throw new Error('Invalid response from server');
       }
-      
-      setUser(response.user);
-      
+
+      // Lấy user đầy đủ từ server để đảm bảo có roles
+      let effectiveUser = response.user;
+      try {
+        const currentUser = await authService.getCurrentUser();
+        if (currentUser) {
+          effectiveUser = currentUser;
+        }
+      } catch (e) {
+        console.warn('⚠️ Could not fetch current user, falling back to login response user');
+      }
+
+      setUser(effectiveUser);
+
       // Redirect dựa trên role của user
-      const dashboardRoute = getDashboardRoute(response.user);
+      const dashboardRoute = getDashboardRoute(effectiveUser);
       console.log('🚀 Redirecting to:', dashboardRoute);
-      
+
+      // Quan trọng: tắt loading trước khi chuyển trang để tránh spinner treo
+      setIsLoading(false);
       router.push(dashboardRoute);
     } catch (error: any) {
       console.error('❌ Login error:', error);
@@ -110,10 +123,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       setIsLoading(true);
       const response = await authService.register(data);
-      setUser(response.user);
-      
+      // Sau khi đăng ký, cố gắng lấy user đầy đủ
+      let effectiveUser = response.user;
+      try {
+        const currentUser = await authService.getCurrentUser();
+        if (currentUser) {
+          effectiveUser = currentUser;
+        }
+      } catch (e) {
+        // ignore
+      }
+      setUser(effectiveUser);
+
       // Redirect dựa trên role của user
-      const dashboardRoute = getDashboardRoute(response.user);
+      const dashboardRoute = getDashboardRoute(effectiveUser);
+      setIsLoading(false);
       router.push(dashboardRoute);
     } catch (error: any) {
       setIsLoading(false);

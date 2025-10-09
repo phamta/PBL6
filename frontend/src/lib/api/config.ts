@@ -1,17 +1,6 @@
-/**
- * API Configuration
- * Cấu hình cho axios client và các constants API
- */
-
-export const API_CONFIG = {
-  BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1',
-  TIMEOUT: 30000, // 30 seconds
-  HEADERS: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-} as const;
-
+export const API_BASE_URL = (typeof window !== 'undefined'
+  ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1')
+  : 'http://localhost:3001/api/v1');
 export const AUTH_STORAGE_KEYS = {
   ACCESS_TOKEN: 'access_token',
   REFRESH_TOKEN: 'refresh_token',
@@ -46,7 +35,18 @@ export const API_ENDPOINTS = {
   // Document endpoints
   DOCUMENTS: {
     LIST: '/documents',
+    STATS: '/documents/stats',
     DETAIL: (id: string) => `/documents/${id}`,
+    CREATE: '/documents',
+    UPDATE: (id: string) => `/documents/${id}`,
+    DELETE: (id: string) => `/documents/${id}`,
+    SUBMIT: (id: string) => `/documents/${id}/submit`,
+    REVIEW: (id: string) => `/documents/${id}/review`,
+    APPROVE: (id: string) => `/documents/${id}/approve`,
+    REJECT: (id: string) => `/documents/${id}/reject`,
+    SIGN: (id: string) => `/documents/${id}/sign`,
+    ACTIVATE: (id: string) => `/documents/${id}/activate`,
+    EXPIRE: (id: string) => `/documents/${id}/expire`,
   },
   // Guest endpoints
   GUESTS: {
