@@ -806,65 +806,289 @@ async function main() {
 
   console.log('✅ Assigned actions to permissions');
 
-  // Create Roles
-  console.log('Creating roles...');
-  const systemAdminRole = await prisma.role.upsert({
-    where: { code: 'SYSTEM_ADMIN' },
+  // Create additional permissions for all modules
+  console.log('Creating additional permissions...');
+  
+  const documentManagementPermission = await prisma.permission.upsert({
+    where: { code: 'DOCUMENT_MANAGEMENT' },
     update: {},
     create: {
-      code: 'SYSTEM_ADMIN',
-      name: 'System Administrator',
+      code: 'DOCUMENT_MANAGEMENT',
+      name: 'Document Management',
+      description: 'Full access to document management operations',
+    },
+  });
+
+  const translationManagementPermission = await prisma.permission.upsert({
+    where: { code: 'TRANSLATION_MANAGEMENT' },
+    update: {},
+    create: {
+      code: 'TRANSLATION_MANAGEMENT',
+      name: 'Translation Management',
+      description: 'Full access to translation management operations',
+    },
+  });
+
+  const guestManagementPermission = await prisma.permission.upsert({
+    where: { code: 'GUEST_MANAGEMENT' },
+    update: {},
+    create: {
+      code: 'GUEST_MANAGEMENT',
+      name: 'Guest Management',
+      description: 'Full access to guest management operations',
+    },
+  });
+
+  const reportManagementPermission = await prisma.permission.upsert({
+    where: { code: 'REPORT_MANAGEMENT' },
+    update: {},
+    create: {
+      code: 'REPORT_MANAGEMENT',
+      name: 'Report Management',
+      description: 'Full access to report operations',
+    },
+  });
+
+  const unitManagementPermission = await prisma.permission.upsert({
+    where: { code: 'UNIT_MANAGEMENT' },
+    update: {},
+    create: {
+      code: 'UNIT_MANAGEMENT',
+      name: 'Unit Management',
+      description: 'Full access to organizational unit management',
+    },
+  });
+
+  const notificationManagementPermission = await prisma.permission.upsert({
+    where: { code: 'NOTIFICATION_MANAGEMENT' },
+    update: {},
+    create: {
+      code: 'NOTIFICATION_MANAGEMENT',
+      name: 'Notification Management',
+      description: 'Full access to notification operations',
+    },
+  });
+
+  const systemManagementPermission = await prisma.permission.upsert({
+    where: { code: 'SYSTEM_MANAGEMENT' },
+    update: {},
+    create: {
+      code: 'SYSTEM_MANAGEMENT',
+      name: 'System Management',
+      description: 'Full access to system configuration and monitoring',
+    },
+  });
+
+  console.log('✅ Created additional permissions');
+
+  // Assign actions to new permissions
+  console.log('Assigning actions to new permissions...');
+
+  // Document Management Permission Actions
+  const documentManagementActions = actions.filter(action => 
+    ['DOCUMENT_CREATE', 'DOCUMENT_READ', 'DOCUMENT_UPDATE', 'DOCUMENT_DELETE', 'DOCUMENT_APPROVE', 'DOCUMENT_SIGN', 'DOCUMENT_ACTIVATE']
+    .includes(action.code)
+  );
+  
+  for (const action of documentManagementActions) {
+    await prisma.permissionAction.upsert({
+      where: {
+        permissionId_actionId: {
+          permissionId: documentManagementPermission.id,
+          actionId: action.id,
+        },
+      },
+      update: {},
+      create: {
+        permissionId: documentManagementPermission.id,
+        actionId: action.id,
+      },
+    });
+  }
+
+  // Translation Management Permission Actions
+  const translationManagementActions = actions.filter(action => 
+    ['TRANSLATION_CREATE', 'TRANSLATION_READ', 'TRANSLATION_UPDATE', 'TRANSLATION_DELETE', 'TRANSLATION_APPROVE', 'TRANSLATION_COMPLETE']
+    .includes(action.code)
+  );
+  
+  for (const action of translationManagementActions) {
+    await prisma.permissionAction.upsert({
+      where: {
+        permissionId_actionId: {
+          permissionId: translationManagementPermission.id,
+          actionId: action.id,
+        },
+      },
+      update: {},
+      create: {
+        permissionId: translationManagementPermission.id,
+        actionId: action.id,
+      },
+    });
+  }
+
+  // Guest Management Permission Actions
+  const guestManagementActions = actions.filter(action => 
+    ['GUEST_CREATE', 'GUEST_READ', 'GUEST_UPDATE', 'GUEST_DELETE', 'GUEST_APPROVE']
+    .includes(action.code)
+  );
+  
+  for (const action of guestManagementActions) {
+    await prisma.permissionAction.upsert({
+      where: {
+        permissionId_actionId: {
+          permissionId: guestManagementPermission.id,
+          actionId: action.id,
+        },
+      },
+      update: {},
+      create: {
+        permissionId: guestManagementPermission.id,
+        actionId: action.id,
+      },
+    });
+  }
+
+  // Report Management Permission Actions
+  const reportManagementActions = actions.filter(action => 
+    ['REPORT_GENERATE', 'REPORT_VIEW', 'REPORT_DOWNLOAD', 'REPORT_DELETE']
+    .includes(action.code)
+  );
+  
+  for (const action of reportManagementActions) {
+    await prisma.permissionAction.upsert({
+      where: {
+        permissionId_actionId: {
+          permissionId: reportManagementPermission.id,
+          actionId: action.id,
+        },
+      },
+      update: {},
+      create: {
+        permissionId: reportManagementPermission.id,
+        actionId: action.id,
+      },
+    });
+  }
+
+  // Unit Management Permission Actions
+  const unitManagementActions = actions.filter(action => 
+    ['UNIT_CREATE', 'UNIT_READ', 'UNIT_UPDATE', 'UNIT_DELETE']
+    .includes(action.code)
+  );
+  
+  for (const action of unitManagementActions) {
+    await prisma.permissionAction.upsert({
+      where: {
+        permissionId_actionId: {
+          permissionId: unitManagementPermission.id,
+          actionId: action.id,
+        },
+      },
+      update: {},
+      create: {
+        permissionId: unitManagementPermission.id,
+        actionId: action.id,
+      },
+    });
+  }
+
+  // Notification Management Permission Actions
+  const notificationManagementActions = actions.filter(action => 
+    ['NOTIFICATION_SEND', 'NOTIFICATION_READ', 'NOTIFICATION_TEMPLATE_MANAGE']
+    .includes(action.code)
+  );
+  
+  for (const action of notificationManagementActions) {
+    await prisma.permissionAction.upsert({
+      where: {
+        permissionId_actionId: {
+          permissionId: notificationManagementPermission.id,
+          actionId: action.id,
+        },
+      },
+      update: {},
+      create: {
+        permissionId: notificationManagementPermission.id,
+        actionId: action.id,
+      },
+    });
+  }
+
+  // System Management Permission Actions
+  const systemManagementActions = actions.filter(action => 
+    ['CONFIG_READ', 'CONFIG_UPDATE', 'RBAC_STATISTICS', 'SYSTEM_LOGS']
+    .includes(action.code)
+  );
+  
+  for (const action of systemManagementActions) {
+    await prisma.permissionAction.upsert({
+      where: {
+        permissionId_actionId: {
+          permissionId: systemManagementPermission.id,
+          actionId: action.id,
+        },
+      },
+      update: {},
+      create: {
+        permissionId: systemManagementPermission.id,
+        actionId: action.id,
+      },
+    });
+  }
+
+  console.log('✅ Assigned actions to new permissions');
+
+  // Create Roles (using lowercase with underscore to match frontend)
+  console.log('Creating roles...');
+  const systemAdminRole = await prisma.role.upsert({
+    where: { code: 'system_admin' },
+    update: {},
+    create: {
+      code: 'system_admin',
+      name: 'Quản trị hệ thống',
       description: 'Full system access with all permissions',
     },
   });
 
-  const adminRole = await prisma.role.upsert({
-    where: { code: 'ADMIN' },
+  const departmentOfficerRole = await prisma.role.upsert({
+    where: { code: 'department_officer' },
     update: {},
     create: {
-      code: 'ADMIN',
-      name: 'Administrator',
-      description: 'Administrative access to most system functions',
+      code: 'department_officer',
+      name: 'Cán bộ phòng',
+      description: 'Department officer with management permissions',
     },
   });
 
-  const managerRole = await prisma.role.upsert({
-    where: { code: 'MANAGER' },
+  const leadershipRole = await prisma.role.upsert({
+    where: { code: 'leadership' },
     update: {},
     create: {
-      code: 'MANAGER',
-      name: 'Manager',
-      description: 'Management level access with approval permissions',
+      code: 'leadership',
+      name: 'Lãnh đạo',
+      description: 'Leadership with approval and monitoring permissions',
     },
   });
 
-  const specialistRole = await prisma.role.upsert({
-    where: { code: 'SPECIALIST' },
+  const facultyStaffRole = await prisma.role.upsert({
+    where: { code: 'faculty_staff' },
     update: {},
     create: {
-      code: 'SPECIALIST',
-      name: 'Specialist',
-      description: 'Specialized access for specific domain operations',
+      code: 'faculty_staff',
+      name: 'Cán bộ khoa/viện',
+      description: 'Faculty staff with operational permissions',
     },
   });
 
-  const staffRole = await prisma.role.upsert({
-    where: { code: 'STAFF' },
+  const studentRole = await prisma.role.upsert({
+    where: { code: 'student' },
     update: {},
     create: {
-      code: 'STAFF',
-      name: 'Staff',
-      description: 'Standard staff access for daily operations',
-    },
-  });
-
-  const viewerRole = await prisma.role.upsert({
-    where: { code: 'VIEWER' },
-    update: {},
-    create: {
-      code: 'VIEWER',
-      name: 'Viewer',
-      description: 'Read-only access to system information',
+      code: 'student',
+      name: 'Sinh viên',
+      description: 'Student with limited view permissions',
     },
   });
 
@@ -874,7 +1098,19 @@ async function main() {
   console.log('Assigning permissions to roles...');
 
   // System Admin - All permissions
-  const allPermissions = [userManagementPermission, rbacManagementPermission, visaManagementPermission, systemMonitoringPermission];
+  const allPermissions = [
+    userManagementPermission, 
+    rbacManagementPermission, 
+    visaManagementPermission, 
+    documentManagementPermission,
+    translationManagementPermission,
+    guestManagementPermission,
+    reportManagementPermission,
+    unitManagementPermission,
+    notificationManagementPermission,
+    systemManagementPermission,
+  ];
+  
   for (const permission of allPermissions) {
     await prisma.rolePermission.upsert({
       where: {
@@ -891,85 +1127,293 @@ async function main() {
     });
   }
 
-  // Admin - User Management + Visa Management + System Monitoring
-  const adminPermissions = [userManagementPermission, visaManagementPermission, systemMonitoringPermission];
-  for (const permission of adminPermissions) {
+  // Department Officer - Most management permissions
+  const departmentOfficerPermissions = [
+    userManagementPermission,
+    visaManagementPermission, 
+    documentManagementPermission,
+    translationManagementPermission,
+    guestManagementPermission,
+    reportManagementPermission,
+    unitManagementPermission,
+    notificationManagementPermission,
+  ];
+  
+  for (const permission of departmentOfficerPermissions) {
     await prisma.rolePermission.upsert({
       where: {
         roleId_permissionId: {
-          roleId: adminRole.id,
+          roleId: departmentOfficerRole.id,
           permissionId: permission.id,
         },
       },
       update: {},
       create: {
-        roleId: adminRole.id,
+        roleId: departmentOfficerRole.id,
         permissionId: permission.id,
       },
     });
   }
 
-  // Manager - Visa Management
-  await prisma.rolePermission.upsert({
-    where: {
-      roleId_permissionId: {
-        roleId: managerRole.id,
-        permissionId: visaManagementPermission.id,
+  // Leadership - Approval and monitoring permissions
+  const leadershipPermissions = [
+    visaManagementPermission,
+    documentManagementPermission,
+    translationManagementPermission,
+    guestManagementPermission,
+    reportManagementPermission,
+  ];
+  
+  for (const permission of leadershipPermissions) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: leadershipRole.id,
+          permissionId: permission.id,
+        },
       },
-    },
-    update: {},
-    create: {
-      roleId: managerRole.id,
-      permissionId: visaManagementPermission.id,
-    },
-  });
-
-  // Specialist - Visa Management
-  await prisma.rolePermission.upsert({
-    where: {
-      roleId_permissionId: {
-        roleId: specialistRole.id,
-        permissionId: visaManagementPermission.id,
+      update: {},
+      create: {
+        roleId: leadershipRole.id,
+        permissionId: permission.id,
       },
-    },
-    update: {},
-    create: {
-      roleId: specialistRole.id,
-      permissionId: visaManagementPermission.id,
-    },
-  });
+    });
+  }
 
-  // Staff - Visa Management (limited)
-  await prisma.rolePermission.upsert({
-    where: {
-      roleId_permissionId: {
-        roleId: staffRole.id,
-        permissionId: visaManagementPermission.id,
+  // Faculty Staff - Operational permissions
+  const facultyStaffPermissions = [
+    visaManagementPermission,
+    documentManagementPermission,
+    translationManagementPermission,
+    guestManagementPermission,
+  ];
+  
+  for (const permission of facultyStaffPermissions) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: facultyStaffRole.id,
+          permissionId: permission.id,
+        },
       },
-    },
-    update: {},
-    create: {
-      roleId: staffRole.id,
-      permissionId: visaManagementPermission.id,
-    },
-  });
+      update: {},
+      create: {
+        roleId: facultyStaffRole.id,
+        permissionId: permission.id,
+      },
+    });
+  }
 
-  // Viewer - Visa View only
+  // Student - View only permission
   await prisma.rolePermission.upsert({
     where: {
       roleId_permissionId: {
-        roleId: viewerRole.id,
+        roleId: studentRole.id,
         permissionId: visaViewPermission.id,
       },
     },
     update: {},
     create: {
-      roleId: viewerRole.id,
+      roleId: studentRole.id,
       permissionId: visaViewPermission.id,
     },
   });
 
   console.log('✅ Assigned permissions to roles');
+
+  // Create Sample Units
+  console.log('Creating sample units...');
+  
+  const universityUnit = await prisma.unit.upsert({
+    where: { name: 'Đại học Bách Khoa - ĐHĐN' },
+    update: {},
+    create: {
+      name: 'Đại học Bách Khoa - ĐHĐN',
+      code: 'DUT',
+      level: 0,
+      isActive: true,
+    },
+  });
+
+  const internationalRelationsUnit = await prisma.unit.upsert({
+    where: { name: 'Phòng Hợp tác Quốc tế' },
+    update: {},
+    create: {
+      name: 'Phòng Hợp tác Quốc tế',
+      code: 'HTQT',
+      parentId: universityUnit.id,
+      level: 1,
+      isActive: true,
+    },
+  });
+
+  const itFacultyUnit = await prisma.unit.upsert({
+    where: { name: 'Khoa Công nghệ Thông tin' },
+    update: {},
+    create: {
+      name: 'Khoa Công nghệ Thông tin',
+      code: 'CNTT',
+      parentId: universityUnit.id,
+      level: 1,
+      isActive: true,
+    },
+  });
+
+  const engineeringFacultyUnit = await prisma.unit.upsert({
+    where: { name: 'Khoa Kỹ thuật Cơ khí' },
+    update: {},
+    create: {
+      name: 'Khoa Kỹ thuật Cơ khí',
+      code: 'CK',
+      parentId: universityUnit.id,
+      level: 1,
+      isActive: true,
+    },
+  });
+
+  console.log('✅ Created sample units');
+
+  // Create Sample Users with hashed passwords
+  console.log('Creating sample users...');
+  const bcrypt = require('bcrypt');
+  
+  // Admin user: admin@dut.udn.vn / Admin@123
+  const adminUser = await prisma.user.upsert({
+    where: { email: 'admin@dut.udn.vn' },
+    update: {},
+    create: {
+      email: 'admin@dut.udn.vn',
+      password: await bcrypt.hash('Admin@123', 12),
+      fullName: 'Quản trị viên hệ thống',
+      unitId: internationalRelationsUnit.id,
+      isActive: true,
+    },
+  });
+
+  // Assign system_admin role to admin
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: adminUser.id,
+        roleId: systemAdminRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: adminUser.id,
+      roleId: systemAdminRole.id,
+    },
+  });
+
+  // Department Officer: officer@dut.udn.vn / Officer@123
+  const officerUser = await prisma.user.upsert({
+    where: { email: 'officer@dut.udn.vn' },
+    update: {},
+    create: {
+      email: 'officer@dut.udn.vn',
+      password: await bcrypt.hash('Officer@123', 12),
+      fullName: 'Nguyễn Văn A',
+      unitId: internationalRelationsUnit.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: officerUser.id,
+        roleId: departmentOfficerRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: officerUser.id,
+      roleId: departmentOfficerRole.id,
+    },
+  });
+
+  // Leadership: leader@dut.udn.vn / Leader@123
+  const leaderUser = await prisma.user.upsert({
+    where: { email: 'leader@dut.udn.vn' },
+    update: {},
+    create: {
+      email: 'leader@dut.udn.vn',
+      password: await bcrypt.hash('Leader@123', 12),
+      fullName: 'Trần Thị B',
+      unitId: universityUnit.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: leaderUser.id,
+        roleId: leadershipRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: leaderUser.id,
+      roleId: leadershipRole.id,
+    },
+  });
+
+  // Faculty Staff: staff@dut.udn.vn / Staff@123
+  const staffUser = await prisma.user.upsert({
+    where: { email: 'staff@dut.udn.vn' },
+    update: {},
+    create: {
+      email: 'staff@dut.udn.vn',
+      password: await bcrypt.hash('Staff@123', 12),
+      fullName: 'Lê Văn C',
+      unitId: itFacultyUnit.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: staffUser.id,
+        roleId: facultyStaffRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: staffUser.id,
+      roleId: facultyStaffRole.id,
+    },
+  });
+
+  // Student: student@dut.udn.vn / Student@123
+  const studentUser = await prisma.user.upsert({
+    where: { email: 'student@dut.udn.vn' },
+    update: {},
+    create: {
+      email: 'student@dut.udn.vn',
+      password: await bcrypt.hash('Student@123', 12),
+      fullName: 'Phạm Thị D',
+      unitId: itFacultyUnit.id,
+      isActive: true,
+    },
+  });
+
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
+        userId: studentUser.id,
+        roleId: studentRole.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: studentUser.id,
+      roleId: studentRole.id,
+    },
+  });
+
+  console.log('✅ Created sample users');
 
   console.log('🎉 RBAC seed data completed successfully!');
 
@@ -980,6 +1424,9 @@ async function main() {
     prisma.role.count(),
     prisma.permissionAction.count(),
     prisma.rolePermission.count(),
+    prisma.unit.count(),
+    prisma.user.count(),
+    prisma.userRole.count(),
   ]);
 
   console.log('\n📊 RBAC System Summary:');
@@ -988,6 +1435,16 @@ async function main() {
   console.log(`Roles: ${summary[2]}`);
   console.log(`Permission-Action Mappings: ${summary[3]}`);
   console.log(`Role-Permission Mappings: ${summary[4]}`);
+  console.log(`Units: ${summary[5]}`);
+  console.log(`Users: ${summary[6]}`);
+  console.log(`User-Role Assignments: ${summary[7]}`);
+  
+  console.log('\n👥 Sample User Accounts:');
+  console.log('1. System Admin: admin@dut.udn.vn / Admin@123');
+  console.log('2. Department Officer: officer@dut.udn.vn / Officer@123');
+  console.log('3. Leadership: leader@dut.udn.vn / Leader@123');
+  console.log('4. Faculty Staff: staff@dut.udn.vn / Staff@123');
+  console.log('5. Student: student@dut.udn.vn / Student@123');
 }
 
 main()

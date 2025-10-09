@@ -1,30 +1,59 @@
 import { useState } from "react";
-import { ArrowLeft, Lock, User, Eye, EyeOff, Shield, CheckCircle } from "lucide-react";
+import { ArrowLeft, Lock, Mail, Eye, EyeOff, Shield, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Checkbox } from "../ui/checkbox";
 import { ImageWithFallback } from "../image/ImageWithFallback";
 import { motion } from "motion/react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import logoImage from "@/assets/logo_dut.png";
 import campusAerialImage from "@/assets/pic.jpg";
 import campus50YearsImage from "@/assets/logo2.jpg";
 
 interface LoginPageProps {
-  onLogin: () => void;
   onBack: () => void;
 }
 
-export function LoginPage({ onLogin, onBack }: LoginPageProps) {
-  const [username, setUsername] = useState("");
+export function LoginPage({ onBack }: LoginPageProps) {
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username && password) {
-      onLogin();
+    
+    // Validation
+    if (!email || !password) {
+      toast.error("Vui lòng nhập đầy đủ email và mật khẩu");
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Email không hợp lệ");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await login(email, password);
+      
+      toast.success("Đăng nhập thành công!", {
+        description: "Chào mừng bạn trở lại hệ thống.",
+      });
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast.error("Đăng nhập thất bại", {
+        description: error.message || "Email hoặc mật khẩu không chính xác. Vui lòng thử lại.",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -78,17 +107,19 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             {/* Login Form */}
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="username" className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Tên đăng nhập
+                <Label htmlFor="email" className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  Email
                 </Label>
                 <Input
-                  id="username"
-                  placeholder="Nhập tên đăng nhập của bạn"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder="user@dntu.edu.vn"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="rounded-xl h-12 px-4"
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -106,11 +137,13 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                     onChange={(e) => setPassword(e.target.value)}
                     className="rounded-xl h-12 px-4 pr-12"
                     required
+                    disabled={isLoading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    disabled={isLoading}
                   >
                     {showPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -127,12 +160,13 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                     id="remember"
                     checked={rememberMe}
                     onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                    disabled={isLoading}
                   />
                   <Label htmlFor="remember" className="cursor-pointer text-sm">
                     Ghi nhớ đăng nhập
                   </Label>
                 </div>
-                <Button variant="link" type="button" className="text-blue-600 p-0 h-auto">
+                <Button variant="link" type="button" className="text-blue-600 p-0 h-auto" disabled={isLoading}>
                   Quên mật khẩu?
                 </Button>
               </div>
@@ -141,8 +175,16 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                 type="submit"
                 className="w-full rounded-xl h-12 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                 size="lg"
+                disabled={isLoading}
               >
-                Đăng nhập
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Đang đăng nhập...
+                  </>
+                ) : (
+                  "Đăng nhập"
+                )}
               </Button>
             </form>
 

@@ -7,6 +7,9 @@ import { AdminTopbar } from "@/components/admin/AdminTopbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePathname, useRouter } from "next/navigation";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { RoleCode } from "@/lib/auth/roles";
+import { useRole } from "@/hooks/useRole";
 
 export default function AdminLayout({
   children,
@@ -15,6 +18,7 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { primaryRoleName } = useRole();
   
   const getCurrentPage = () => {
     if (!pathname) return "home";
@@ -35,7 +39,8 @@ export default function AdminLayout({
 
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <ProtectedRoute allowedRoles={[RoleCode.SYSTEM_ADMIN]}>
+      <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar with animation */}
       <motion.div
         initial={{ x: -280, opacity: 0 }}
@@ -65,7 +70,7 @@ export default function AdminLayout({
         >
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Current Role:</span>
-            <Badge variant="default">Admin</Badge>
+            <Badge variant="default">{primaryRoleName}</Badge>
           </div>
         </motion.div>
 
@@ -86,6 +91,7 @@ export default function AdminLayout({
           </div>
         </main>
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }

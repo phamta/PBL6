@@ -1,14 +1,11 @@
 /**
- * API Index - Export tất cả API services
+ * API Services - Export tất cả các services
  */
 
-export * from './auth';
-export * from './documents';
-export * from './guests';
-export * from './visas';
+export { authService } from './auth.service';
+export { userService } from './user.service';
+export { unitService } from './unit.service';
 
-// Re-export default objects
-export { default as authApi } from './auth';
-export { default as documentsApi } from './documents';
-export { default as guestsApi } from './guests';
-export { default as visasApi } from './visas';
+export * from './types';
+export * from './config';
+export { default as axiosClient } from './axios';

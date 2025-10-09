@@ -7,6 +7,9 @@ import { StaffTopbar } from "@/components/staff/StaffTopbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePathname, useRouter } from "next/navigation";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { RoleCode } from "@/lib/auth/roles";
+import { useRole } from "@/hooks/useRole";
 
 export default function StaffLayout({
   children,
@@ -15,6 +18,7 @@ export default function StaffLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { primaryRoleName } = useRole();
   
 
   const getCurrentPage = () => {
@@ -54,7 +58,13 @@ export default function StaffLayout({
   };
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <ProtectedRoute allowedRoles={[
+      RoleCode.DEPARTMENT_OFFICER,
+      RoleCode.LEADERSHIP,
+      RoleCode.FACULTY_STAFF,
+      RoleCode.SYSTEM_ADMIN, // Admin cũng có thể access staff dashboard
+    ]}>
+      <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar with animation */}
       <motion.div
         initial={{ x: -280, opacity: 0 }}
@@ -84,7 +94,7 @@ export default function StaffLayout({
         >
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Current Role:</span>
-            <Badge variant="secondary">Faculty/Staff</Badge>
+            <Badge variant="secondary">{primaryRoleName}</Badge>
           </div>
 
         </motion.div>
@@ -106,6 +116,7 @@ export default function StaffLayout({
           </div>
         </main>
       </div>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }
