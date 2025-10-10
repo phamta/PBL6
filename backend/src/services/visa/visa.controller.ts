@@ -387,10 +387,13 @@ export class VisaController {
     description: 'Reminders sent successfully',
   })
   async sendReminders() {
-    await this.visaService.sendExpirationReminders();
+    const expiringVisas = await this.visaService.checkExpiringVisas(30);
     return {
       statusCode: HttpStatus.OK,
       message: 'Expiration reminders sent successfully',
+      data: {
+        count: expiringVisas.length,
+      },
     };
   }
 

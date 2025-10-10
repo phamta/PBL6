@@ -3,6 +3,7 @@
 ## ✅ Hệ thống đã sẵn sàng
 
 ### 🖥️ Services đang chạy:
+
 - **Backend API**: http://localhost:3001 ✅
 - **Frontend App**: http://localhost:3002 ✅
 - **API Docs**: http://localhost:3001/api/docs ✅
@@ -12,26 +13,31 @@
 ## 👥 Tài khoản test đã seed:
 
 ### 1️⃣ System Admin (Quản trị hệ thống)
+
 - **Email**: `admin@dut.udn.vn`
 - **Password**: `Admin@123`
 - **Expected Redirect**: `/dashboard/admin` ✨
 
 ### 2️⃣ Department Officer (Cán bộ phòng)
+
 - **Email**: `officer@dut.udn.vn`
 - **Password**: `Officer@123`
 - **Expected Redirect**: `/dashboard/staff`
 
 ### 3️⃣ Leadership (Lãnh đạo)
+
 - **Email**: `leader@dut.udn.vn`
 - **Password**: `Leader@123`
 - **Expected Redirect**: `/dashboard/staff`
 
 ### 4️⃣ Faculty Staff (Cán bộ khoa/viện)
+
 - **Email**: `staff@dut.udn.vn`
 - **Password**: `Staff@123`
 - **Expected Redirect**: `/dashboard/staff`
 
 ### 5️⃣ Student (Sinh viên)
+
 - **Email**: `student@dut.udn.vn`
 - **Password**: `Student@123`
 - **Expected Redirect**: `/dashboard`
@@ -41,16 +47,20 @@
 ## 🧪 Các bước test:
 
 ### Bước 1: Mở ứng dụng
+
 ```
 http://localhost:3002/login
 ```
 
 ### Bước 2: Đăng nhập với tài khoản Admin
+
 - Email: `admin@dut.udn.vn`
 - Password: `Admin@123`
 
 ### Bước 3: Kiểm tra Console Log
+
 Mở Developer Tools (F12) > Console Tab, bạn sẽ thấy:
+
 ```
 🔐 Login successful - User: { ... }
 👤 User roles: [ { role: { code: 'system_admin', ... } } ]
@@ -61,6 +71,7 @@ Mở Developer Tools (F12) > Console Tab, bạn sẽ thấy:
 ```
 
 ### Bước 4: Xác nhận redirect
+
 - URL phải là: `http://localhost:3002/dashboard/admin`
 - Trang admin dashboard sẽ hiển thị
 
@@ -69,12 +80,14 @@ Mở Developer Tools (F12) > Console Tab, bạn sẽ thấy:
 ## 🐛 Nếu vẫn lỗi - Debug steps:
 
 ### 1. Kiểm tra Console logs
+
 - Mở F12 > Console
 - Xem các log `🔐`, `👤`, `🔍`, `🎭`, `✅`, `🚀`
 - Nếu không có logs → kiểm tra AuthContext
 - Nếu có logs nhưng sai route → kiểm tra roles.ts logic
 
 ### 2. Kiểm tra Network tab
+
 - Mở F12 > Network
 - Login và xem request `POST /api/v1/auth/login`
 - Response phải có:
@@ -98,6 +111,7 @@ Mở Developer Tools (F12) > Console Tab, bạn sẽ thấy:
   ```
 
 ### 3. Kiểm tra localStorage
+
 - Mở F12 > Application > Local Storage > http://localhost:3002
 - Phải có keys:
   - `access_token`
@@ -105,7 +119,9 @@ Mở Developer Tools (F12) > Console Tab, bạn sẽ thấy:
   - `user` (chứa user object với roles)
 
 ### 4. Kiểm tra backend response
+
 Test trực tiếp API:
+
 ```bash
 curl -X POST http://localhost:3001/api/v1/auth/login \
   -H "Content-Type: application/json" \
@@ -117,6 +133,7 @@ curl -X POST http://localhost:3001/api/v1/auth/login \
 ## ✅ Kết quả mong đợi:
 
 Khi đăng nhập với `admin@dut.udn.vn`:
+
 1. ✅ Login thành công
 2. ✅ Console logs hiển thị đúng role: `system_admin`
 3. ✅ Redirect đến: `http://localhost:3002/dashboard/admin`

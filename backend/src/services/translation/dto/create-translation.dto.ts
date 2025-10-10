@@ -98,4 +98,62 @@ export class CreateTranslationDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  // ==================== NEW FIELDS ====================
+
+  @ApiPropertyOptional({ 
+    description: 'Tên đơn vị yêu cầu', 
+    example: 'Phòng Hợp tác Quốc tế' 
+  })
+  @IsString()
+  @IsOptional()
+  unitName?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Tên người dịch thuật', 
+    example: 'Nguyễn Thị Lan' 
+  })
+  @IsString()
+  @IsOptional()
+  translatorName?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Lý do yêu cầu dịch thuật', 
+    example: 'Phục vụ hồ sơ du học' 
+  })
+  @IsString()
+  @IsOptional()
+  reason?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Đường dẫn file xác nhận/công chứng', 
+    example: 'uploads/verification/notarized_doc.pdf' 
+  })
+  @IsString()
+  @IsOptional()
+  verificationFile?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Cặp ngôn ngữ dịch thuật', 
+    example: 'Vietnamese → English' 
+  })
+  @IsString()
+  @IsOptional()
+  languagePair?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'ID đối tác (nếu có)', 
+    example: 'cuid-partner-123' 
+  })
+  @IsString()
+  @IsOptional()
+  partnerId?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'ID đơn vị (nếu có)', 
+    example: 'cuid-unit-456' 
+  })
+  @IsString()
+  @IsOptional()
+  unitId?: string;
 }

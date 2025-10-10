@@ -85,6 +85,22 @@ export class FilterTranslationDto {
   approvedById?: string;
 
   @ApiPropertyOptional({ 
+    description: 'Lọc theo đối tác', 
+    example: 'partner-id-789' 
+  })
+  @IsString()
+  @IsOptional()
+  partnerId?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Lọc theo đơn vị', 
+    example: 'unit-id-123' 
+  })
+  @IsString()
+  @IsOptional()
+  unitId?: string;
+
+  @ApiPropertyOptional({ 
     description: 'Số trang (bắt đầu từ 1)', 
     example: 1, 
     default: 1 

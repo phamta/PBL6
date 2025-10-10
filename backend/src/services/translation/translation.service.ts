@@ -1,8 +1,15 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+﻿import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { CreateTranslationDto, UpdateTranslationDto, FilterTranslationDto, ApproveTranslationDto, RejectTranslationDto, CompleteTranslationDto } from './dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Translation, TranslationStatus, Prisma } from '@prisma/client';
+import { 
+  CreateTranslationDto, 
+  UpdateTranslationDto, 
+  FilterTranslationDto,
+  ApproveTranslationDto,
+  RejectTranslationDto,
+  CompleteTranslationDto
+} from './dto';
 
 export interface TranslationUser {
   id: string;
@@ -11,10 +18,22 @@ export interface TranslationUser {
 }
 
 export interface TranslationWithRelations extends Translation {
+  partner?: {
+    id: string;
+    name: string;
+    country: string;
+    contactEmail: string | null;
+  } | null;
+  unit?: {
+    id: string;
+    name: string;
+    code: string;
+  } | null;
   createdBy: {
     id: string;
     fullName: string;
     email: string;
+    unitId: string | null;
   };
   approvedBy?: {
     id: string;
@@ -31,6 +50,14 @@ export interface TranslationListResult {
   totalPages: number;
 }
 
+export interface TranslationStats {
+  totalTranslations: number;
+  byStatus: { status: TranslationStatus; count: number }[];
+  byUrgentLevel: { urgentLevel: string; count: number }[];
+  pendingTranslations: number;
+  myTranslations: number;
+}
+
 /**
  * Translation Service - Quản lý yêu cầu dịch thuật và công chứng
  * 
@@ -42,76 +69,146 @@ export interface TranslationListResult {
  * - translation:approve: Approve translation request
  * - translation:reject: Reject translation request
  * - translation:complete: Complete translation với file dịch
- * 
  */
 @Injectable()
 export class TranslationService {
+  private readonly translationInclude: Prisma.TranslationInclude = {
+    partner: {
+      select: {
+        id: true,
+        name: true,
+        country: true,
+        contactEmail: true,
+      },
+    },
+    unit: {
+      select: {
+        id: true,
+        name: true,
+        code: true,
+      },
+    },
+    createdBy: {
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        unitId: true,
+      },
+    },
+    approvedBy: {
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+      },
+    },
+  };
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
-   * Tạo translation request mới
+   * Create a new translation request with all new fields
    */
   async create(createTranslationDto: CreateTranslationDto, user: TranslationUser): Promise<TranslationWithRelations> {
-    // Kiểm tra quyền
+    // Check permission
     if (!user.actions.includes('translation:create')) {
-      throw new ForbiddenException('Không có quyền tạo translation request');
+      throw new ForbiddenException('You do not have permission to create translations');
+    }
+
+    // Validate partner if provided
+    if (createTranslationDto['partnerId']) {
+      const partner = await this.prisma.partner.findUnique({
+        where: { id: createTranslationDto['partnerId'] },
+      });
+      if (!partner) {
+        throw new BadRequestException(`Partner with ID ${createTranslationDto['partnerId']} not found`);
+      }
+    }
+
+    // Validate unit if provided
+    if (createTranslationDto['unitId']) {
+      const unit = await this.prisma.unit.findUnique({
+        where: { id: createTranslationDto['unitId'] },
+      });
+      if (!unit) {
+        throw new BadRequestException(`Unit with ID ${createTranslationDto['unitId']} not found`);
+      }
     }
 
     try {
+      // Prepare data with all new fields
+      const data: Prisma.TranslationCreateInput = {
+        applicantName: createTranslationDto.applicantName,
+        applicantEmail: createTranslationDto.applicantEmail,
+        applicantPhone: createTranslationDto.applicantPhone,
+        documentTitle: createTranslationDto.documentTitle,
+        sourceLanguage: createTranslationDto.sourceLanguage,
+        targetLanguage: createTranslationDto.targetLanguage,
+        documentType: createTranslationDto.documentType,
+        purpose: createTranslationDto.purpose,
+        urgentLevel: createTranslationDto.urgentLevel || 'NORMAL',
+        status: TranslationStatus.PENDING,
+        originalFile: createTranslationDto.originalFile,
+        attachments: createTranslationDto.attachments || undefined,
+        notes: createTranslationDto.notes,
+        unitName: createTranslationDto['unitName'],
+        translatorName: createTranslationDto['translatorName'],
+        reason: createTranslationDto['reason'],
+        verificationFile: createTranslationDto['verificationFile'],
+        languagePair: createTranslationDto['languagePair'] || 
+          `${createTranslationDto.sourceLanguage}  ${createTranslationDto.targetLanguage}`,
+        createdBy: {
+          connect: { id: user.id },
+        },
+      };
+
+      // Connect partner if provided
+      if (createTranslationDto['partnerId']) {
+        data.partner = {
+          connect: { id: createTranslationDto['partnerId'] },
+        };
+      }
+
+      // Connect unit if provided
+      if (createTranslationDto['unitId']) {
+        data.unit = {
+          connect: { id: createTranslationDto['unitId'] },
+        };
+      }
+
       const translation = await this.prisma.translation.create({
-        data: {
-          applicantName: createTranslationDto.applicantName,
-          applicantEmail: createTranslationDto.applicantEmail,
-          applicantPhone: createTranslationDto.applicantPhone,
-          documentTitle: createTranslationDto.documentTitle,
-          sourceLanguage: createTranslationDto.sourceLanguage,
-          targetLanguage: createTranslationDto.targetLanguage,
-          documentType: createTranslationDto.documentType,
-          purpose: createTranslationDto.purpose,
-          urgentLevel: createTranslationDto.urgentLevel || 'NORMAL',
-          originalFile: createTranslationDto.originalFile,
-          attachments: createTranslationDto.attachments,
-          notes: createTranslationDto.notes,
-          createdById: user.id,
-          status: TranslationStatus.PENDING,
-        },
-        include: {
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-        },
+        data,
+        include: this.translationInclude,
       });
 
       // Emit event
       this.eventEmitter.emit('translation.created', {
-        translation,
-        user,
+        translationId: translation.id,
+        userId: user.id,
+        urgentLevel: translation.urgentLevel,
+        documentTitle: translation.documentTitle,
       });
 
       return translation as TranslationWithRelations;
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException('Translation request đã tồn tại');
-        }
+      if (error instanceof BadRequestException || error instanceof ForbiddenException) {
+        throw error;
       }
-      throw error;
+      throw new BadRequestException(`Failed to create translation: ${error.message}`);
     }
   }
 
   /**
-   * Lấy danh sách translation với filtering và pagination
+   * Find all translations with filtering and pagination
    */
   async findAll(filterDto: FilterTranslationDto, user: TranslationUser): Promise<TranslationListResult> {
-    // Kiểm tra quyền
+    // Check permission
     if (!user.actions.includes('translation:view')) {
-      throw new ForbiddenException('Không có quyền xem translation');
+      throw new ForbiddenException('You do not have permission to view translations');
     }
 
     const { page = 1, limit = 20, sortBy = 'createdAt', sortOrder = 'desc', ...filters } = filterDto;
@@ -120,35 +217,51 @@ export class TranslationService {
     // Build where clause
     const where: Prisma.TranslationWhereInput = {};
 
+    // Keyword search (documentTitle, applicantName, translatorName)
     if (filters.search) {
       where.OR = [
-        { applicantName: { contains: filters.search, mode: 'insensitive' } },
-        { applicantEmail: { contains: filters.search, mode: 'insensitive' } },
         { documentTitle: { contains: filters.search, mode: 'insensitive' } },
-        { documentType: { contains: filters.search, mode: 'insensitive' } },
+        { applicantName: { contains: filters.search, mode: 'insensitive' } },
+        { translatorName: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
 
+    // Status filter
     if (filters.status) {
       where.status = filters.status;
     }
 
+    // Source language filter
     if (filters.sourceLanguage) {
       where.sourceLanguage = { contains: filters.sourceLanguage, mode: 'insensitive' };
     }
 
+    // Target language filter
     if (filters.targetLanguage) {
       where.targetLanguage = { contains: filters.targetLanguage, mode: 'insensitive' };
     }
 
+    // Document type filter
     if (filters.documentType) {
       where.documentType = { contains: filters.documentType, mode: 'insensitive' };
     }
 
+    // Urgent level filter
     if (filters.urgentLevel) {
       where.urgentLevel = filters.urgentLevel;
     }
 
+    // Partner filter
+    if (filters['partnerId']) {
+      where.partnerId = filters['partnerId'];
+    }
+
+    // Unit filter
+    if (filters['unitId']) {
+      where.unitId = filters['unitId'];
+    }
+
+    // Date range filter
     if (filters.createdFrom || filters.createdTo) {
       where.createdAt = {};
       if (filters.createdFrom) {
@@ -159,10 +272,12 @@ export class TranslationService {
       }
     }
 
+    // Created by filter
     if (filters.createdById) {
       where.createdById = filters.createdById;
     }
 
+    // Approved by filter
     if (filters.approvedById) {
       where.approvedById = filters.approvedById;
     }
@@ -172,27 +287,19 @@ export class TranslationService {
     if (sortBy === 'createdAt' || sortBy === 'updatedAt') {
       orderBy[sortBy] = sortOrder;
     } else if (sortBy === 'urgentLevel') {
-      // Custom sorting for urgentLevel: VERY_URGENT > URGENT > NORMAL
       orderBy.urgentLevel = sortOrder;
     } else {
-      orderBy.createdAt = 'desc';
+      orderBy.createdAt = sortOrder;
     }
 
     try {
       const [translations, total] = await Promise.all([
         this.prisma.translation.findMany({
           where,
+          include: this.translationInclude,
           skip,
           take: limit,
           orderBy,
-          include: {
-            createdBy: {
-              select: { id: true, fullName: true, email: true },
-            },
-            approvedBy: {
-              select: { id: true, fullName: true, email: true },
-            },
-          },
         }),
         this.prisma.translation.count({ where }),
       ]);
@@ -205,117 +312,159 @@ export class TranslationService {
         totalPages: Math.ceil(total / limit),
       };
     } catch (error) {
-      throw new BadRequestException('Lỗi khi lấy danh sách translation');
+      throw new BadRequestException(`Failed to fetch translations: ${error.message}`);
     }
   }
 
   /**
-   * Lấy chi tiết translation theo ID
+   * Find one translation by ID
    */
   async findOne(id: string, user: TranslationUser): Promise<TranslationWithRelations> {
-    // Kiểm tra quyền
+    // Check permission
     if (!user.actions.includes('translation:view')) {
-      throw new ForbiddenException('Không có quyền xem translation');
+      throw new ForbiddenException('You do not have permission to view translations');
     }
 
     try {
       const translation = await this.prisma.translation.findUnique({
         where: { id },
-        include: {
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-        },
+        include: this.translationInclude,
       });
 
       if (!translation) {
-        throw new NotFoundException('Không tìm thấy translation');
+        throw new NotFoundException(`Translation with ID ${id} not found`);
       }
 
       return translation as TranslationWithRelations;
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
-      throw new BadRequestException('Lỗi khi lấy thông tin translation');
+      throw new BadRequestException(`Failed to fetch translation: ${error.message}`);
     }
   }
 
   /**
-   * Cập nhật thông tin translation
+   * Update translation information with all new fields
    */
   async update(id: string, updateTranslationDto: UpdateTranslationDto, user: TranslationUser): Promise<TranslationWithRelations> {
-    // Kiểm tra quyền
+    // Check permission
     if (!user.actions.includes('translation:update')) {
-      throw new ForbiddenException('Không có quyền cập nhật translation');
+      throw new ForbiddenException('You do not have permission to update translations');
     }
 
-    // Tìm translation hiện tại
+    // Find existing translation
     const existingTranslation = await this.prisma.translation.findUnique({
       where: { id },
       include: { createdBy: true },
     });
 
     if (!existingTranslation) {
-      throw new NotFoundException('Không tìm thấy translation');
+      throw new NotFoundException(`Translation with ID ${id} not found`);
     }
 
-    // Chỉ cho phép creator update khi status = PENDING
+    // Only creator can update when status = PENDING
     if (existingTranslation.status !== TranslationStatus.PENDING) {
-      throw new BadRequestException('Chỉ có thể cập nhật translation ở trạng thái PENDING');
+      if (!user.actions.includes('translation:approve')) {
+        throw new BadRequestException('Can only update translations with status PENDING');
+      }
     }
 
-    if (existingTranslation.createdById !== user.id && !user.actions.includes('translation:approve')) {
-      throw new ForbiddenException('Chỉ có thể cập nhật translation do chính mình tạo');
+    // Validate partner if provided
+    if (updateTranslationDto['partnerId'] !== undefined) {
+      if (updateTranslationDto['partnerId'] !== null) {
+        const partner = await this.prisma.partner.findUnique({
+          where: { id: updateTranslationDto['partnerId'] },
+        });
+        if (!partner) {
+          throw new BadRequestException(`Partner with ID ${updateTranslationDto['partnerId']} not found`);
+        }
+      }
+    }
+
+    // Validate unit if provided
+    if (updateTranslationDto['unitId'] !== undefined) {
+      if (updateTranslationDto['unitId'] !== null) {
+        const unit = await this.prisma.unit.findUnique({
+          where: { id: updateTranslationDto['unitId'] },
+        });
+        if (!unit) {
+          throw new BadRequestException(`Unit with ID ${updateTranslationDto['unitId']} not found`);
+        }
+      }
     }
 
     try {
-      const updateData: any = {
-        ...updateTranslationDto,
-        updatedAt: new Date(),
-      };
+      // Prepare update data
+      const data: Prisma.TranslationUpdateInput = {};
 
-      // Chỉ admin/manager mới được thay đổi status trực tiếp
-      if (updateTranslationDto.status && !user.actions.includes('translation:approve')) {
-        delete updateData.status;
+      if (updateTranslationDto.applicantName !== undefined) data.applicantName = updateTranslationDto.applicantName;
+      if (updateTranslationDto.applicantEmail !== undefined) data.applicantEmail = updateTranslationDto.applicantEmail;
+      if (updateTranslationDto.applicantPhone !== undefined) data.applicantPhone = updateTranslationDto.applicantPhone;
+      if (updateTranslationDto.documentTitle !== undefined) data.documentTitle = updateTranslationDto.documentTitle;
+      if (updateTranslationDto.sourceLanguage !== undefined) data.sourceLanguage = updateTranslationDto.sourceLanguage;
+      if (updateTranslationDto.targetLanguage !== undefined) data.targetLanguage = updateTranslationDto.targetLanguage;
+      if (updateTranslationDto.documentType !== undefined) data.documentType = updateTranslationDto.documentType;
+      if (updateTranslationDto.purpose !== undefined) data.purpose = updateTranslationDto.purpose;
+      if (updateTranslationDto.urgentLevel !== undefined) data.urgentLevel = updateTranslationDto.urgentLevel;
+      if (updateTranslationDto.originalFile !== undefined) data.originalFile = updateTranslationDto.originalFile;
+      if (updateTranslationDto.attachments !== undefined) data.attachments = updateTranslationDto.attachments;
+      if (updateTranslationDto.notes !== undefined) data.notes = updateTranslationDto.notes;
+      
+      // New fields
+      if (updateTranslationDto['unitName'] !== undefined) data.unitName = updateTranslationDto['unitName'];
+      if (updateTranslationDto['translatorName'] !== undefined) data.translatorName = updateTranslationDto['translatorName'];
+      if (updateTranslationDto['reason'] !== undefined) data.reason = updateTranslationDto['reason'];
+      if (updateTranslationDto['verificationFile'] !== undefined) data.verificationFile = updateTranslationDto['verificationFile'];
+      if (updateTranslationDto['languagePair'] !== undefined) data.languagePair = updateTranslationDto['languagePair'];
+
+      // Handle partner relation
+      if (updateTranslationDto['partnerId'] !== undefined) {
+        if (updateTranslationDto['partnerId'] === null) {
+          data.partner = { disconnect: true };
+        } else {
+          data.partner = { connect: { id: updateTranslationDto['partnerId'] } };
+        }
+      }
+
+      // Handle unit relation
+      if (updateTranslationDto['unitId'] !== undefined) {
+        if (updateTranslationDto['unitId'] === null) {
+          data.unit = { disconnect: true };
+        } else {
+          data.unit = { connect: { id: updateTranslationDto['unitId'] } };
+        }
       }
 
       const translation = await this.prisma.translation.update({
         where: { id },
-        data: updateData,
-        include: {
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-        },
+        data,
+        include: this.translationInclude,
       });
 
       // Emit event
       this.eventEmitter.emit('translation.updated', {
-        translation,
-        user,
-        changes: updateTranslationDto,
+        translationId: translation.id,
+        userId: user.id,
+        changes: Object.keys(data),
       });
 
       return translation as TranslationWithRelations;
     } catch (error) {
-      throw new BadRequestException('Lỗi khi cập nhật translation');
+      if (error instanceof BadRequestException || error instanceof ForbiddenException) {
+        throw error;
+      }
+      throw new BadRequestException(`Failed to update translation: ${error.message}`);
     }
   }
 
   /**
-   * Hủy translation request
+   * Soft delete (cancel) a translation request
    */
   async cancel(id: string, user: TranslationUser): Promise<TranslationWithRelations> {
-    // Kiểm tra quyền
+    // Check permission
     if (!user.actions.includes('translation:delete')) {
-      throw new ForbiddenException('Không có quyền hủy translation request');
+      throw new ForbiddenException('You do not have permission to delete translations');
     }
 
     const existingTranslation = await this.prisma.translation.findUnique({
@@ -323,53 +472,39 @@ export class TranslationService {
     });
 
     if (!existingTranslation) {
-      throw new NotFoundException('Không tìm thấy translation');
+      throw new NotFoundException(`Translation with ID ${id} not found`);
     }
 
     if (existingTranslation.status === TranslationStatus.COMPLETED) {
-      throw new BadRequestException('Không thể hủy translation đã hoàn thành');
-    }
-
-    if (existingTranslation.status === TranslationStatus.REJECTED) {
-      throw new BadRequestException('Translation đã được hủy trước đó');
+      throw new BadRequestException('Cannot delete a completed translation');
     }
 
     try {
       const translation = await this.prisma.translation.update({
         where: { id },
-        data: {
-          status: TranslationStatus.REJECTED,
-          updatedAt: new Date(),
-        },
-        include: {
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-        },
+        data: { status: TranslationStatus.REJECTED },
+        include: this.translationInclude,
       });
 
       // Emit event
       this.eventEmitter.emit('translation.cancelled', {
-        translation,
-        user,
+        translationId: translation.id,
+        userId: user.id,
       });
 
       return translation as TranslationWithRelations;
     } catch (error) {
-      throw new BadRequestException('Lỗi khi hủy translation');
+      throw new BadRequestException(`Failed to cancel translation: ${error.message}`);
     }
   }
 
   /**
-   * Approve translation request (PENDING → APPROVED)
+   * Approve translation request (PENDING  APPROVED)
    */
   async approve(id: string, approveDto: ApproveTranslationDto, user: TranslationUser): Promise<TranslationWithRelations> {
-    // Kiểm tra quyền
+    // Check permission
     if (!user.actions.includes('translation:approve')) {
-      throw new ForbiddenException('Không có quyền duyệt translation');
+      throw new ForbiddenException('You do not have permission to approve translations');
     }
 
     const existingTranslation = await this.prisma.translation.findUnique({
@@ -377,11 +512,11 @@ export class TranslationService {
     });
 
     if (!existingTranslation) {
-      throw new NotFoundException('Không tìm thấy translation');
+      throw new NotFoundException(`Translation with ID ${id} not found`);
     }
 
     if (existingTranslation.status !== TranslationStatus.PENDING) {
-      throw new BadRequestException('Chỉ có thể duyệt translation ở trạng thái PENDING');
+      throw new BadRequestException(`Can only approve translations with status PENDING. Current status: ${existingTranslation.status}`);
     }
 
     try {
@@ -389,41 +524,33 @@ export class TranslationService {
         where: { id },
         data: {
           status: TranslationStatus.APPROVED,
-          approvedById: user.id,
+          approvedBy: { connect: { id: user.id } },
           approvedAt: new Date(),
           notes: approveDto.notes || existingTranslation.notes,
-          updatedAt: new Date(),
         },
-        include: {
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-        },
+        include: this.translationInclude,
       });
 
       // Emit event
       this.eventEmitter.emit('translation.approved', {
-        translation,
-        user,
-        notes: approveDto.notes,
+        translationId: translation.id,
+        approverId: user.id,
+        urgentLevel: translation.urgentLevel,
       });
 
       return translation as TranslationWithRelations;
     } catch (error) {
-      throw new BadRequestException('Lỗi khi duyệt translation');
+      throw new BadRequestException(`Failed to approve translation: ${error.message}`);
     }
   }
 
   /**
-   * Reject translation request (PENDING/APPROVED → REJECTED)
+   * Reject translation request
    */
   async reject(id: string, rejectDto: RejectTranslationDto, user: TranslationUser): Promise<TranslationWithRelations> {
-    // Kiểm tra quyền
+    // Check permission
     if (!user.actions.includes('translation:reject')) {
-      throw new ForbiddenException('Không có quyền từ chối translation');
+      throw new ForbiddenException('You do not have permission to reject translations');
     }
 
     const existingTranslation = await this.prisma.translation.findUnique({
@@ -431,11 +558,11 @@ export class TranslationService {
     });
 
     if (!existingTranslation) {
-      throw new NotFoundException('Không tìm thấy translation');
+      throw new NotFoundException(`Translation with ID ${id} not found`);
     }
 
     if (existingTranslation.status !== TranslationStatus.PENDING && existingTranslation.status !== TranslationStatus.APPROVED) {
-      throw new BadRequestException('Chỉ có thể từ chối translation ở trạng thái PENDING hoặc APPROVED');
+      throw new BadRequestException(`Can only reject translations with status PENDING or APPROVED. Current status: ${existingTranslation.status}`);
     }
 
     try {
@@ -443,40 +570,34 @@ export class TranslationService {
         where: { id },
         data: {
           status: TranslationStatus.REJECTED,
-          notes: `${existingTranslation.notes || ''}\n\nLý do từ chối: ${rejectDto.reason}${rejectDto.notes ? `\nGhi chú: ${rejectDto.notes}` : ''}`,
-          updatedAt: new Date(),
+          approvedBy: { connect: { id: user.id } },
+          approvedAt: new Date(),
+          reason: rejectDto.reason,
+          notes: `REJECTED: ${rejectDto.reason}${rejectDto.notes ? ' - ' + rejectDto.notes : ''}`,
         },
-        include: {
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-        },
+        include: this.translationInclude,
       });
 
       // Emit event
       this.eventEmitter.emit('translation.rejected', {
-        translation,
-        user,
+        translationId: translation.id,
+        userId: user.id,
         reason: rejectDto.reason,
-        notes: rejectDto.notes,
       });
 
       return translation as TranslationWithRelations;
     } catch (error) {
-      throw new BadRequestException('Lỗi khi từ chối translation');
+      throw new BadRequestException(`Failed to reject translation: ${error.message}`);
     }
   }
 
   /**
-   * Complete translation (APPROVED → COMPLETED)
+   * Complete translation (APPROVED  COMPLETED)
    */
   async complete(id: string, completeDto: CompleteTranslationDto, user: TranslationUser): Promise<TranslationWithRelations> {
-    // Kiểm tra quyền
+    // Check permission
     if (!user.actions.includes('translation:complete')) {
-      throw new ForbiddenException('Không có quyền hoàn thành translation');
+      throw new ForbiddenException('You do not have permission to complete translations');
     }
 
     const existingTranslation = await this.prisma.translation.findUnique({
@@ -484,11 +605,11 @@ export class TranslationService {
     });
 
     if (!existingTranslation) {
-      throw new NotFoundException('Không tìm thấy translation');
+      throw new NotFoundException(`Translation with ID ${id} not found`);
     }
 
     if (existingTranslation.status !== TranslationStatus.APPROVED) {
-      throw new BadRequestException('Chỉ có thể hoàn thành translation ở trạng thái APPROVED');
+      throw new BadRequestException(`Can only complete translations with status APPROVED. Current status: ${existingTranslation.status}`);
     }
 
     try {
@@ -498,97 +619,180 @@ export class TranslationService {
           status: TranslationStatus.COMPLETED,
           translatedFile: completeDto.translatedFile,
           certificationFile: completeDto.certificationFile,
-          notes: completeDto.notes || existingTranslation.notes,
           completedAt: new Date(),
-          updatedAt: new Date(),
+          notes: completeDto.notes || existingTranslation.notes,
         },
-        include: {
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-        },
+        include: this.translationInclude,
       });
 
       // Emit event
       this.eventEmitter.emit('translation.completed', {
-        translation,
-        user,
-        translatedFile: completeDto.translatedFile,
-        certificationFile: completeDto.certificationFile,
+        translationId: translation.id,
+        userId: user.id,
+        completedAt: translation.completedAt,
       });
 
       return translation as TranslationWithRelations;
     } catch (error) {
-      throw new BadRequestException('Lỗi khi hoàn thành translation');
+      throw new BadRequestException(`Failed to complete translation: ${error.message}`);
     }
   }
 
   /**
-   * Lấy thống kê translation
+   * Get translation statistics
    */
-  async getStats(user: TranslationUser) {
-    // Kiểm tra quyền
+  async getStats(user: TranslationUser): Promise<TranslationStats> {
     if (!user.actions.includes('translation:view')) {
-      throw new ForbiddenException('Không có quyền xem thống kê translation');
+      throw new ForbiddenException('You do not have permission to view translation statistics');
     }
 
     try {
-      const [
-        totalTranslations,
-        pendingTranslations,
-        approvedTranslations,
-        completedTranslations,
-        rejectedTranslations,
-        urgentTranslations,
-        veryUrgentTranslations,
-        recentTranslations,
-      ] = await Promise.all([
+      const [totalTranslations, byStatus, byUrgentLevel, pendingTranslations, myTranslations] = await Promise.all([
         this.prisma.translation.count(),
-        this.prisma.translation.count({ where: { status: TranslationStatus.PENDING } }),
-        this.prisma.translation.count({ where: { status: TranslationStatus.APPROVED } }),
-        this.prisma.translation.count({ where: { status: TranslationStatus.COMPLETED } }),
-        this.prisma.translation.count({ where: { status: TranslationStatus.REJECTED } }),
-        this.prisma.translation.count({ where: { urgentLevel: 'URGENT' } }),
-        this.prisma.translation.count({ where: { urgentLevel: 'VERY_URGENT' } }),
-        this.prisma.translation.count({ 
-          where: { 
-            createdAt: { 
-              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 7 days ago
-            }
-          } 
+        this.prisma.translation.groupBy({
+          by: ['status'],
+          _count: true,
+        }),
+        this.prisma.translation.groupBy({
+          by: ['urgentLevel'],
+          _count: true,
+        }),
+        this.prisma.translation.count({
+          where: { status: TranslationStatus.PENDING },
+        }),
+        this.prisma.translation.count({
+          where: { createdById: user.id },
         }),
       ]);
 
-      // Lấy thống kê theo ngôn ngữ phổ biến
-      const languageStats = await this.prisma.translation.groupBy({
-        by: ['sourceLanguage', 'targetLanguage'],
-        _count: {
-          id: true
-        },
-        orderBy: {
-          _count: {
-            id: 'desc'
-          }
-        },
-        take: 10,
-      });
-
       return {
         totalTranslations,
+        byStatus: byStatus.map(item => ({
+          status: item.status,
+          count: item._count,
+        })),
+        byUrgentLevel: byUrgentLevel.map(item => ({
+          urgentLevel: item.urgentLevel,
+          count: item._count,
+        })),
         pendingTranslations,
-        approvedTranslations,
-        completedTranslations,
-        rejectedTranslations,
-        urgentTranslations,
-        veryUrgentTranslations,
-        recentTranslations,
-        languageStats,
+        myTranslations,
       };
     } catch (error) {
-      throw new BadRequestException('Lỗi khi lấy thống kê translation');
+      throw new BadRequestException(`Failed to fetch translation statistics: ${error.message}`);
+    }
+  }
+
+  /**
+   * Helper: Get all pending translations
+   */
+  async getPendingTranslations(): Promise<TranslationWithRelations[]> {
+    try {
+      const translations = await this.prisma.translation.findMany({
+        where: { status: TranslationStatus.PENDING },
+        include: this.translationInclude,
+        orderBy: { createdAt: 'asc' },
+      });
+
+      return translations as TranslationWithRelations[];
+    } catch (error) {
+      throw new BadRequestException(`Failed to fetch pending translations: ${error.message}`);
+    }
+  }
+
+  /**
+   * Helper: Approve translation (simplified)
+   */
+  async approveTranslation(id: string, approverId: string): Promise<TranslationWithRelations> {
+    const existingTranslation = await this.prisma.translation.findUnique({
+      where: { id },
+    });
+
+    if (!existingTranslation) {
+      throw new NotFoundException(`Translation with ID ${id} not found`);
+    }
+
+    if (existingTranslation.status !== TranslationStatus.PENDING) {
+      throw new BadRequestException('Can only approve pending translations');
+    }
+
+    try {
+      const translation = await this.prisma.translation.update({
+        where: { id },
+        data: {
+          status: TranslationStatus.APPROVED,
+          approvedBy: { connect: { id: approverId } },
+          approvedAt: new Date(),
+        },
+        include: this.translationInclude,
+      });
+
+      // Emit event
+      this.eventEmitter.emit('translation.approved', {
+        translationId: translation.id,
+        approverId,
+      });
+
+      return translation as TranslationWithRelations;
+    } catch (error) {
+      throw new BadRequestException(`Failed to approve translation: ${error.message}`);
+    }
+  }
+
+  /**
+   * Helper: Get translations by partner
+   */
+  async getTranslationsByPartner(partnerId: string): Promise<TranslationWithRelations[]> {
+    try {
+      const translations = await this.prisma.translation.findMany({
+        where: { partnerId },
+        include: this.translationInclude,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return translations as TranslationWithRelations[];
+    } catch (error) {
+      throw new BadRequestException(`Failed to fetch translations by partner: ${error.message}`);
+    }
+  }
+
+  /**
+   * Helper: Get translations by unit
+   */
+  async getTranslationsByUnit(unitId: string): Promise<TranslationWithRelations[]> {
+    try {
+      const translations = await this.prisma.translation.findMany({
+        where: { unitId },
+        include: this.translationInclude,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return translations as TranslationWithRelations[];
+    } catch (error) {
+      throw new BadRequestException(`Failed to fetch translations by unit: ${error.message}`);
+    }
+  }
+
+  /**
+   * Helper: Get urgent translations
+   */
+  async getUrgentTranslations(urgentLevel: string = 'URGENT'): Promise<TranslationWithRelations[]> {
+    try {
+      const translations = await this.prisma.translation.findMany({
+        where: {
+          urgentLevel: { in: [urgentLevel, 'VERY_URGENT'] },
+          status: { in: [TranslationStatus.PENDING, TranslationStatus.APPROVED] },
+        },
+        include: this.translationInclude,
+        orderBy: [
+          { urgentLevel: 'desc' },
+          { createdAt: 'asc' },
+        ],
+      });
+
+      return translations as TranslationWithRelations[];
+    } catch (error) {
+      throw new BadRequestException(`Failed to fetch urgent translations: ${error.message}`);
     }
   }
 }

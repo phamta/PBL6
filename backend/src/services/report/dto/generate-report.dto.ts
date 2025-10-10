@@ -1,7 +1,7 @@
-import { IsString, IsEnum, IsOptional, IsNotEmpty, Length, IsObject, IsDateString } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsNotEmpty, Length, IsObject, IsDateString, IsInt } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ReportType } from '@prisma/client';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class GenerateReportDto {
   @ApiProperty({
@@ -37,6 +37,36 @@ export class GenerateReportDto {
   @IsOptional()
   @IsObject({ message: 'Parameters phải là object' })
   parameters?: ReportParameters;
+
+  // ==================== NEW FIELDS ====================
+
+  @ApiProperty({
+    description: 'Năm báo cáo',
+    example: 2024,
+    required: false,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Year phải là số nguyên' })
+  year?: number;
+
+  @ApiProperty({
+    description: 'Tên đơn vị (nếu báo cáo theo đơn vị)',
+    example: 'Phòng Hợp tác Quốc tế',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Unit name phải là chuỗi' })
+  unitName?: string;
+
+  @ApiProperty({
+    description: 'Tên đối tác (nếu báo cáo theo đối tác)',
+    example: 'University of Tokyo',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Partner name phải là chuỗi' })
+  partnerName?: string;
 }
 
 export interface ReportParameters {

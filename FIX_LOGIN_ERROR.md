@@ -3,6 +3,7 @@
 ## 🐛 Vấn đề gặp phải:
 
 Khi đăng nhập với tài khoản `admin@dut.udn.vn`, xuất hiện lỗi:
+
 ```
 TypeError: Cannot read properties of undefined (reading 'roles')
 ```
@@ -12,6 +13,7 @@ Và hệ thống redirect về `/dashboard` thay vì `/dashboard/admin`.
 ## 🔍 Root Cause:
 
 Backend API đang wrap response trong object cấu trúc:
+
 ```json
 {
   "success": true,
@@ -26,6 +28,7 @@ Backend API đang wrap response trong object cấu trúc:
 ```
 
 Nhưng frontend đang expect:
+
 ```json
 {
   "user": {...},
@@ -46,12 +49,16 @@ Thêm logic unwrap response.data nếu có structure `{success, data, ...}`:
 axiosClient.interceptors.response.use(
   (response) => {
     // Unwrap response nếu có structure {success, data, ...}
-    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-      console.log('🔄 Unwrapping response data');
+    if (
+      response.data &&
+      typeof response.data === "object" &&
+      "data" in response.data
+    ) {
+      console.log("🔄 Unwrapping response data");
       response.data = response.data.data;
     }
     return response;
-  },
+  }
   // ... error handling
 );
 ```
@@ -63,14 +70,20 @@ axiosClient.interceptors.response.use(
 Thêm null-safe checks và warnings:
 
 ```typescript
-export function hasRole(user: User | null, roleCode: RoleCode | string): boolean {
+export function hasRole(
+  user: User | null,
+  roleCode: RoleCode | string
+): boolean {
   if (!user || !user.roles || !Array.isArray(user.roles)) {
-    console.warn('⚠️ hasRole: User hoặc roles không hợp lệ:', user);
+    console.warn("⚠️ hasRole: User hoặc roles không hợp lệ:", user);
     return false;
   }
-  
-  return user.roles.some(ur => 
-    ur.role && ur.role.code && ur.role.code.toLowerCase() === roleCode.toLowerCase()
+
+  return user.roles.some(
+    (ur) =>
+      ur.role &&
+      ur.role.code &&
+      ur.role.code.toLowerCase() === roleCode.toLowerCase()
   );
 }
 ```
@@ -86,24 +99,24 @@ const login = async (email: string, password: string) => {
   try {
     setIsLoading(true);
     const response = await authService.login({ email, password });
-    
+
     // Debug logs
-    console.log('🔐 Login response:', JSON.stringify(response, null, 2));
-    console.log('👤 User object:', response.user);
-    console.log('📋 User roles:', response.user?.roles);
-    
+    console.log("🔐 Login response:", JSON.stringify(response, null, 2));
+    console.log("👤 User object:", response.user);
+    console.log("📋 User roles:", response.user?.roles);
+
     // Validation
     if (!response || !response.user) {
-      throw new Error('Invalid response from server');
+      throw new Error("Invalid response from server");
     }
-    
+
     setUser(response.user);
     const dashboardRoute = getDashboardRoute(response.user);
-    console.log('🚀 Redirecting to:', dashboardRoute);
-    
+    console.log("🚀 Redirecting to:", dashboardRoute);
+
     router.push(dashboardRoute);
   } catch (error: any) {
-    console.error('❌ Login error:', error);
+    console.error("❌ Login error:", error);
     setIsLoading(false);
     throw error;
   }
@@ -119,6 +132,7 @@ const login = async (email: string, password: string) => {
 ## 🧪 Testing Steps:
 
 ### 1. Clear Browser Cache & Storage
+
 ```
 F12 > Application > Local Storage > Clear All
 F12 > Application > Session Storage > Clear All
@@ -126,6 +140,7 @@ Hard refresh: Ctrl+Shift+R
 ```
 
 ### 2. Login Test
+
 ```
 URL: http://localhost:3002/login
 Email: admin@dut.udn.vn
@@ -133,6 +148,7 @@ Password: Admin@123
 ```
 
 ### 3. Expected Console Output:
+
 ```
 🔄 Unwrapping response data
 🔐 Login response: {...}
@@ -145,6 +161,7 @@ Password: Admin@123
 ```
 
 ### 4. Expected Result:
+
 - ✅ No errors in console
 - ✅ User logged in successfully
 - ✅ Redirected to `/dashboard/admin`
@@ -152,13 +169,13 @@ Password: Admin@123
 
 ## 🎯 Verified Accounts:
 
-| Email | Password | Role | Expected Route |
-|-------|----------|------|----------------|
-| admin@dut.udn.vn | Admin@123 | system_admin | /dashboard/admin |
+| Email              | Password    | Role               | Expected Route   |
+| ------------------ | ----------- | ------------------ | ---------------- |
+| admin@dut.udn.vn   | Admin@123   | system_admin       | /dashboard/admin |
 | officer@dut.udn.vn | Officer@123 | department_officer | /dashboard/staff |
-| leader@dut.udn.vn | Leader@123 | leadership | /dashboard/staff |
-| staff@dut.udn.vn | Staff@123 | faculty_staff | /dashboard/staff |
-| student@dut.udn.vn | Student@123 | student | /dashboard |
+| leader@dut.udn.vn  | Leader@123  | leadership         | /dashboard/staff |
+| staff@dut.udn.vn   | Staff@123   | faculty_staff      | /dashboard/staff |
+| student@dut.udn.vn | Student@123 | student            | /dashboard       |
 
 ## 🔧 Backend Response Structure Verified:
 

@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+﻿import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { CreateVisaDto, UpdateVisaDto, ExtendVisaDto, ApproveVisaDto, FilterVisaDto, ApprovalAction } from './dto';
-import { Visa, VisaExtension, VisaStatus, Prisma } from '@prisma/client';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Prisma, Visa, VisaStatus, VisaExtension } from '@prisma/client';
+import { CreateVisaDto, UpdateVisaDto, FilterVisaDto, ExtendVisaDto, ApproveVisaDto, ApprovalAction } from './dto';
 
 export interface VisaUser {
   id: string;
@@ -15,13 +15,31 @@ export interface VisaWithRelations extends Visa {
     id: string;
     fullName: string;
     email: string;
+    unitId?: string | null;
   };
   approvedBy?: {
     id: string;
     fullName: string;
     email: string;
   } | null;
+  partner?: {
+    id: string;
+    name: string;
+    country?: string | null;
+    contactEmail?: string | null;
+  } | null;
+  unit?: {
+    id: string;
+    name: string;
+    code?: string | null;
+  } | null;
   extensions: VisaExtension[];
+  foreignStudents: Array<{
+    id: string;
+    fullName: string;
+    nationality: string;
+    status?: string | null;
+  }>;
 }
 
 export interface VisaListResult {
@@ -32,23 +50,14 @@ export interface VisaListResult {
   totalPages: number;
 }
 
-export interface VisaExtensionWithVisa extends VisaExtension {
-  visa: VisaWithRelations;
+export interface VisaStats {
+  totalVisas: number;
+  byStatus: Record<string, number>;
+  expiringVisas: number;
+  myVisas: number;
+  recentExtensions: number;
 }
 
-/**
- * Visa Service - Quản lý visa và visa extensions
- * 
- * Action permissions:
- * - VISA_CREATE: Tạo visa application mới
- * - VISA_READ: Xem visa information  
- * - VISA_UPDATE: Cập nhật visa information  
- * - VISA_DELETE: Xóa/hủy visa
- * - VISA_EXTEND: Tạo visa extension request
- * - VISA_APPROVE: Approve visa extension
- * - VISA_REJECT: Reject visa extension
- * 
- */
 @Injectable()
 export class VisaService {
   constructor(
@@ -56,13 +65,35 @@ export class VisaService {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  private readonly visaInclude: Prisma.VisaInclude = {
+    createdBy: {
+      select: { id: true, fullName: true, email: true, unitId: true },
+    },
+    approvedBy: {
+      select: { id: true, fullName: true, email: true },
+    },
+    partner: {
+      select: { id: true, name: true, country: true, contactEmail: true },
+    },
+    unit: {
+      select: { id: true, name: true, code: true },
+    },
+    extensions: {
+      orderBy: { createdAt: 'desc' },
+    },
+    foreignStudents: {
+      select: { id: true, fullName: true, nationality: true, status: true },
+    },
+  };
+
   /**
-   * UC001: Create new visa record
+   * Create new visa record with all new fields
+   * Supports: dateOfBirth, visaType, entryDate, program, department,
+   * supervisorName, email, phone, partnerId, unitId, etc.
    */
   async create(createVisaDto: CreateVisaDto, user: VisaUser): Promise<VisaWithRelations> {
-    // Kiểm tra quyền tạo visa
     if (!user.actions.includes('VISA_CREATE')) {
-      throw new ForbiddenException('Không có quyền tạo visa application');
+      throw new ForbiddenException('You do not have permission to create visa applications');
     }
 
     // Check if visa number already exists
@@ -71,7 +102,27 @@ export class VisaService {
     });
 
     if (existingVisa) {
-      throw new ConflictException(`Visa với số ${createVisaDto.visaNumber} đã tồn tại`);
+      throw new ConflictException(`Visa number ${createVisaDto.visaNumber} already exists`);
+    }
+
+    // Validate partner if provided
+    if (createVisaDto['partnerId']) {
+      const partner = await this.prisma.partner.findUnique({
+        where: { id: createVisaDto['partnerId'] },
+      });
+      if (!partner) {
+        throw new BadRequestException(`Partner with ID ${createVisaDto['partnerId']} not found`);
+      }
+    }
+
+    // Validate unit if provided
+    if (createVisaDto['unitId']) {
+      const unit = await this.prisma.unit.findUnique({
+        where: { id: createVisaDto['unitId'] },
+      });
+      if (!unit) {
+        throw new BadRequestException(`Unit with ID ${createVisaDto['unitId']} not found`);
+      }
     }
 
     // Validate dates
@@ -79,85 +130,109 @@ export class VisaService {
     const expirationDate = new Date(createVisaDto.expirationDate);
 
     if (expirationDate <= issueDate) {
-      throw new BadRequestException('Ngày hết hạn phải sau ngày cấp');
+      throw new BadRequestException('Expiration date must be after issue date');
     }
 
-    if (issueDate > new Date()) {
-      throw new BadRequestException('Ngày cấp không được trong tương lai');
+    // Prepare data for creation
+    const data: Prisma.VisaCreateInput = {
+      holderName: createVisaDto.holderName,
+      holderCountry: createVisaDto.holderCountry,
+      passportNumber: createVisaDto.passportNumber,
+      visaNumber: createVisaDto.visaNumber,
+      issueDate: issueDate,
+      expirationDate: expirationDate,
+      purpose: createVisaDto.purpose,
+      sponsorUnit: createVisaDto.sponsorUnit,
+      status: VisaStatus.ACTIVE,
+      attachments: createVisaDto.attachments || [],
+      createdBy: {
+        connect: { id: user.id },
+      },
+    };
+
+    // Add new optional fields if provided
+    if (createVisaDto['dateOfBirth']) {
+      data.dateOfBirth = new Date(createVisaDto['dateOfBirth']);
+    }
+    if (createVisaDto['visaType']) {
+      data.visaType = createVisaDto['visaType'];
+    }
+    if (createVisaDto['entryDate']) {
+      data.entryDate = new Date(createVisaDto['entryDate']);
+    }
+    if (createVisaDto['program']) {
+      data.program = createVisaDto['program'];
+    }
+    if (createVisaDto['department']) {
+      data.department = createVisaDto['department'];
+    }
+    if (createVisaDto['supervisorName']) {
+      data.supervisorName = createVisaDto['supervisorName'];
+    }
+    if (createVisaDto['email']) {
+      data.email = createVisaDto['email'];
+    }
+    if (createVisaDto['phone']) {
+      data.phone = createVisaDto['phone'];
+    }
+    if (createVisaDto['na5Request'] !== undefined) {
+      data.na5Request = createVisaDto['na5Request'];
     }
 
-    try {
-      const visa = await this.prisma.visa.create({
-        data: {
-          holderName: createVisaDto.holderName,
-          holderCountry: createVisaDto.holderCountry,
-          passportNumber: createVisaDto.passportNumber,
-          visaNumber: createVisaDto.visaNumber,
-          issueDate: issueDate,
-          expirationDate: expirationDate,
-          purpose: createVisaDto.purpose,
-          sponsorUnit: createVisaDto.sponsorUnit,
-          status: VisaStatus.ACTIVE,
-          attachments: createVisaDto.attachments || [],
-          createdById: createVisaDto.createdBy,
-          reminderSent: false,
-        },
-        include: {
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          extensions: true,
-        },
-      });
-
-      // Emit event for visa creation
-      this.eventEmitter.emit('visa.created', {
-        visaId: visa.id,
-        holderName: visa.holderName,
-        visaNumber: visa.visaNumber,
-        createdById: visa.createdById,
-        expirationDate: visa.expirationDate,
-      });
-
-      return visa;
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException('Số visa phải là duy nhất');
-        }
-      }
-      throw error;
+    // Connect relations
+    if (createVisaDto['partnerId']) {
+      data.partner = { connect: { id: createVisaDto['partnerId'] } };
     }
+    if (createVisaDto['unitId']) {
+      data.unit = { connect: { id: createVisaDto['unitId'] } };
+    }
+
+    const visa = await this.prisma.visa.create({
+      data,
+      include: this.visaInclude,
+    });
+
+    // Emit event
+    this.eventEmitter.emit('visa.created', {
+      visa,
+      user,
+      timestamp: new Date(),
+    });
+
+    return visa;
   }
 
   /**
-   * UC002: Get all visas with filtering and pagination
+   * Get all visas with filtering and pagination
+   * Supports filters: partnerId, unitId, status, search (holderName/passportNumber)
    */
   async findAll(filterDto: FilterVisaDto, user: VisaUser): Promise<VisaListResult> {
     const page = parseInt(filterDto.page || '1', 10);
-    const limit = parseInt(filterDto.limit || '10', 10);
+    const limit = Math.min(parseInt(filterDto.limit || '10', 10), 100);
     const skip = (page - 1) * limit;
 
-    // Build where clause
     const where: Prisma.VisaWhereInput = {};
 
     // Permission-based filtering
-    if (user.actions.includes('VISA_READ_ALL')) {
-      // Có thể xem tất cả visas
-    } else if (user.actions.includes('VISA_READ')) {
-      // Chỉ xem visas do mình tạo
+    if (!user.actions.includes('VISA_READ_ALL')) {
       where.createdById = user.id;
-    } else {
-      throw new ForbiddenException('Không có quyền xem danh sách visa');
     }
 
-    // Search by holder name or visa number
+    // Filter by partner
+    if (filterDto['partnerId']) {
+      where.partnerId = filterDto['partnerId'];
+    }
+
+    // Filter by unit
+    if (filterDto['unitId']) {
+      where.unitId = filterDto['unitId'];
+    }
+
+    // Search by holder name or passport number
     if (filterDto.search) {
       where.OR = [
         { holderName: { contains: filterDto.search, mode: 'insensitive' } },
+        { passportNumber: { contains: filterDto.search, mode: 'insensitive' } },
         { visaNumber: { contains: filterDto.search, mode: 'insensitive' } },
       ];
     }
@@ -204,93 +279,72 @@ export class VisaService {
       }
     }
 
-    // Filter visas expiring within specified days
+    // Filter visas expiring soon
     if (filterDto.expiringWithinDays) {
       const days = parseInt(filterDto.expiringWithinDays, 10);
+      const today = new Date();
       const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + days);
-      
+      futureDate.setDate(today.getDate() + days);
+
       where.expirationDate = {
-        gte: new Date(),
+        gte: today,
         lte: futureDate,
       };
+      where.status = VisaStatus.ACTIVE;
     }
 
-    // Filter by created by
+    // Filter by creator
     if (filterDto.createdBy) {
       where.createdById = filterDto.createdBy;
     }
 
-    // Filter by approved by
+    // Filter by approver
     if (filterDto.approvedBy) {
       where.approvedById = filterDto.approvedBy;
     }
 
-    const orderBy: Prisma.VisaOrderByWithRelationInput = {};
-    const sortField = filterDto.sortBy || 'createdAt';
+    // Sorting
+    const sortBy = filterDto.sortBy || 'createdAt';
     const sortOrder = filterDto.sortOrder || 'desc';
-    orderBy[sortField as keyof Prisma.VisaOrderByWithRelationInput] = sortOrder;
 
-    try {
-      const [visas, total] = await Promise.all([
-        this.prisma.visa.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy,
-          include: {
-            createdBy: {
-              select: { id: true, fullName: true, email: true },
-            },
-            approvedBy: {
-              select: { id: true, fullName: true, email: true },
-            },
-            extensions: true,
-          },
-        }),
-        this.prisma.visa.count({ where }),
-      ]);
+    // Execute query
+    const [visas, total] = await Promise.all([
+      this.prisma.visa.findMany({
+        where,
+        include: this.visaInclude,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      this.prisma.visa.count({ where }),
+    ]);
 
-      return {
-        visas,
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      };
-    } catch (error) {
-      throw new BadRequestException('Lỗi khi truy vấn danh sách visa');
-    }
+    return {
+      visas,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   /**
-   * UC003: Find visa by ID
+   * Find visa by ID with all relations
    */
   async findOne(id: string, user: VisaUser): Promise<VisaWithRelations> {
     const visa = await this.prisma.visa.findUnique({
       where: { id },
-      include: {
-        createdBy: {
-          select: { id: true, fullName: true, email: true },
-        },
-        approvedBy: {
-          select: { id: true, fullName: true, email: true },
-        },
-        extensions: {
-          orderBy: { createdAt: 'desc' },
-        },
-      },
+      include: this.visaInclude,
     });
 
     if (!visa) {
-      throw new NotFoundException('Không tìm thấy visa');
+      throw new NotFoundException(`Visa with ID ${id} not found`);
     }
 
-    // Permission-based access control
+    // Check permission
     if (!user.actions.includes('VISA_READ_ALL')) {
-      // Nếu không có quyền view all, chỉ xem được visa của mình
-      if (!user.actions.includes('VISA_READ') || visa.createdById !== user.id) {
-        throw new ForbiddenException('Không có quyền truy cập visa này');
+      if (visa.createdById !== user.id) {
+        throw new ForbiddenException('You do not have permission to view this visa');
       }
     }
 
@@ -298,115 +352,177 @@ export class VisaService {
   }
 
   /**
-   * UC004: Update visa information
+   * Update visa information with support for all new fields
    */
   async update(id: string, updateVisaDto: UpdateVisaDto, user: VisaUser): Promise<VisaWithRelations> {
-    // Kiểm tra quyền update
     if (!user.actions.includes('VISA_UPDATE')) {
-      throw new ForbiddenException('Không có quyền cập nhật visa');
+      throw new ForbiddenException('You do not have permission to update visas');
     }
 
-    const visa = await this.findOne(id, user);
+    const existingVisa = await this.findOne(id, user);
 
-    // Chỉ creator có thể update
-    if (visa.createdById !== user.id) {
-      throw new ForbiddenException('Chỉ có thể cập nhật visa do bạn tạo');
+    // Only creator or admin can update
+    if (!user.actions.includes('VISA_UPDATE_ALL') && existingVisa.createdById !== user.id) {
+      throw new ForbiddenException('You can only update your own visa applications');
     }
 
-    // Validate dates if provided
-    if (updateVisaDto.issueDate || updateVisaDto.expirationDate) {
-      const issueDate = updateVisaDto.issueDate ? new Date(updateVisaDto.issueDate) : visa.issueDate;
-      const expirationDate = updateVisaDto.expirationDate ? new Date(updateVisaDto.expirationDate) : visa.expirationDate;
-
-      if (expirationDate <= issueDate) {
-        throw new BadRequestException('Ngày hết hạn phải sau ngày cấp');
+    // Check visa number uniqueness if changing
+    if (updateVisaDto.visaNumber && updateVisaDto.visaNumber !== existingVisa.visaNumber) {
+      const duplicate = await this.prisma.visa.findUnique({
+        where: { visaNumber: updateVisaDto.visaNumber },
+      });
+      if (duplicate) {
+        throw new ConflictException(`Visa number ${updateVisaDto.visaNumber} already exists`);
       }
     }
 
-    try {
-      const updatedVisa = await this.prisma.visa.update({
-        where: { id },
-        data: updateVisaDto,
-        include: {
-          createdBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          approvedBy: {
-            select: { id: true, fullName: true, email: true },
-          },
-          extensions: true,
-        },
-      });
-
-      this.eventEmitter.emit('visa.updated', {
-        visaId: id,
-        updatedBy: user.id,
-        changes: updateVisaDto,
-      });
-
-      return updatedVisa;
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException('Số visa đã tồn tại');
+    // Validate partner if provided
+    if (updateVisaDto['partnerId'] !== undefined) {
+      if (updateVisaDto['partnerId']) {
+        const partner = await this.prisma.partner.findUnique({
+          where: { id: updateVisaDto['partnerId'] },
+        });
+        if (!partner) {
+          throw new BadRequestException(`Partner with ID ${updateVisaDto['partnerId']} not found`);
         }
       }
-      throw error;
     }
+
+    // Validate unit if provided
+    if (updateVisaDto['unitId'] !== undefined) {
+      if (updateVisaDto['unitId']) {
+        const unit = await this.prisma.unit.findUnique({
+          where: { id: updateVisaDto['unitId'] },
+        });
+        if (!unit) {
+          throw new BadRequestException(`Unit with ID ${updateVisaDto['unitId']} not found`);
+        }
+      }
+    }
+
+    // Prepare update data
+    const data: Prisma.VisaUpdateInput = {};
+
+    // Update basic fields
+    if (updateVisaDto.holderName !== undefined) data.holderName = updateVisaDto.holderName;
+    if (updateVisaDto.holderCountry !== undefined) data.holderCountry = updateVisaDto.holderCountry;
+    if (updateVisaDto.passportNumber !== undefined) data.passportNumber = updateVisaDto.passportNumber;
+    if (updateVisaDto.visaNumber !== undefined) data.visaNumber = updateVisaDto.visaNumber;
+    if (updateVisaDto.purpose !== undefined) data.purpose = updateVisaDto.purpose;
+    if (updateVisaDto.sponsorUnit !== undefined) data.sponsorUnit = updateVisaDto.sponsorUnit;
+    if (updateVisaDto.status !== undefined) data.status = updateVisaDto.status;
+    if (updateVisaDto.attachments !== undefined) data.attachments = updateVisaDto.attachments;
+
+    // Update date fields
+    if (updateVisaDto.issueDate !== undefined) {
+      data.issueDate = new Date(updateVisaDto.issueDate);
+    }
+    if (updateVisaDto.expirationDate !== undefined) {
+      data.expirationDate = new Date(updateVisaDto.expirationDate);
+    }
+
+    // Update new optional fields
+    if (updateVisaDto['dateOfBirth'] !== undefined) {
+      data.dateOfBirth = updateVisaDto['dateOfBirth'] ? new Date(updateVisaDto['dateOfBirth']) : null;
+    }
+    if (updateVisaDto['visaType'] !== undefined) {
+      data.visaType = updateVisaDto['visaType'];
+    }
+    if (updateVisaDto['entryDate'] !== undefined) {
+      data.entryDate = updateVisaDto['entryDate'] ? new Date(updateVisaDto['entryDate']) : null;
+    }
+    if (updateVisaDto['program'] !== undefined) {
+      data.program = updateVisaDto['program'];
+    }
+    if (updateVisaDto['department'] !== undefined) {
+      data.department = updateVisaDto['department'];
+    }
+    if (updateVisaDto['supervisorName'] !== undefined) {
+      data.supervisorName = updateVisaDto['supervisorName'];
+    }
+    if (updateVisaDto['email'] !== undefined) {
+      data.email = updateVisaDto['email'];
+    }
+    if (updateVisaDto['phone'] !== undefined) {
+      data.phone = updateVisaDto['phone'];
+    }
+    if (updateVisaDto['extensionRequestDate'] !== undefined) {
+      data.extensionRequestDate = updateVisaDto['extensionRequestDate'] ? new Date(updateVisaDto['extensionRequestDate']) : null;
+    }
+    if (updateVisaDto['extensionReason'] !== undefined) {
+      data.extensionReason = updateVisaDto['extensionReason'];
+    }
+    if (updateVisaDto['na5Request'] !== undefined) {
+      data.na5Request = updateVisaDto['na5Request'];
+    }
+
+    // Update relations
+    if (updateVisaDto['partnerId'] !== undefined) {
+      if (updateVisaDto['partnerId']) {
+        data.partner = { connect: { id: updateVisaDto['partnerId'] } };
+      } else {
+        data.partner = { disconnect: true };
+      }
+    }
+    if (updateVisaDto['unitId'] !== undefined) {
+      if (updateVisaDto['unitId']) {
+        data.unit = { connect: { id: updateVisaDto['unitId'] } };
+      } else {
+        data.unit = { disconnect: true };
+      }
+    }
+
+    const visa = await this.prisma.visa.update({
+      where: { id },
+      data,
+      include: this.visaInclude,
+    });
+
+    // Emit event
+    this.eventEmitter.emit('visa.updated', {
+      visa,
+      user,
+      timestamp: new Date(),
+    });
+
+    return visa;
   }
 
   /**
-   * UC005: Delete/Cancel visa
+   * Delete/Cancel visa
    */
   async remove(id: string, user: VisaUser): Promise<void> {
-    // Kiểm tra quyền delete
     if (!user.actions.includes('VISA_DELETE')) {
-      throw new ForbiddenException('Không có quyền xóa visa');
+      throw new ForbiddenException('You do not have permission to delete visas');
     }
 
     const visa = await this.findOne(id, user);
 
-    // Chỉ creator có thể delete
-    if (visa.createdById !== user.id) {
-      throw new ForbiddenException('Chỉ có thể xóa visa do bạn tạo');
+    // Only creator or admin can delete
+    if (!user.actions.includes('VISA_DELETE_ALL') && visa.createdById !== user.id) {
+      throw new ForbiddenException('You can only delete your own visa applications');
     }
 
-    // Không thể xóa visa đã có extensions được approve
-    const approvedExtensions = await this.prisma.visaExtension.count({
-      where: {
-        visaId: id,
-        status: 'APPROVED',
-      },
+    // Soft delete by setting status to CANCELLED
+    await this.prisma.visa.update({
+      where: { id },
+      data: { status: VisaStatus.CANCELLED },
     });
 
-    if (approvedExtensions > 0) {
-      throw new BadRequestException('Không thể xóa visa đã có extension được phê duyệt');
-    }
-
-    try {
-      // Soft delete by updating status
-      await this.prisma.visa.update({
-        where: { id },
-        data: { status: VisaStatus.CANCELLED },
-      });
-
-      this.eventEmitter.emit('visa.cancelled', {
-        visaId: id,
-        cancelledBy: user.id,
-        holderName: visa.holderName,
-      });
-    } catch (error) {
-      throw new BadRequestException('Lỗi khi xóa visa');
-    }
+    // Emit event
+    this.eventEmitter.emit('visa.deleted', {
+      visaId: id,
+      user,
+      timestamp: new Date(),
+    });
   }
 
   /**
-   * UC006: Create visa extension request
+   * Create visa extension request
    */
   async createExtension(id: string, extendVisaDto: ExtendVisaDto, user: VisaUser): Promise<VisaExtension> {
-    // Kiểm tra quyền extend
     if (!user.actions.includes('VISA_EXTEND')) {
-      throw new ForbiddenException('Không có quyền tạo visa extension');
+      throw new ForbiddenException('You do not have permission to create visa extensions');
     }
 
     const visa = await this.findOne(id, user);
@@ -414,318 +530,273 @@ export class VisaService {
     // Validate new expiration date
     const newExpirationDate = new Date(extendVisaDto.newExpirationDate);
     if (newExpirationDate <= visa.expirationDate) {
-      throw new BadRequestException('Ngày hết hạn mới phải sau ngày hết hạn hiện tại');
+      throw new BadRequestException('New expiration date must be after current expiration date');
     }
 
-    // Check if there's already a pending extension
-    const pendingExtension = await this.prisma.visaExtension.findFirst({
-      where: {
+    const extension = await this.prisma.visaExtension.create({
+      data: {
         visaId: id,
+        newExpirationDate,
+        reason: extendVisaDto.reason,
         status: 'PENDING',
       },
     });
 
-    if (pendingExtension) {
-      throw new ConflictException('Đã có extension đang chờ phê duyệt');
-    }
+    // Update visa with extension request info
+    await this.prisma.visa.update({
+      where: { id },
+      data: {
+        extensionRequestDate: new Date(),
+        extensionReason: extendVisaDto.reason,
+      },
+    });
 
-    try {
-      const extension = await this.prisma.visaExtension.create({
-        data: {
-          visaId: id,
-          newExpirationDate: newExpirationDate,
-          reason: extendVisaDto.reason,
-          status: 'PENDING',
-        },
-      });
+    // Emit event
+    this.eventEmitter.emit('visa.extension.created', {
+      extension,
+      visa,
+      user,
+      timestamp: new Date(),
+    });
 
-      this.eventEmitter.emit('visa.extension.created', {
-        extensionId: extension.id,
-        visaId: id,
-        requestedBy: user.id,
-        holderName: visa.holderName,
-        newExpirationDate: newExpirationDate,
-      });
-
-      return extension;
-    } catch (error) {
-      throw new BadRequestException('Lỗi khi tạo extension request');
-    }
+    return extension;
   }
 
   /**
-   * UC007: Approve visa extension
+   * Approve or reject visa extension
    */
   async approveExtension(extensionId: string, approveDto: ApproveVisaDto, user: VisaUser): Promise<VisaExtension> {
-    // Kiểm tra quyền approve
     if (!user.actions.includes('VISA_APPROVE')) {
-      throw new ForbiddenException('Không có quyền phê duyệt visa extension');
+      throw new ForbiddenException('You do not have permission to approve visa extensions');
     }
 
     const extension = await this.prisma.visaExtension.findUnique({
       where: { id: extensionId },
-      include: {
-        visa: {
-          include: {
-            createdBy: {
-              select: { id: true, fullName: true, email: true },
-            },
-          },
-        },
-      },
+      include: { visa: true },
     });
 
     if (!extension) {
-      throw new NotFoundException('Không tìm thấy extension request');
+      throw new NotFoundException(`Visa extension with ID ${extensionId} not found`);
     }
 
     if (extension.status !== 'PENDING') {
-      throw new BadRequestException('Chỉ có thể phê duyệt extension đang PENDING');
+      throw new BadRequestException('This extension has already been processed');
     }
 
-    try {
-      // Update extension status
-      const updatedExtension = await this.prisma.visaExtension.update({
-        where: { id: extensionId },
+    const isApproved = approveDto.action === ApprovalAction.APPROVE;
+    const newStatus = isApproved ? 'APPROVED' : 'REJECTED';
+
+    // Update extension
+    const updatedExtension = await this.prisma.visaExtension.update({
+      where: { id: extensionId },
+      data: { status: newStatus },
+    });
+
+    // If approved, update visa expiration date and status
+    if (isApproved) {
+      await this.prisma.visa.update({
+        where: { id: extension.visaId },
         data: {
-          status: approveDto.action === ApprovalAction.APPROVE ? 'APPROVED' : 'REJECTED',
+          expirationDate: extension.newExpirationDate,
+          status: VisaStatus.EXTENDED,
+          approvedBy: { connect: { id: user.id } },
+          approvedAt: new Date(),
         },
       });
-
-      // If approved, update visa expiration date
-      if (approveDto.action === ApprovalAction.APPROVE) {
-        await this.prisma.visa.update({
-          where: { id: extension.visaId },
-          data: {
-            expirationDate: extension.newExpirationDate,
-            reminderSent: false, // Reset reminder flag
-          },
-        });
-
-        this.eventEmitter.emit('visa.extension.approved', {
-          extensionId: extensionId,
-          visaId: extension.visaId,
-          approvedBy: user.id,
-          holderName: extension.visa.holderName,
-          newExpirationDate: extension.newExpirationDate,
-        });
-      } else {
-        this.eventEmitter.emit('visa.extension.rejected', {
-          extensionId: extensionId,
-          visaId: extension.visaId,
-          rejectedBy: user.id,
-          holderName: extension.visa.holderName,
-          reason: approveDto.comments,
-        });
-      }
-
-      return updatedExtension;
-    } catch (error) {
-      throw new BadRequestException('Lỗi khi xử lý extension request');
     }
+
+    // Emit event
+    this.eventEmitter.emit(isApproved ? 'visa.extension.approved' : 'visa.extension.rejected', {
+      extension: updatedExtension,
+      visa: extension.visa,
+      user,
+      approveDto,
+      timestamp: new Date(),
+    });
+
+    return updatedExtension;
   }
 
   /**
-   * UC008: Get visa extensions
+   * Get visa extensions by visa ID
    */
   async getExtensions(visaId: string, user: VisaUser): Promise<VisaExtension[]> {
-    // Kiểm tra quyền xem extensions
-    const visa = await this.findOne(visaId, user);
+    await this.findOne(visaId, user); // Check permission
 
-    return await this.prisma.visaExtension.findMany({
+    return this.prisma.visaExtension.findMany({
       where: { visaId },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   /**
-   * UC009: Get visa statistics
+   * Get visa statistics
    */
-  async getStats(user: VisaUser): Promise<any> {
+  async getStats(user: VisaUser): Promise<VisaStats> {
     const where: Prisma.VisaWhereInput = {};
 
-    // Permission-based filtering for stats
-    if (user.actions.includes('VISA_READ_ALL')) {
-      // Có thể xem stats của tất cả visas
-    } else if (user.actions.includes('VISA_READ')) {
-      // Chỉ xem stats của visas của mình
+    // Permission-based filtering
+    if (!user.actions.includes('VISA_READ_ALL')) {
       where.createdById = user.id;
-    } else {
-      throw new ForbiddenException('Không có quyền xem thống kê visa');
     }
 
-    const [
-      totalCount,
-      activeCount,
-      expiredCount,
-      cancelledCount,
-      expiringSoonCount,
-      pendingExtensionsCount,
-    ] = await Promise.all([
-      this.prisma.visa.count({ where }),
-      this.prisma.visa.count({ where: { ...where, status: VisaStatus.ACTIVE } }),
-      this.prisma.visa.count({ where: { ...where, status: VisaStatus.EXPIRED } }),
-      this.prisma.visa.count({ where: { ...where, status: VisaStatus.CANCELLED } }),
-      this.prisma.visa.count({
-        where: {
-          ...where,
-          status: VisaStatus.ACTIVE,
-          expirationDate: {
-            lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-            gte: new Date(),
-          },
-        },
-      }),
-      this.prisma.visaExtension.count({
-        where: {
-          status: 'PENDING',
-          visa: where.createdById ? { createdById: where.createdById } : {},
-        },
-      }),
-    ]);
+    // Total visas
+    const totalVisas = await this.prisma.visa.count({ where });
 
-    return {
-      total: totalCount,
-      byStatus: {
-        active: activeCount,
-        expired: expiredCount,
-        cancelled: cancelledCount,
-      },
-      alerts: {
-        expiringSoon: expiringSoonCount,
-        pendingExtensions: pendingExtensionsCount,
-      },
-    };
-  }
+    // By status
+    const byStatusData = await this.prisma.visa.groupBy({
+      by: ['status'],
+      where,
+      _count: true,
+    });
+    const byStatus = byStatusData.reduce((acc, item) => {
+      acc[item.status] = item._count;
+      return acc;
+    }, {} as Record<string, number>);
 
-  /**
-   * UC010: Send expiration reminders (cron job)
-   */
-  async sendExpirationReminders(): Promise<void> {
-    // Chỉ system hoặc user có quyền remind mới được gọi
+    // Expiring visas (within 30 days)
+    const today = new Date();
     const futureDate = new Date();
-    futureDate.setDate(futureDate.getDate() + 30); // 30 days from now
+    futureDate.setDate(today.getDate() + 30);
 
-    const expiringVisas = await this.prisma.visa.findMany({
+    const expiringVisas = await this.prisma.visa.count({
       where: {
+        ...where,
         status: VisaStatus.ACTIVE,
         expirationDate: {
+          gte: today,
           lte: futureDate,
-          gte: new Date(),
-        },
-        reminderSent: false,
-      },
-      include: {
-        createdBy: {
-          select: { id: true, fullName: true, email: true },
         },
       },
     });
 
+    // My visas
+    const myVisas = await this.prisma.visa.count({
+      where: { createdById: user.id },
+    });
+
+    // Recent extensions (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+
+    const recentExtensions = await this.prisma.visaExtension.count({
+      where: {
+        createdAt: { gte: sevenDaysAgo },
+        status: 'APPROVED',
+      },
+    });
+
+    return {
+      totalVisas,
+      byStatus,
+      expiringVisas,
+      myVisas,
+      recentExtensions,
+    };
+  }
+
+  /**
+   * Get visas expiring within specified days
+   * Used for automatic reminders
+   */
+  async getExpiringVisas(daysBeforeExpiration: number = 30): Promise<VisaWithRelations[]> {
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(today.getDate() + daysBeforeExpiration);
+
+    return this.prisma.visa.findMany({
+      where: {
+        status: VisaStatus.ACTIVE,
+        expirationDate: {
+          gte: today,
+          lte: futureDate,
+        },
+        reminderSent: false,
+      },
+      include: this.visaInclude,
+    });
+  }
+
+  /**
+   * Check expiring visas and send reminders
+   * Called by cron job
+   */
+  async checkExpiringVisas(daysBeforeExpiration: number = 30): Promise<VisaWithRelations[]> {
+    const expiringVisas = await this.getExpiringVisas(daysBeforeExpiration);
+
     for (const visa of expiringVisas) {
+      // Emit event for notification service
       this.eventEmitter.emit('visa.expiring', {
-        visaId: visa.id,
-        holderName: visa.holderName,
-        visaNumber: visa.visaNumber,
-        expirationDate: visa.expirationDate,
-        daysLeft: Math.ceil((visa.expirationDate.getTime() - Date.now()) / (24 * 60 * 60 * 1000)),
-        createdBy: visa.createdBy,
+        visa,
+        daysUntilExpiration: Math.ceil(
+          (visa.expirationDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+        ),
+        timestamp: new Date(),
       });
 
       // Mark reminder as sent
       await this.prisma.visa.update({
         where: { id: visa.id },
-        data: { reminderSent: true },
+        data: {
+          reminderSent: true,
+          reminderSentDate: new Date(),
+        },
       });
     }
-  }
-
-  /**
-   * Reset reminder status (for testing)
-   */
-  async resetReminders(): Promise<number> {
-    const result = await this.prisma.visa.updateMany({
-      where: { reminderSent: true },
-      data: { reminderSent: false },
-    });
-
-    return result.count;
-  }
-
-  /**
-   * Check for visas expiring within specified days
-   * Used by VisaSchedulerService for automated reminders
-   */
-  async checkExpiringVisas(daysBeforeExpiration: number = 30) {
-    const currentDate = new Date();
-    const futureDate = new Date();
-    futureDate.setDate(currentDate.getDate() + daysBeforeExpiration);
-
-    const expiringVisas = await this.prisma.visa.findMany({
-      where: {
-        status: VisaStatus.ACTIVE,
-        expirationDate: {
-          gte: currentDate,
-          lte: futureDate,
-        },
-      },
-      select: {
-        id: true,
-        holderName: true,
-        visaNumber: true,
-        expirationDate: true,
-      },
-      orderBy: {
-        expirationDate: 'asc',
-      },
-    });
 
     return expiringVisas;
   }
 
   /**
    * Get visa statistics for reporting
-   * Used by VisaSchedulerService for monthly reports
+   * Used by scheduler for monthly reports
    */
   async getStatistics() {
-    // Count total visas
-    const total = await this.prisma.visa.count();
-
-    // Group by status
-    const statusCounts = await this.prisma.visa.groupBy({
-      by: ['status'],
-      _count: {
-        status: true,
-      },
-    });
-
-    // Transform to object with status as keys
-    const byStatus: Record<string, number> = {};
-    statusCounts.forEach(item => {
-      byStatus[item.status] = item._count.status;
-    });
-
-    // Get visas expiring soon (30 days)
-    const expiringVisas = await this.checkExpiringVisas(30);
-    const expiringSoon = expiringVisas.length;
-
-    // Count recent extensions (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const recentExtensions = await this.prisma.visaExtension.count({
-      where: {
-        createdAt: {
-          gte: sevenDaysAgo,
+    const [total, byStatus, expiringSoon, recentExtensions] = await Promise.all([
+      this.prisma.visa.count(),
+      this.prisma.visa.groupBy({
+        by: ['status'],
+        _count: true,
+      }),
+      this.prisma.visa.count({
+        where: {
+          status: VisaStatus.ACTIVE,
+          expirationDate: {
+            gte: new Date(),
+            lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          },
         },
-      },
-    });
+      }),
+      this.prisma.visaExtension.count({
+        where: {
+          createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+    ]);
 
     return {
       total,
-      byStatus,
+      byStatus: byStatus.reduce((acc, item) => {
+        acc[item.status] = item._count;
+        return acc;
+      }, {} as Record<string, number>),
       expiringSoon,
       recentExtensions,
     };
+  }
+
+  /**
+   * Reset reminders (for testing)
+   */
+  async resetReminders(): Promise<number> {
+    const result = await this.prisma.visa.updateMany({
+      where: { reminderSent: true },
+      data: {
+        reminderSent: false,
+        reminderSentDate: null,
+      },
+    });
+
+    return result.count;
   }
 }

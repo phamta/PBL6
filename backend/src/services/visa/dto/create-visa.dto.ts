@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, IsDateString, IsOptional, Length, Matches, IsArray } from 'class-validator';
+﻿import { IsNotEmpty, IsString, IsDateString, IsOptional, Length, Matches, IsArray, IsBoolean, IsEmail } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateVisaDto {
@@ -91,4 +91,111 @@ export class CreateVisaDto {
   @IsNotEmpty({ message: 'Created by user ID is required' })
   @IsString({ message: 'Created by must be a string' })
   createdBy: string;
+
+  // ==================== NEW FIELDS ====================
+
+  @ApiProperty({
+    description: 'Date of birth of visa holder',
+    example: '1990-05-15',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString({}, { message: 'Date of birth must be a valid date string' })
+  dateOfBirth?: string;
+
+  @ApiProperty({
+    description: 'Type of visa',
+    example: 'Work Visa',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Visa type must be a string' })
+  @Length(2, 50, { message: 'Visa type must be between 2 and 50 characters' })
+  visaType?: string;
+
+  @ApiProperty({
+    description: 'Entry date to Vietnam',
+    example: '2024-02-01',
+    required: false,
+  })
+  @IsOptional()
+  @IsDateString({}, { message: 'Entry date must be a valid date string' })
+  entryDate?: string;
+
+  @ApiProperty({
+    description: 'Program name (for students/researchers)',
+    example: 'Computer Science PhD Program',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Program must be a string' })
+  @Length(2, 200, { message: 'Program must be between 2 and 200 characters' })
+  program?: string;
+
+  @ApiProperty({
+    description: 'Department name',
+    example: 'Faculty of Information Technology',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Department must be a string' })
+  @Length(2, 100, { message: 'Department must be between 2 and 100 characters' })
+  department?: string;
+
+  @ApiProperty({
+    description: 'Supervisor name (for students/researchers)',
+    example: 'Prof. Nguyen Van A',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Supervisor name must be a string' })
+  @Length(2, 100, { message: 'Supervisor name must be between 2 and 100 characters' })
+  supervisorName?: string;
+
+  @ApiProperty({
+    description: 'Email address',
+    example: 'john.doe@example.com',
+    required: false,
+  })
+  @IsOptional()
+  @IsEmail({}, { message: 'Email must be valid' })
+  email?: string;
+
+  @ApiProperty({
+    description: 'Phone number',
+    example: '+84123456789',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Phone must be a string' })
+  @Length(8, 20, { message: 'Phone must be between 8 and 20 characters' })
+  phone?: string;
+
+  @ApiProperty({
+    description: 'Whether NA5 document request is needed',
+    example: false,
+    required: false,
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'NA5 request must be a boolean' })
+  na5Request?: boolean;
+
+  @ApiProperty({
+    description: 'Partner ID (if linking to existing partner)',
+    example: 'cuid-partner-123',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Partner ID must be a string' })
+  partnerId?: string;
+
+  @ApiProperty({
+    description: 'Unit ID (if linking to specific unit/department)',
+    example: 'cuid-unit-456',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Unit ID must be a string' })
+  unitId?: string;
 }
