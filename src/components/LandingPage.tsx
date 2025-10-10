@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
-import { 
-  FileText, 
-  Users, 
-  GraduationCap, 
-  Languages, 
-  Globe, 
+import {
+  FileText,
+  Users,
+  GraduationCap,
+  Languages,
+  Globe,
   Shield,
   CheckCircle,
   ArrowRight,
@@ -23,7 +23,7 @@ import {
   Briefcase,
   ChevronRight,
   Star,
-  Play
+  Play,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -35,11 +35,24 @@ import logoImage from "@/assets/logo_dut.png";
 import campusAerialImage from "@/assets/pic.jpg";
 import campus50YearsImage from "@/assets/logo2.jpg";
 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+
+import { Input } from "./ui/input";
+
 interface EnhancedLandingPageProps {
   onLoginClick: () => void;
 }
 
-export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) {
+export function EnhancedLandingPage({
+  onLoginClick,
+}: EnhancedLandingPageProps) {
   const [currentStat, setCurrentStat] = useState(0);
 
   // Animated counter for statistics
@@ -54,28 +67,32 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
     {
       icon: FileText,
       title: "Quản lý Văn bản MOU/MOA",
-      description: "Số hóa quy trình đề xuất, phê duyệt và quản lý các văn bản hợp tác quốc tế. Theo dõi tiến trình xử lý real-time với thông báo tự động.",
+      description:
+        "Số hóa quy trình đề xuất, phê duyệt và quản lý các văn bản hợp tác quốc tế. Theo dõi tiến trình xử lý real-time với thông báo tự động.",
       color: "blue",
       stats: "120+ văn bản/năm",
     },
     {
       icon: Users,
       title: "Quản lý Đoàn Khách Quốc tế",
-      description: "Đăng ký, lưu trữ thông tin chi tiết về đoàn khách. Tạo báo cáo tự động, xuất giấy mời và các tài liệu cần thiết chỉ trong vài phút.",
+      description:
+        "Đăng ký, lưu trữ thông tin chi tiết về đoàn khách. Tạo báo cáo tự động, xuất giấy mời và các tài liệu cần thiết chỉ trong vài phút.",
       color: "green",
       stats: "200+ đoàn khách/năm",
     },
     {
       icon: GraduationCap,
       title: "Quản lý Du học sinh & Visa",
-      description: "Theo dõi thông tin sinh viên, giảng viên quốc tế. Cảnh báo tự động visa sắp hết hạn. Hỗ trợ làm thủ tục gia hạn và cấp giấy NA5/NA6.",
+      description:
+        "Theo dõi thông tin sinh viên, giảng viên quốc tế. Cảnh báo tự động visa sắp hết hạn. Hỗ trợ làm thủ tục gia hạn và cấp giấy NA5/NA6.",
       color: "purple",
       stats: "300+ du học sinh",
     },
     {
       icon: Languages,
       title: "Xác nhận Dịch thuật",
-      description: "Quản lý yêu cầu xác nhận dịch thuật các văn bản hợp tác. Lưu trữ có hệ thống theo năm, đối tác và đơn vị. Xuất giấy xác nhận nhanh chóng.",
+      description:
+        "Quản lý yêu cầu xác nhận dịch thuật các văn bản hợp tác. Lưu trữ có hệ thống theo năm, đối tác và đơn vị. Xuất giấy xác nhận nhanh chóng.",
       color: "orange",
       stats: "500+ tài liệu/năm",
     },
@@ -85,32 +102,97 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
     {
       icon: Zap,
       title: "Tăng hiệu suất 300%",
-      description: "Tự động hóa quy trình giúp tiết kiệm thời gian xử lý văn bản từ 3-5 ngày xuống còn 1 ngày",
+      description:
+        "Tự động hóa quy trình giúp tiết kiệm thời gian xử lý văn bản từ 3-5 ngày xuống còn 1 ngày",
     },
     {
       icon: Shield,
       title: "Bảo mật tuyệt đối",
-      description: "Mã hóa dữ liệu 256-bit, phân quyền chặt chẽ, log hoạt động chi tiết đảm bảo an toàn thông tin",
+      description:
+        "Mã hóa dữ liệu 256-bit, phân quyền chặt chẽ, log hoạt động chi tiết đảm bảo an toàn thông tin",
     },
     {
       icon: BarChart3,
       title: "Báo cáo trực quan",
-      description: "Dashboard thống kê realtime, biểu đồ phân tích đa chiều, xuất báo cáo tự động theo yêu cầu",
+      description:
+        "Dashboard thống kê realtime, biểu đồ phân tích đa chiều, xuất báo cáo tự động theo yêu cầu",
     },
     {
       icon: Clock,
       title: "Tiết kiệm thời gian",
-      description: "Giảm 70% thời gian làm việc giấy tờ, tìm kiếm thông tin nhanh chóng với công cụ search mạnh mẽ",
+      description:
+        "Giảm 70% thời gian làm việc giấy tờ, tìm kiếm thông tin nhanh chóng với công cụ search mạnh mẽ",
     },
     {
       icon: Target,
       title: "Quản lý tập trung",
-      description: "Tất cả thông tin hợp tác quốc tế ở một nơi, dễ dàng truy cập mọi lúc mọi nơi",
+      description:
+        "Tất cả thông tin hợp tác quốc tế ở một nơi, dễ dàng truy cập mọi lúc mọi nơi",
     },
     {
       icon: TrendingUp,
       title: "Nâng cao chuyên nghiệp",
-      description: "Tạo ấn tượng tốt với đối tác quốc tế nhờ quy trình làm việc hiện đại, chuyên nghiệp",
+      description:
+        "Tạo ấn tượng tốt với đối tác quốc tế nhờ quy trình làm việc hiện đại, chuyên nghiệp",
+    },
+  ];
+
+  const documents = [
+    {
+      title: "International Partnership Agreement",
+      partner: "University of Barcelona",
+      department: "International Relations",
+      signedDate: "2025-09-28",
+      type: "Agreement",
+    },
+    {
+      title: "Student Exchange MOU",
+      partner: "Technical University Munich",
+      department: "Engineering",
+      signedDate: "2025-09-25",
+      type: "MOU",
+    },
+    {
+      title: "Research Collaboration Contract",
+      partner: "ETH Zurich",
+      department: "Research Office",
+      signedDate: "2025-09-22",
+      type: "Contract",
+    },
+    {
+      title: "Joint Degree Program Agreement",
+      partner: "Sorbonne University",
+      department: "Academic Affairs",
+      signedDate: "2025-09-20",
+      type: "Agreement",
+    },
+    {
+      title: "Faculty Exchange MOU",
+      partner: "National University Singapore",
+      department: "Faculty Affairs",
+      signedDate: "2025-09-18",
+      type: "MOU",
+    },
+    {
+      title: "Erasmus+ Partnership",
+      partner: "University of Amsterdam",
+      department: "European Programs",
+      signedDate: "2025-09-15",
+      type: "Agreement",
+    },
+    {
+      title: "Research Grant Agreement",
+      partner: "MIT",
+      department: "Research Office",
+      signedDate: "2025-09-12",
+      type: "Contract",
+    },
+    {
+      title: "Cultural Exchange Letter",
+      partner: "Peking University",
+      department: "Cultural Programs",
+      signedDate: "2025-09-10",
+      type: "Letter",
     },
   ];
 
@@ -125,19 +207,22 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
     {
       name: "TS. Nguyễn Văn A",
       position: "Trưởng Phòng Đối ngoại",
-      quote: "Hệ thống đã giúp phòng chúng tôi tăng hiệu suất làm việc gấp 3 lần. Quản lý văn bản chưa bao giờ dễ dàng đến thế!",
+      quote:
+        "Hệ thống đã giúp phòng chúng tôi tăng hiệu suất làm việc gấp 3 lần. Quản lý văn bản chưa bao giờ dễ dàng đến thế!",
       avatar: "NVA",
     },
     {
       name: "PGS.TS. Trần Thị B",
       position: "Phó Hiệu trưởng",
-      quote: "Báo cáo thống kê trực quan, dữ liệu luôn cập nhật. Đây là công cụ không thể thiếu cho công tác hợp tác quốc tế.",
+      quote:
+        "Báo cáo thống kê trực quan, dữ liệu luôn cập nhật. Đây là công cụ không thể thiếu cho công tác hợp tác quốc tế.",
       avatar: "TTB",
     },
     {
       name: "ThS. Lê Văn C",
       position: "Cán bộ phụ trách Du học sinh",
-      quote: "Tính năng cảnh báo visa hết hạn rất hữu ích. Không còn lo sót hồ sơ hay quên deadline nữa!",
+      quote:
+        "Tính năng cảnh báo visa hết hạn rất hữu ích. Không còn lo sót hồ sơ hay quên deadline nữa!",
       avatar: "LVC",
     },
   ];
@@ -151,7 +236,8 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
     {
       step: "02",
       title: "Nhập thông tin",
-      description: "Điền form với thông tin chi tiết về văn bản, đoàn khách hoặc sinh viên",
+      description:
+        "Điền form với thông tin chi tiết về văn bản, đoàn khách hoặc sinh viên",
     },
     {
       step: "03",
@@ -187,7 +273,7 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
   return (
     <div className="min-h-screen bg-white">
       {/* Floating Header */}
-      <motion.header 
+      <motion.header
         className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -196,34 +282,58 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-4">
-              <motion.div 
+              <motion.div
                 className="w-14 h-14 flex items-center justify-center"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <img src={logoImage.src} alt="Logo DUT" className="w-full h-full object-contain" />
+                <img
+                  src={logoImage.src}
+                  alt="Logo DUT"
+                  className="w-full h-full object-contain"
+                />
               </motion.div>
               <div>
                 <h1 className="text-blue-900">ĐH Bách khoa Đà Nẵng</h1>
-                <p className="text-sm text-muted-foreground">Phòng KH-CN & Đối ngoại</p>
+                <p className="text-sm text-muted-foreground">
+                  Phòng KH-CN & Đối ngoại
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <nav className="hidden md:flex items-center gap-6 mr-6">
-                <a href="#features" className="text-sm text-muted-foreground hover:text-blue-600 transition-colors">
+                <a
+                  href="#features"
+                  className="text-sm text-muted-foreground hover:text-blue-600 transition-colors"
+                >
                   Tính năng
                 </a>
-                <a href="#benefits" className="text-sm text-muted-foreground hover:text-blue-600 transition-colors">
+                <a
+                  href="#benefits"
+                  className="text-sm text-muted-foreground hover:text-blue-600 transition-colors"
+                >
                   Lợi ích
                 </a>
-                <a href="#process" className="text-sm text-muted-foreground hover:text-blue-600 transition-colors">
+                <a
+                  href="#process"
+                  className="text-sm text-muted-foreground hover:text-blue-600 transition-colors"
+                >
                   Quy trình
                 </a>
-                <a href="#faq" className="text-sm text-muted-foreground hover:text-blue-600 transition-colors">
+                <a
+                  href="#faq"
+                  className="text-sm text-muted-foreground hover:text-blue-600 transition-colors"
+                >
                   FAQ
                 </a>
+                <a
+                  href="#search"
+                  className="text-sm text-muted-foreground hover:text-blue-600 transition-colors"
+                >
+                  Tìm kiếm
+                </a>
               </nav>
-              <Button 
+              <Button
                 onClick={onLoginClick}
                 className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/30"
               >
@@ -253,22 +363,23 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                 <Lightbulb className="w-4 h-4 mr-2" />
                 Giải pháp Quản lý Hợp tác Quốc tế Thông minh
               </Badge>
-              
+
               <h1 className="text-6xl mb-6 text-gray-900 leading-tight">
-                Số hóa Toàn diện<br />
+                Số hóa Toàn diện
+                <br />
                 <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Hợp tác Quốc tế
                 </span>
               </h1>
-              
+
               <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-                Nền tảng quản lý thông minh giúp tối ưu hóa quy trình làm việc, 
-                tiết kiệm thời gian và nâng cao hiệu quả công tác hợp tác quốc tế 
-                tại Đại học Bách khoa Đà Nẵng.
+                Nền tảng quản lý thông minh giúp tối ưu hóa quy trình làm việc,
+                tiết kiệm thời gian và nâng cao hiệu quả công tác hợp tác quốc
+                tế tại Đại học Bách khoa Đà Nẵng.
               </p>
 
               <div className="flex flex-wrap gap-4 mb-12">
-                <Button 
+                <Button
                   size="lg"
                   onClick={onLoginClick}
                   className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/30"
@@ -276,7 +387,7 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                   Bắt đầu ngay
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
-                <Button 
+                <Button
                   size="lg"
                   variant="outline"
                   className="rounded-xl border-2 border-blue-200 hover:bg-blue-50"
@@ -296,7 +407,9 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                     transition={{ delay: 0.3 + index * 0.1 }}
                     className="text-center"
                   >
-                    <div className="text-3xl text-blue-600 mb-1">{stat.number}</div>
+                    <div className="text-3xl text-blue-600 mb-1">
+                      {stat.number}
+                    </div>
                     <div className="text-sm text-gray-600">{stat.label}</div>
                   </motion.div>
                 ))}
@@ -318,8 +431,12 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                     className="w-full h-[500px] object-cover"
                   />
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
-                    <p className="text-white text-sm">Khuôn viên Đại học Bách khoa Đà Nẵng</p>
-                    <p className="text-white/80 text-xs mt-1">54 Nguyễn Lương Bằng, Liên Chiểu, Đà Nẵng</p>
+                    <p className="text-white text-sm">
+                      Khuôn viên Đại học Bách khoa Đà Nẵng
+                    </p>
+                    <p className="text-white/80 text-xs mt-1">
+                      54 Nguyễn Lương Bằng, Liên Chiểu, Đà Nẵng
+                    </p>
                   </div>
                 </div>
               </div>
@@ -335,7 +452,9 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                     <CheckCircle className="w-6 h-6 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Tỷ lệ hài lòng</p>
+                    <p className="text-sm text-muted-foreground">
+                      Tỷ lệ hài lòng
+                    </p>
                     <p className="text-xl text-green-600">98%</p>
                   </div>
                 </div>
@@ -372,8 +491,8 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
               Giải pháp <span className="text-blue-600">4 trong 1</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Tất cả công cụ bạn cần để quản lý hiệu quả mọi hoạt động hợp tác quốc tế, 
-              từ văn bản đến con người
+              Tất cả công cụ bạn cần để quản lý hiệu quả mọi hoạt động hợp tác
+              quốc tế, từ văn bản đến con người
             </p>
           </div>
 
@@ -396,7 +515,13 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                 >
                   <Card className="rounded-3xl shadow-lg border-gray-100 hover:shadow-2xl transition-all duration-300 h-full overflow-hidden group">
                     <CardContent className="p-8">
-                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${colorClasses[feature.color as keyof typeof colorClasses]} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                      <div
+                        className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${
+                          colorClasses[
+                            feature.color as keyof typeof colorClasses
+                          ]
+                        } flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}
+                      >
                         <feature.icon className="w-8 h-8 text-white" />
                       </div>
                       <Badge variant="outline" className="mb-4 rounded-full">
@@ -406,7 +531,10 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                       <p className="text-gray-600 leading-relaxed mb-4">
                         {feature.description}
                       </p>
-                      <Button variant="link" className="p-0 h-auto text-blue-600 group-hover:gap-2 transition-all">
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto text-blue-600 group-hover:gap-2 transition-all"
+                      >
                         Tìm hiểu thêm
                         <ChevronRight className="w-4 h-4 ml-1 group-hover:ml-2 transition-all" />
                       </Button>
@@ -420,17 +548,22 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
       </section>
 
       {/* Benefits Section - Enhanced */}
-      <section id="benefits" className="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
+      <section
+        id="benefits"
+        className="py-20 bg-gradient-to-br from-gray-50 to-blue-50"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <Badge className="mb-4 rounded-full px-4 py-2 bg-orange-100 text-orange-700 border-orange-200">
               Lợi ích vượt trội
             </Badge>
             <h2 className="text-5xl mb-4 text-gray-900">
-              Tại sao chọn <span className="text-blue-600">hệ thống của chúng tôi?</span>
+              Tại sao chọn{" "}
+              <span className="text-blue-600">hệ thống của chúng tôi?</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Được phát triển dựa trên nhu cầu thực tế và phản hồi từ hàng trăm cán bộ
+              Được phát triển dựa trên nhu cầu thực tế và phản hồi từ hàng trăm
+              cán bộ
             </p>
           </div>
 
@@ -515,8 +648,9 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                 Đại học <span className="text-blue-600">Bách khoa Đà Nẵng</span>
               </h2>
               <p className="text-xl text-gray-600 mb-6 leading-relaxed">
-                Được thành lập từ năm 1975, Đại học Bách khoa Đà Nẵng là một trong những cơ sở 
-                giáo dục đại học kỹ thuật hàng đầu khu vực miền Trung - Tây Nguyên.
+                Được thành lập từ năm 1975, Đại học Bách khoa Đà Nẵng là một
+                trong những cơ sở giáo dục đại học kỹ thuật hàng đầu khu vực
+                miền Trung - Tây Nguyên.
               </p>
               <div className="space-y-4 mb-8">
                 <div className="flex items-start gap-3">
@@ -524,9 +658,12 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                     <CheckCircle className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <h4 className="text-gray-900 mb-1">Đào tạo chất lượng cao</h4>
+                    <h4 className="text-gray-900 mb-1">
+                      Đào tạo chất lượng cao
+                    </h4>
                     <p className="text-sm text-gray-600">
-                      Chương trình đào tạo tiên tiến, đội ngũ giảng viên giàu kinh nghiệm
+                      Chương trình đào tạo tiên tiến, đội ngũ giảng viên giàu
+                      kinh nghiệm
                     </p>
                   </div>
                 </div>
@@ -535,7 +672,9 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                     <CheckCircle className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <h4 className="text-gray-900 mb-1">Hợp tác quốc tế rộng khắp</h4>
+                    <h4 className="text-gray-900 mb-1">
+                      Hợp tác quốc tế rộng khắp
+                    </h4>
                     <p className="text-sm text-gray-600">
                       Liên kết với 50+ đối tác từ Mỹ, Nhật, Hàn Quốc, châu Âu
                     </p>
@@ -546,7 +685,9 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                     <CheckCircle className="w-5 h-5 text-blue-600" />
                   </div>
                   <div>
-                    <h4 className="text-gray-900 mb-1">Cơ sở vật chất hiện đại</h4>
+                    <h4 className="text-gray-900 mb-1">
+                      Cơ sở vật chất hiện đại
+                    </h4>
                     <p className="text-sm text-gray-600">
                       Phòng lab tiêu chuẩn quốc tế, thư viện điện tử phong phú
                     </p>
@@ -612,7 +753,10 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                   <CardContent className="p-6">
                     <div className="flex gap-1 mb-4">
                       {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                        <Star
+                          key={i}
+                          className="w-5 h-5 fill-yellow-400 text-yellow-400"
+                        />
                       ))}
                     </div>
                     <p className="mb-6 leading-relaxed italic">
@@ -624,7 +768,9 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                       </div>
                       <div>
                         <p className="text-white">{testimonial.name}</p>
-                        <p className="text-sm text-blue-200">{testimonial.position}</p>
+                        <p className="text-sm text-blue-200">
+                          {testimonial.position}
+                        </p>
                       </div>
                     </div>
                   </CardContent>
@@ -672,6 +818,64 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
         </div>
       </section>
 
+      {/* Search Section */}
+      <section id="search" className="py-20 bg-white">
+        <div className="max-w-2xl mx-auto px-4 text-center">
+          <h2 className="text-4xl mb-4 text-gray-900">Tìm kiếm</h2>
+          <Input
+            type="text"
+            placeholder="Nhập từ khóa..."
+            className="w-full px-4 py-3 rounded-xl mb-4"
+          />
+          <Button className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white px-8">
+            Tìm kiếm
+          </Button>
+        </div>
+
+        {/* Thỏa thuận mới kí kết gần đây */}
+        <div className="mt-12">
+          <h3 className="text-2xl mb-4 text-blue-700 font-semibold">
+            Thỏa thuận mới kí kết gần đây
+          </h3>
+          <Card className="p-6">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {/* <TableHead className="w-12">#</TableHead> */}
+                    <TableHead>Title</TableHead>
+                    <TableHead>Partner</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>Signed Date</TableHead>
+                    <TableHead>Type</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {documents.map((doc, idx) => (
+                    <TableRow key={idx}>
+                      {/* <TableCell className="text-muted-foreground">
+                        {idx + 1}
+                      </TableCell> */}
+                      <TableCell className="font-medium">{doc.title}</TableCell>
+                      <TableCell>{doc.partner}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {doc.department}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {doc.signedDate}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{doc.type}</Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </div>
+      </section>
+
       {/* CTA Section - Enhanced */}
       <section className="py-20 bg-gradient-to-br from-blue-50 to-purple-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -688,10 +892,11 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
               Sẵn sàng <span className="text-blue-600">chuyển đổi số</span>?
             </h2>
             <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">
-              Tham gia cùng hàng trăm cán bộ đã sử dụng hệ thống để nâng cao hiệu quả công việc
+              Tham gia cùng hàng trăm cán bộ đã sử dụng hệ thống để nâng cao
+              hiệu quả công việc
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
-              <Button 
+              <Button
                 size="lg"
                 onClick={onLoginClick}
                 className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-lg shadow-blue-500/30 px-8 h-14"
@@ -699,7 +904,7 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                 Đăng nhập ngay
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
-              <Button 
+              <Button
                 size="lg"
                 variant="outline"
                 className="rounded-xl border-2 border-blue-200 hover:bg-blue-50 px-8 h-14"
@@ -719,22 +924,36 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-12 h-12 flex items-center justify-center">
-                  <img src={logoImage.src} alt="Logo DUT" className="w-full h-full object-contain" />
+                  <img
+                    src={logoImage.src}
+                    alt="Logo DUT"
+                    className="w-full h-full object-contain"
+                  />
                 </div>
                 <div>
                   <h3 className="text-white">Đại học Bách khoa Đà Nẵng</h3>
-                  <p className="text-sm text-gray-400">Phòng Khoa học Công nghệ và Đối ngoại</p>
+                  <p className="text-sm text-gray-400">
+                    Phòng Khoa học Công nghệ và Đối ngoại
+                  </p>
                 </div>
               </div>
               <p className="text-sm text-gray-400 mb-6 max-w-md">
-                Hệ thống quản lý hợp tác quốc tế hiện đại, giúp số hóa toàn diện 
+                Hệ thống quản lý hợp tác quốc tế hiện đại, giúp số hóa toàn diện
                 quy trình làm việc và nâng cao hiệu quả công tác đối ngoại.
               </p>
               <div className="flex gap-4">
-                <Button variant="outline" size="icon" className="rounded-xl border-gray-700 hover:bg-gray-800">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-xl border-gray-700 hover:bg-gray-800"
+                >
                   <Globe className="w-5 h-5" />
                 </Button>
-                <Button variant="outline" size="icon" className="rounded-xl border-gray-700 hover:bg-gray-800">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-xl border-gray-700 hover:bg-gray-800"
+                >
                   <Mail className="w-5 h-5" />
                 </Button>
               </div>
@@ -743,10 +962,36 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
             <div>
               <h3 className="text-white mb-4">Liên kết nhanh</h3>
               <div className="space-y-3">
-                <a href="#features" className="block text-sm hover:text-blue-400 transition-colors">Tính năng</a>
-                <a href="#benefits" className="block text-sm hover:text-blue-400 transition-colors">Lợi ích</a>
-                <a href="#process" className="block text-sm hover:text-blue-400 transition-colors">Quy trình</a>
-                <a href="#faq" className="block text-sm hover:text-blue-400 transition-colors">FAQ</a>
+                <a
+                  href="#features"
+                  className="block text-sm hover:text-blue-400 transition-colors"
+                >
+                  Tính năng
+                </a>
+                <a
+                  href="#benefits"
+                  className="block text-sm hover:text-blue-400 transition-colors"
+                >
+                  Lợi ích
+                </a>
+                <a
+                  href="#process"
+                  className="block text-sm hover:text-blue-400 transition-colors"
+                >
+                  Quy trình
+                </a>
+                <a
+                  href="#faq"
+                  className="block text-sm hover:text-blue-400 transition-colors"
+                >
+                  FAQ
+                </a>
+                <a
+                  href="#search"
+                  className="block text-sm hover:text-blue-400 transition-colors"
+                >
+                  Tìm kiếm
+                </a>
               </div>
             </div>
 
@@ -775,10 +1020,16 @@ export function EnhancedLandingPage({ onLoginClick }: EnhancedLandingPageProps) 
                 © 2025 Đại học Bách khoa Đà Nẵng. Tất cả quyền được bảo lưu.
               </p>
               <div className="flex gap-6 text-sm">
-                <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors">
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-blue-400 transition-colors"
+                >
                   Chính sách bảo mật
                 </a>
-                <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors">
+                <a
+                  href="#"
+                  className="text-gray-400 hover:text-blue-400 transition-colors"
+                >
                   Điều khoản sử dụng
                 </a>
               </div>
