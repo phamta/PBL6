@@ -53,9 +53,9 @@ export default function StaffLayout({
     }
   };
 
-  const switchToAdmin = () => {
-    // điều hướng tới admin dưới dashboard (nếu route admin nằm tại /dashboard/admin)
-    router.push("/dashboard/admin");
+  const switchToOfficer = () => {
+    // điều hướng tới officer dưới dashboard (nếu route officer nằm tại /dashboard/officer)
+    router.push("/dashboard/officer");
   }
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -90,8 +90,8 @@ export default function StaffLayout({
             <span className="text-sm text-muted-foreground">Current Role:</span>
             <Badge variant="secondary">Faculty/Staff</Badge>
           </div>
-          <Button size="sm" variant="outline" onClick={switchToAdmin}>
-            Chuyển sang Admin View
+          <Button size="sm" variant="outline" onClick={switchToOfficer}>
+            Chuyển sang Officer View
           </Button>
         </motion.div>
 

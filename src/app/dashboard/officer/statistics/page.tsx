@@ -1,4 +1,4 @@
-import { StatisticsPage } from "@/components/admin/StatisticsPage";
+import { StatisticsPage } from "@/components/officer/StatisticsPage";
 
 export default function AdminStatisticsPage() {
   return <StatisticsPage />;

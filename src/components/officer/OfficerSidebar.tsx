@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 
-interface AdminSidebarProps {
+interface OfficerSidebarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
 }
@@ -33,7 +33,7 @@ const menuItems = [
   { id: "roles", label: "Role & Permission Management", icon: Shield },
 ];
 
-export function AdminSidebar({ currentPage, onNavigate }: AdminSidebarProps) {
+export function OfficerSidebar({ currentPage, onNavigate }: OfficerSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -49,7 +49,7 @@ export function AdminSidebar({ currentPage, onNavigate }: AdminSidebarProps) {
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
               <span className="text-white">AD</span>
             </div>
-            <span className="text-sidebar-foreground">Admin Dashboard</span>
+            <span className="text-sidebar-foreground">Officer Dashboard</span>
           </div>
         )}
         {collapsed && (

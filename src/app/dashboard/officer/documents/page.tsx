@@ -1,4 +1,4 @@
-import { DocumentsPage } from "@/components/admin/DocumentsPage";
+import { DocumentsPage } from "@/components/officer/DocumentsPage";
 
 export default function AdminDocumentsPage() {
   return <DocumentsPage />;

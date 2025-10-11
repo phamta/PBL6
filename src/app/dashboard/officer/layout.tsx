@@ -2,30 +2,31 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
-import { AdminTopbar } from "@/components/admin/AdminTopbar";
+import { OfficerSidebar } from "@/components/officer/OfficerSidebar";
+import { OfficerTopbar } from "@/components/officer/OfficerTopbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePathname, useRouter } from "next/navigation";
 
-export default function AdminLayout({
+export default function OfficerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  
+
   const getCurrentPage = () => {
     if (!pathname) return "home";
-    // normalize exact admin root
-    if (pathname === "/dashboard/admin" || pathname === "/dashboard/admin/") return "home";
-    // remove the prefix "/dashboard/admin/" if present
-    return pathname.replace(/^\/dashboard\/admin\/?/, "").replace(/^\/+/, "");
+    // normalize exact officer root
+    if (pathname === "/dashboard/officer" || pathname === "/dashboard/officer/")
+      return "home";
+    // remove the prefix "/dashboard/officer/" if present
+    return pathname.replace(/^\/dashboard\/officer\/?/, "").replace(/^\/+/, "");
   };
 
   const handleNavigate = (page: string) => {
-    const base = "/dashboard/admin";
+    const base = "/dashboard/officer";
     if (page === "home") {
       router.push(base);
     } else {
@@ -44,7 +45,10 @@ export default function AdminLayout({
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
-        <AdminSidebar currentPage={getCurrentPage()} onNavigate={handleNavigate} />
+        <OfficerSidebar
+          currentPage={getCurrentPage()}
+          onNavigate={handleNavigate}
+        />
       </motion.div>
 
       {/* Main Content */}
@@ -55,7 +59,7 @@ export default function AdminLayout({
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
-          <AdminTopbar />
+          <OfficerTopbar />
         </motion.div>
 
         {/* Role Switcher - Demo Purpose */}
@@ -67,7 +71,7 @@ export default function AdminLayout({
         >
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Current Role:</span>
-            <Badge variant="default">Admin</Badge>
+            <Badge variant="default">Officer</Badge>
           </div>
           <Button size="sm" variant="outline" onClick={switchToStaff}>
             Chuyển sang Staff View
