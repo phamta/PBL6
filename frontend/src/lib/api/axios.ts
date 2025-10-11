@@ -1,16 +1,21 @@
+"use client";
 /**
  * Axios Client Configuration
  * Cấu hình axios với interceptors cho JWT authentication
  */
 
 import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
-import { API_CONFIG, AUTH_STORAGE_KEYS, API_ENDPOINTS } from './config';
+import { API_BASE_URL, AUTH_STORAGE_KEYS, API_ENDPOINTS } from './config';
 
-// Create axios instance
+// Create axios instance (safe fallback for BASE_URL)
+const BASE = API_BASE_URL;
 export const axiosClient = axios.create({
-  baseURL: API_CONFIG.BASE_URL,
-  timeout: API_CONFIG.TIMEOUT,
-  headers: API_CONFIG.HEADERS,
+  baseURL: BASE,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
 });
 
 // Request interceptor - Thêm access token vào header
@@ -18,11 +23,11 @@ axiosClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Get access token from localStorage
     const accessToken = localStorage.getItem(AUTH_STORAGE_KEYS.ACCESS_TOKEN);
-    
+
     if (accessToken && config.headers) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
-    
+
     return config;
   },
   (error: AxiosError) => {
@@ -50,7 +55,7 @@ axiosClient.interceptors.response.use(
       try {
         // Lấy refresh token
         const refreshToken = localStorage.getItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN);
-        
+
         if (!refreshToken) {
           // Không có refresh token, redirect to login
           clearAuthData();
@@ -60,7 +65,7 @@ axiosClient.interceptors.response.use(
 
         // Gọi API refresh token
         const response = await axios.post(
-          `${API_CONFIG.BASE_URL}${API_ENDPOINTS.AUTH.REFRESH}`,
+          `${BASE}${API_ENDPOINTS.AUTH.REFRESH}`,
           { refreshToken }
         );
 

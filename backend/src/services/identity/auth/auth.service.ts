@@ -1,12 +1,14 @@
+import { ChangePasswordDto } from '../user/dto/change-password.dto';
+import { UpdateUserDto } from '../user/dto/update-user.dto';
+import * as bcrypt from 'bcrypt';
 import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../../../database/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import * as bcrypt from 'bcrypt';
-import { PrismaService } from '../../../database/prisma.service';
-import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
-import { User, RefreshToken } from '@prisma/client';
 import { RbacService } from '../../rbac/rbac.service';
+import { User } from '@prisma/client';
+import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 
 /**
  * Auth Service - Xử lý authentication và authorization
@@ -204,13 +206,36 @@ export class AuthService {
   /**
    * Tạo access token và refresh token
    */
+/**
+   * Lấy thông tin user hiện tại theo id
+   */
+  async getCurrentUser(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        unit: true,
+        roles: { include: { role: true } },
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+
+    const { password: _pw, ...userWithoutPassword } = user as any;
+    return userWithoutPassword;
+  }
+
+  /**
+   * Tạo access token và refresh token
+   */
   private async generateTokens(userId: string) {
-    // Load user permissions
-    const permissions = await this.rbacService.getUserActionCodes(userId);
-    
-    const payload = { 
+    // Load user action codes for authorization checks
+    const actions = await this.rbacService.getUserActionCodes(userId);
+
+    const payload = {
       sub: userId,
-      permissions,
+      actions,
     };
 
     const [accessToken, refreshTokenValue] = await Promise.all([
@@ -251,5 +276,67 @@ export class AuthService {
         expiresAt: { lt: new Date() },
       },
     });
+  }
+
+  /**
+   * Cập nhật profile của user hiện tại
+   */
+  async updateProfile(userId: string, updateData: Pick<UpdateUserDto, 'email' | 'fullName' | 'unitId'>) {
+    const { email, fullName, unitId } = updateData;
+
+    if (email) {
+      const existing = await this.prisma.user.findFirst({ where: { email, NOT: { id: userId } } });
+      if (existing) {
+        throw new ConflictException('Email đã được sử dụng');
+      }
+    }
+
+    if (unitId) {
+      const unit = await this.prisma.unit.findUnique({ where: { id: unitId } });
+      if (!unit) {
+        throw new BadRequestException('Unit không tồn tại');
+      }
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { email, fullName, unitId },
+      include: {
+        unit: true,
+        roles: { include: { role: true } },
+      },
+    });
+
+    const { password: _pw, ...userWithoutPassword } = updated as any;
+    return userWithoutPassword;
+  }
+
+  /**
+   * Đổi mật khẩu user hiện tại
+   */
+  async changePassword(userId: string, dto: Pick<ChangePasswordDto, 'currentPassword' | 'newPassword'>) {
+    const { currentPassword, newPassword } = dto;
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User không tồn tại');
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, (user as any).password);
+    if (!isValid) {
+      throw new UnauthorizedException('Mật khẩu hiện tại không đúng');
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+
+    return { message: 'Đổi mật khẩu thành công' };
+  }
+
+  /**
+   * Alias: cập nhật user (giữ tương thích với controller cũ)
+   */
+  async updateUser(userId: string, dto: Pick<UpdateUserDto, 'email' | 'fullName' | 'unitId'>) {
+    return this.updateProfile(userId, dto);
   }
 }

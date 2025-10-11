@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { PrismaService } from '../../database/prisma.service';  // Thêm import PrismaService
 
 /**
  * JWT Guard - Xác thực người dùng qua JWT token
@@ -13,7 +14,10 @@ import { Request } from 'express';
  */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private jwtService: JwtService,
+    private prisma: PrismaService,  // Inject PrismaService để query DB
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -25,7 +29,23 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync(token);
-      request['user'] = payload;
+      
+      // Fetch user từ DB dựa trên sub để lấy unitId (bỏ actions vì không có trong schema)
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { id: true, unitId: true },  // Chỉ select id và unitId
+      });
+
+      if (!user) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      // Gán user vào request: id/unitId từ DB, actions từ payload
+      request['user'] = {
+        id: user.id,
+        unitId: user.unitId,
+        actions: payload.actions || [],  // Lấy actions từ payload JWT
+      };
     } catch {
       throw new UnauthorizedException('Token không hợp lệ');
     }
