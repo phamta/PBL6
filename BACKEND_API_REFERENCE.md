@@ -1,11 +1,13 @@
 # Backend API Reference
 
 ## Base URL
+
 ```
 http://localhost:3001/api/v1
 ```
 
 ## API Documentation (Swagger)
+
 ```
 http://localhost:3001/api/docs
 ```
@@ -15,9 +17,11 @@ http://localhost:3001/api/docs
 ## Authentication APIs
 
 ### 1. Login
+
 **Endpoint:** `POST /auth/login`
 
 **Request Body:**
+
 ```json
 {
   "email": "user@dntu.edu.vn",
@@ -26,6 +30,7 @@ http://localhost:3001/api/docs
 ```
 
 **Response (200):**
+
 ```json
 {
   "user": {
@@ -60,15 +65,18 @@ http://localhost:3001/api/docs
 ```
 
 **Errors:**
+
 - `401` - Email hoặc mật khẩu không chính xác
 - `401` - User đã bị vô hiệu hóa
 
 ---
 
 ### 2. Register
+
 **Endpoint:** `POST /auth/register`
 
 **Request Body:**
+
 ```json
 {
   "email": "newuser@dntu.edu.vn",
@@ -80,24 +88,30 @@ http://localhost:3001/api/docs
 ```
 
 **Response (201):**
+
 ```json
 {
-  "user": { /* Same as login response */ },
+  "user": {
+    /* Same as login response */
+  },
   "accessToken": "...",
   "refreshToken": "..."
 }
 ```
 
 **Errors:**
+
 - `409` - Email đã tồn tại
 - `400` - Validation errors
 
 ---
 
 ### 3. Refresh Token
+
 **Endpoint:** `POST /auth/refresh`
 
 **Request Body:**
+
 ```json
 {
   "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -105,28 +119,35 @@ http://localhost:3001/api/docs
 ```
 
 **Response (200):**
+
 ```json
 {
-  "user": { /* User object */ },
+  "user": {
+    /* User object */
+  },
   "accessToken": "new-access-token",
   "refreshToken": "new-refresh-token"
 }
 ```
 
 **Errors:**
+
 - `401` - Refresh token không hợp lệ hoặc hết hạn
 
 ---
 
 ### 4. Logout
+
 **Endpoint:** `POST /auth/logout`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Response (200):**
+
 ```json
 {
   "message": "Đăng xuất thành công"
@@ -136,19 +157,22 @@ Authorization: Bearer <access-token>
 ---
 
 ### 5. Get Current User
+
 **Endpoint:** `GET /auth/me`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Response (200):**
+
 ```json
 {
   "id": "user-id",
   "email": "user@dntu.edu.vn",
-  "fullName": "Nguyễn Văn A",
+  "fullName": "Nguyễn Văn A"
   /* Full user object */
 }
 ```
@@ -156,14 +180,17 @@ Authorization: Bearer <access-token>
 ---
 
 ### 6. Update Profile
+
 **Endpoint:** `PUT /auth/me`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "fullName": "Nguyễn Văn C",
@@ -172,6 +199,7 @@ Authorization: Bearer <access-token>
 ```
 
 **Response (200):**
+
 ```json
 {
   /* Updated user object */
@@ -181,14 +209,17 @@ Authorization: Bearer <access-token>
 ---
 
 ### 7. Change Password
+
 **Endpoint:** `PUT /auth/change-password`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "currentPassword": "oldpassword",
@@ -198,6 +229,7 @@ Authorization: Bearer <access-token>
 ```
 
 **Response (200):**
+
 ```json
 {
   "message": "Đổi mật khẩu thành công"
@@ -205,6 +237,7 @@ Authorization: Bearer <access-token>
 ```
 
 **Errors:**
+
 - `400` - Mật khẩu hiện tại không đúng
 - `400` - Mật khẩu mới không khớp
 
@@ -213,14 +246,17 @@ Authorization: Bearer <access-token>
 ## User Management APIs
 
 ### 1. Get Users List
+
 **Endpoint:** `GET /users`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Query Parameters:**
+
 ```
 page=1
 limit=10
@@ -233,6 +269,7 @@ sortOrder=desc
 ```
 
 **Response (200):**
+
 ```json
 {
   "users": [
@@ -241,8 +278,12 @@ sortOrder=desc
       "email": "user@dntu.edu.vn",
       "fullName": "Nguyễn Văn A",
       "isActive": true,
-      "unit": { /* Unit object */ },
-      "roles": [ /* Role objects */ ]
+      "unit": {
+        /* Unit object */
+      },
+      "roles": [
+        /* Role objects */
+      ]
     }
   ],
   "pagination": {
@@ -259,19 +300,22 @@ sortOrder=desc
 ---
 
 ### 2. Get User Detail
+
 **Endpoint:** `GET /users/:id`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Response (200):**
+
 ```json
 {
   "id": "user-id",
   "email": "user@dntu.edu.vn",
-  "fullName": "Nguyễn Văn A",
+  "fullName": "Nguyễn Văn A"
   /* Full user details */
 }
 ```
@@ -281,14 +325,17 @@ Authorization: Bearer <access-token>
 ---
 
 ### 3. Search Users
+
 **Endpoint:** `GET /users/search`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Query Parameters:**
+
 ```
 q=nguyen van
 page=1
@@ -296,10 +343,15 @@ limit=10
 ```
 
 **Response (200):**
+
 ```json
 {
-  "users": [ /* Array of matching users */ ],
-  "pagination": { /* Pagination info */ }
+  "users": [
+    /* Array of matching users */
+  ],
+  "pagination": {
+    /* Pagination info */
+  }
 }
 ```
 
@@ -308,14 +360,17 @@ limit=10
 ---
 
 ### 4. Get User Statistics
+
 **Endpoint:** `GET /users/stats`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Response (200):**
+
 ```json
 {
   "totalUsers": 150,
@@ -341,14 +396,17 @@ Authorization: Bearer <access-token>
 ---
 
 ### 5. Toggle User Status
+
 **Endpoint:** `PATCH /users/:id/toggle-status`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Response (200):**
+
 ```json
 {
   "message": "Người dùng đã được kích hoạt",
@@ -366,14 +424,17 @@ Authorization: Bearer <access-token>
 ---
 
 ### 6. Delete User
+
 **Endpoint:** `DELETE /users/:id`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Response (200):**
+
 ```json
 {
   "message": "Đã xóa người dùng: Nguyễn Văn A"
@@ -387,14 +448,17 @@ Authorization: Bearer <access-token>
 ## Unit Management APIs
 
 ### 1. Get Units List
+
 **Endpoint:** `GET /units`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Query Parameters:**
+
 ```
 page=1
 limit=10
@@ -409,6 +473,7 @@ includeUsers=false
 ```
 
 **Response (200):**
+
 ```json
 {
   "units": [
@@ -419,7 +484,9 @@ includeUsers=false
       "level": 1,
       "parentId": null,
       "isActive": true,
-      "children": [ /* Child units if includeChildren=true */ ],
+      "children": [
+        /* Child units if includeChildren=true */
+      ],
       "_count": {
         "users": 50,
         "children": 3
@@ -438,14 +505,17 @@ includeUsers=false
 ---
 
 ### 2. Get Unit Detail
+
 **Endpoint:** `GET /units/:id`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Response (200):**
+
 ```json
 {
   "id": "unit-id",
@@ -455,7 +525,9 @@ Authorization: Bearer <access-token>
   "parentId": null,
   "parent": null,
   "isActive": true,
-  "children": [ /* Child units */ ],
+  "children": [
+    /* Child units */
+  ],
   "_count": {
     "users": 50,
     "children": 3
@@ -468,14 +540,17 @@ Authorization: Bearer <access-token>
 ---
 
 ### 3. Get Unit Hierarchy
+
 **Endpoint:** `GET /units/hierarchy`
 
 **Headers:**
+
 ```
 Authorization: Bearer <access-token>
 ```
 
 **Response (200):**
+
 ```json
 [
   {
@@ -505,6 +580,7 @@ Authorization: Bearer <access-token>
 ## Error Responses
 
 ### 400 - Bad Request
+
 ```json
 {
   "statusCode": 400,
@@ -514,6 +590,7 @@ Authorization: Bearer <access-token>
 ```
 
 ### 401 - Unauthorized
+
 ```json
 {
   "statusCode": 401,
@@ -523,6 +600,7 @@ Authorization: Bearer <access-token>
 ```
 
 ### 403 - Forbidden
+
 ```json
 {
   "statusCode": 403,
@@ -532,6 +610,7 @@ Authorization: Bearer <access-token>
 ```
 
 ### 404 - Not Found
+
 ```json
 {
   "statusCode": 404,
@@ -541,6 +620,7 @@ Authorization: Bearer <access-token>
 ```
 
 ### 409 - Conflict
+
 ```json
 {
   "statusCode": 409,
@@ -550,6 +630,7 @@ Authorization: Bearer <access-token>
 ```
 
 ### 500 - Internal Server Error
+
 ```json
 {
   "statusCode": 500,
@@ -563,6 +644,7 @@ Authorization: Bearer <access-token>
 ## JWT Token Structure
 
 ### Access Token Payload
+
 ```json
 {
   "sub": "user-id",
@@ -579,6 +661,7 @@ Authorization: Bearer <access-token>
 ```
 
 ### Token Expiry
+
 - **Access Token**: 1 giờ
 - **Refresh Token**: 7 ngày
 
@@ -587,6 +670,7 @@ Authorization: Bearer <access-token>
 ## RBAC Permissions
 
 ### System Admin Actions
+
 - `user.*` - Tất cả quyền user
 - `unit.*` - Tất cả quyền unit
 - `document.*` - Tất cả quyền document
@@ -597,6 +681,7 @@ Authorization: Bearer <access-token>
 - `system.*` - Tất cả quyền system config
 
 ### Department Officer Actions
+
 - `document.create`, `document.view_all`, `document.update`
 - `visa.create`, `visa.view_all`, `visa.update`
 - `guest.create`, `guest.view_all`, `guest.update`
@@ -604,16 +689,19 @@ Authorization: Bearer <access-token>
 - `report.view_all`
 
 ### Leadership Actions
+
 - `document.view_all`, `document.approve`
 - `visa.view_all`, `visa.approve`
 - `guest.view_all`
 - `report.view_all`
 
 ### Faculty Staff Actions
+
 - `document.view_own`, `document.create`
 - `guest.view_own`
 
 ### Student Actions
+
 - `translation.create`, `translation.view_own`
 
 ---

@@ -92,4 +92,70 @@ export class CreateGuestDto {
   @Type(() => CreateGuestMemberDto)
   @IsOptional()
   members?: CreateGuestMemberDto[];
+
+  // ==================== NEW FIELDS ====================
+
+  @ApiPropertyOptional({ 
+    description: 'Mục đích chuyến thăm chi tiết', 
+    example: 'Tham gia hội thảo khoa học quốc tế' 
+  })
+  @IsString()
+  @IsOptional()
+  visitPurpose?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Đơn vị tiếp đón', 
+    example: 'Phòng Hợp tác Quốc tế' 
+  })
+  @IsString()
+  @IsOptional()
+  hostDepartment?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Số thư mời', 
+    example: 'INV-2024-001' 
+  })
+  @IsString()
+  @IsOptional()
+  invitationLetterNo?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Đường dẫn file NA2 (giấy tờ nhập cảnh)', 
+    example: 'uploads/na2-document.pdf' 
+  })
+  @IsString()
+  @IsOptional()
+  immigrationDocNA2?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Đường dẫn file NA5 (giấy đề nghị visa)', 
+    example: 'uploads/na5-document.pdf' 
+  })
+  @IsString()
+  @IsOptional()
+  visaRequestDocNA5?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Đường dẫn file báo cáo', 
+    example: 'uploads/visit-report.pdf' 
+  })
+  @IsString()
+  @IsOptional()
+  reportFile?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'ID đối tác (nếu có)', 
+    example: 'cuid-partner-123' 
+  })
+  @IsString()
+  @IsOptional()
+  partnerId?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'ID đơn vị (nếu có)', 
+    example: 'cuid-unit-456' 
+  })
+  @IsString()
+  @IsOptional()
+  unitId?: string;
 }

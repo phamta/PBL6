@@ -88,6 +88,34 @@ export class FilterReportDto {
   createdTo?: string;
 
   @ApiProperty({
+    description: 'Lọc theo năm báo cáo',
+    example: 2024,
+    required: false,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Year phải là số nguyên' })
+  year?: number;
+
+  @ApiProperty({
+    description: 'Lọc theo tên đơn vị',
+    example: 'Phòng Hợp tác Quốc tế',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Unit name phải là chuỗi' })
+  unitName?: string;
+
+  @ApiProperty({
+    description: 'Lọc theo tên đối tác',
+    example: 'University of Tokyo',
+    required: false,
+  })
+  @IsOptional()
+  @IsString({ message: 'Partner name phải là chuỗi' })
+  partnerName?: string;
+
+  @ApiProperty({
     description: 'Sắp xếp theo field',
     enum: ['name', 'type', 'status', 'createdAt', 'updatedAt', 'fileSize'],
     default: 'createdAt',

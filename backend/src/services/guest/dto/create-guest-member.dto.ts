@@ -66,4 +66,30 @@ export class CreateGuestMemberDto {
   @IsDateString()
   @IsOptional()
   dateOfBirth?: string;
+
+  // ==================== NEW FIELDS ====================
+
+  @ApiPropertyOptional({ 
+    description: 'Chức danh/Học hàm', 
+    example: 'Professor' 
+  })
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Giới tính', 
+    example: 'Male' 
+  })
+  @IsString()
+  @IsOptional()
+  gender?: string;
+
+  @ApiPropertyOptional({ 
+    description: 'Đơn vị công tác/Trường đại học', 
+    example: 'University of Cambridge' 
+  })
+  @IsString()
+  @IsOptional()
+  affiliation?: string;
 }

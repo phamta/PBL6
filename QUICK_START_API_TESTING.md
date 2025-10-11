@@ -3,22 +3,26 @@
 ## Bước 1: Chuẩn bị Backend
 
 ### 1.1. Khởi động Database
+
 ```powershell
 cd backend
 docker-compose up -d
 ```
 
 ### 1.2. Run migrations
+
 ```powershell
 npx prisma migrate dev
 ```
 
 ### 1.3. Seed database (nếu cần)
+
 ```powershell
 npx prisma db seed
 ```
 
 ### 1.4. Start backend server
+
 ```powershell
 npm run start:dev
 ```
@@ -31,18 +35,21 @@ npm run start:dev
 ## Bước 2: Chuẩn bị Frontend
 
 ### 2.1. Install dependencies (nếu chưa)
+
 ```powershell
 cd frontend
 npm install
 ```
 
 ### 2.2. Tạo file .env.local
+
 ```powershell
 # Tạo file .env.local với nội dung:
 NEXT_PUBLIC_API_URL=http://localhost:3001/api/v1
 ```
 
 ### 2.3. Start frontend
+
 ```powershell
 npm run dev
 ```
@@ -54,17 +61,20 @@ npm run dev
 ## Bước 3: Test Login Flow
 
 ### 3.1. Truy cập trang login
+
 ```
 http://localhost:3000/login
 ```
 
 ### 3.2. Test với account mẫu
+
 ```
 Email: admin@dntu.edu.vn
 Password: (password từ database)
 ```
 
 ### 3.3. Kiểm tra
+
 1. Mở DevTools (F12)
 2. Vào tab **Network**
 3. Click **Đăng nhập**
@@ -74,11 +84,12 @@ Password: (password từ database)
    - Redirect to `/dashboard`
 
 ### 3.4. Kiểm tra localStorage
+
 ```javascript
 // Mở Console tab trong DevTools
-localStorage.getItem('access_token')
-localStorage.getItem('refresh_token')
-JSON.parse(localStorage.getItem('user'))
+localStorage.getItem("access_token");
+localStorage.getItem("refresh_token");
+JSON.parse(localStorage.getItem("user"));
 ```
 
 ---
@@ -91,11 +102,11 @@ Tạo component test:
 
 ```tsx
 // app/test/page.tsx
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { userService } from '@/lib/api';
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { userService } from "@/lib/api";
 
 export default function TestPage() {
   const { user, logout } = useAuth();
@@ -105,16 +116,16 @@ export default function TestPage() {
     try {
       const result = await userService.getUsers({ page: 1, limit: 10 });
       setUsers(result.users);
-      console.log('Users:', result);
+      console.log("Users:", result);
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
     }
   };
 
   return (
     <div className="p-8">
       <h1>API Test Page</h1>
-      
+
       {/* Current User */}
       <div className="mb-4">
         <h2>Current User:</h2>
@@ -122,7 +133,7 @@ export default function TestPage() {
       </div>
 
       {/* Test Get Users */}
-      <button 
+      <button
         onClick={fetchUsers}
         className="bg-blue-600 text-white px-4 py-2 rounded"
       >
@@ -136,7 +147,7 @@ export default function TestPage() {
       </div>
 
       {/* Logout */}
-      <button 
+      <button
         onClick={logout}
         className="bg-red-600 text-white px-4 py-2 rounded mt-4"
       >
@@ -163,19 +174,23 @@ Truy cập: `http://localhost:3000/test`
 ## Bước 5: Test Error Handling
 
 ### 5.1. Test sai password
+
 ```
 Email: admin@dntu.edu.vn
 Password: wrongpassword
 ```
+
 ✅ Phải hiện toast error: "Email hoặc mật khẩu không chính xác"
 
 ### 5.2. Test token expiry
+
 1. Login thành công
 2. Đợi 1 giờ (hoặc giảm token expiry trong config)
 3. Call API
 4. ✅ Token tự động refresh, request tiếp tục thành công
 
 ### 5.3. Test logout
+
 1. Click Logout
 2. ✅ Redirect to `/login`
 3. ✅ localStorage được clear
@@ -186,6 +201,7 @@ Password: wrongpassword
 ## Bước 6: Check Console Logs
 
 ### Backend logs
+
 ```
 🚀 Hệ thống Quản lý Hợp tác Quốc tế - ĐHBK Đà Nẵng
 📍 Server đang chạy tại: http://localhost:3001
@@ -195,6 +211,7 @@ Password: wrongpassword
 ```
 
 ### Frontend console
+
 ```
 ✅ No errors
 ✅ API calls successful
@@ -206,40 +223,48 @@ Password: wrongpassword
 ## Common Issues & Solutions
 
 ### Issue 1: CORS Error
+
 ```
 Access to XMLHttpRequest at 'http://localhost:3001' from origin 'http://localhost:3000' has been blocked by CORS policy
 ```
 
 **Solution:**
+
 - Check backend `main.ts` có enable CORS cho `http://localhost:3000`
 - Restart backend
 
 ### Issue 2: Network Error
+
 ```
 Error: Network Error
 ```
 
 **Solution:**
+
 - Check backend đang chạy: `http://localhost:3001`
 - Check `.env.local` có đúng `NEXT_PUBLIC_API_URL`
 - Check database đang chạy
 
 ### Issue 3: 401 Unauthorized
+
 ```
 Error: Unauthorized
 ```
 
 **Solution:**
+
 - Check token trong localStorage
 - Try logout và login lại
 - Check token chưa hết hạn
 
 ### Issue 4: Module not found
+
 ```
 Error: Cannot find module '@/lib/api'
 ```
 
 **Solution:**
+
 ```powershell
 # Restart Next.js dev server
 npm run dev
@@ -250,17 +275,21 @@ npm run dev
 ## Debug Tools
 
 ### 1. Redux DevTools (Optional)
+
 Install extension để xem state changes
 
 ### 2. React DevTools
+
 Install để xem component tree và context values
 
 ### 3. Network Tab
+
 - Filter: XHR
 - Xem request/response details
 - Check headers, payload
 
 ### 4. Console Tab
+
 - Check errors
 - Use `console.log()` để debug
 
@@ -300,6 +329,7 @@ Sau khi login hoạt động, tiếp tục tích hợp:
 ## Quick Commands Reference
 
 ### Backend
+
 ```powershell
 cd backend
 npm run start:dev      # Start dev server
@@ -310,6 +340,7 @@ npx prisma migrate dev # Run migrations
 ```
 
 ### Frontend
+
 ```powershell
 cd frontend
 npm run dev            # Start dev server

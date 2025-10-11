@@ -3,6 +3,7 @@
 ## ✅ Đã Implement
 
 ### 1. **Role Helper Functions** (`src/lib/auth/roles.ts`)
+
 - `hasRole()` - Kiểm tra user có role cụ thể
 - `hasAnyRole()` - Kiểm tra user có bất kỳ role nào trong list
 - `getPrimaryRole()` - Lấy role chính (priority cao nhất)
@@ -12,13 +13,18 @@
 - `isStudent()` - Kiểm tra user có phải student
 
 ### 2. **useRole Hook** (`src/hooks/useRole.ts`)
+
 Custom hook để dễ dàng sử dụng role functions trong components:
+
 ```tsx
-const { primaryRole, primaryRoleName, dashboardRoute, isAdmin, isStaff } = useRole();
+const { primaryRole, primaryRoleName, dashboardRoute, isAdmin, isStaff } =
+  useRole();
 ```
 
 ### 3. **ProtectedRoute Component** (`src/components/auth/ProtectedRoute.tsx`)
+
 Component bảo vệ routes yêu cầu authentication và role cụ thể:
+
 ```tsx
 <ProtectedRoute allowedRoles={[RoleCode.SYSTEM_ADMIN]}>
   {children}
@@ -26,10 +32,12 @@ Component bảo vệ routes yêu cầu authentication và role cụ thể:
 ```
 
 ### 4. **AuthContext Updated** (`src/contexts/AuthContext.tsx`)
+
 - Login function tự động redirect dựa trên role
 - Register function tự động redirect dựa trên role
 
 ### 5. **Dashboard Layouts Updated**
+
 - `dashboard/admin/layout.tsx` - Chỉ cho System Admin
 - `dashboard/staff/layout.tsx` - Cho Department Officer, Leadership, Faculty Staff
 
@@ -46,6 +54,7 @@ STUDENT                → /dashboard
 ```
 
 **Priority Order** (nếu user có nhiều roles):
+
 1. System Admin (cao nhất)
 2. Department Officer
 3. Leadership
@@ -57,6 +66,7 @@ STUDENT                → /dashboard
 ## 🧪 Test Cases
 
 ### Test 1: Login với System Admin
+
 ```
 Email: admin@dntu.edu.vn
 Password: [admin password]
@@ -65,6 +75,7 @@ Expected: Redirect to /dashboard/admin
 ```
 
 ### Test 2: Login với Department Officer
+
 ```
 Email: officer@dntu.edu.vn
 Password: [officer password]
@@ -73,6 +84,7 @@ Expected: Redirect to /dashboard/staff
 ```
 
 ### Test 3: Login với Faculty Staff
+
 ```
 Email: staff@dntu.edu.vn
 Password: [staff password]
@@ -81,6 +93,7 @@ Expected: Redirect to /dashboard/staff
 ```
 
 ### Test 4: Login với Student
+
 ```
 Email: student@dntu.edu.vn
 Password: [student password]
@@ -89,11 +102,13 @@ Expected: Redirect to /dashboard
 ```
 
 ### Test 5: User có nhiều roles (Admin + Staff)
+
 ```
 Expected: Redirect to /dashboard/admin (vì Admin có priority cao nhất)
 ```
 
 ### Test 6: Truy cập trực tiếp /dashboard/admin mà không phải admin
+
 ```
 Expected: Redirect to dashboard tương ứng với role của user
 ```
@@ -105,27 +120,19 @@ Expected: Redirect to dashboard tương ứng với role của user
 ### 1. Trong Component
 
 ```tsx
-import { useRole } from '@/hooks/useRole';
+import { useRole } from "@/hooks/useRole";
 
 function MyComponent() {
-  const { 
-    primaryRole, 
-    primaryRoleName, 
-    isAdmin, 
-    isStaff,
-    hasRole 
-  } = useRole();
+  const { primaryRole, primaryRoleName, isAdmin, isStaff, hasRole } = useRole();
 
   return (
     <div>
       <p>Role: {primaryRoleName}</p>
-      
+
       {isAdmin && <AdminControls />}
       {isStaff && <StaffControls />}
-      
-      {hasRole(RoleCode.DEPARTMENT_OFFICER) && (
-        <DepartmentFeatures />
-      )}
+
+      {hasRole(RoleCode.DEPARTMENT_OFFICER) && <DepartmentFeatures />}
     </div>
   );
 }
@@ -151,22 +158,18 @@ function MyComponent() {
 ### 3. Conditional Rendering
 
 ```tsx
-import { isAdmin, isStaff, hasRole } from '@/lib/auth/roles';
-import { useAuth } from '@/contexts/AuthContext';
+import { isAdmin, isStaff, hasRole } from "@/lib/auth/roles";
+import { useAuth } from "@/contexts/AuthContext";
 
 function Navigation() {
   const { user } = useAuth();
-  
+
   return (
     <nav>
-      {isAdmin(user) && (
-        <Link href="/dashboard/admin">Admin Panel</Link>
-      )}
-      
-      {isStaff(user) && (
-        <Link href="/dashboard/staff">Staff Dashboard</Link>
-      )}
-      
+      {isAdmin(user) && <Link href="/dashboard/admin">Admin Panel</Link>}
+
+      {isStaff(user) && <Link href="/dashboard/staff">Staff Dashboard</Link>}
+
       {hasRole(user, RoleCode.STUDENT) && (
         <Link href="/dashboard">Student Dashboard</Link>
       )}
@@ -180,11 +183,13 @@ function Navigation() {
 ## 📁 Files Changed/Created
 
 ### Created:
+
 - ✅ `src/lib/auth/roles.ts` - Role helper functions
 - ✅ `src/hooks/useRole.ts` - useRole hook
 - ✅ `src/components/auth/ProtectedRoute.tsx` - Protected route component
 
 ### Updated:
+
 - ✅ `src/contexts/AuthContext.tsx` - Added role-based redirect
 - ✅ `src/app/dashboard/admin/layout.tsx` - Added ProtectedRoute
 - ✅ `src/app/dashboard/staff/layout.tsx` - Added ProtectedRoute
@@ -194,6 +199,7 @@ function Navigation() {
 ## 🚀 Testing Steps
 
 ### 1. Kiểm tra Database
+
 ```sql
 -- Check roles in database
 SELECT * FROM roles;
@@ -206,6 +212,7 @@ JOIN roles r ON ur."roleId" = r.id;
 ```
 
 ### 2. Start Backend & Frontend
+
 ```powershell
 # Terminal 1 - Backend
 cd backend
@@ -217,6 +224,7 @@ npm run dev
 ```
 
 ### 3. Test Login Flow
+
 1. Truy cập: `http://localhost:3000/login`
 2. Đăng nhập với các tài khoản khác nhau
 3. Verify redirect URL
@@ -224,11 +232,13 @@ npm run dev
 5. Check console không có errors
 
 ### 4. Test Protected Routes
+
 1. Login với student account
 2. Thử truy cập: `http://localhost:3000/dashboard/admin`
 3. Expected: Redirect về `/dashboard`
 
 ### 5. Test Role Display
+
 1. Login thành công
 2. Check badge hiển thị đúng role name
 3. Verify menu items phù hợp với role
@@ -238,36 +248,41 @@ npm run dev
 ## 🐛 Common Issues
 
 ### Issue 1: "Cannot find module '@/lib/auth/roles'"
+
 **Solution:** Restart dev server
+
 ```powershell
 npm run dev
 ```
 
 ### Issue 2: Redirect loop
+
 **Solution:** Check role codes trong database khớp với RoleCode enum
+
 ```typescript
 // Backend database role codes phải là:
-system_admin
-department_officer
-leadership
-faculty_staff
-student
+system_admin;
+department_officer;
+leadership;
+faculty_staff;
+student;
 ```
 
 ### Issue 3: User có nhiều roles nhưng redirect sai
+
 **Solution:** Check priority order trong `getPrimaryRole()` function
 
 ---
 
 ## 📊 Role Codes Mapping
 
-| Backend DB | Frontend Enum | Display Name |
-|------------|---------------|--------------|
-| `system_admin` | `RoleCode.SYSTEM_ADMIN` | Quản trị hệ thống |
-| `department_officer` | `RoleCode.DEPARTMENT_OFFICER` | Cán bộ phòng |
-| `leadership` | `RoleCode.LEADERSHIP` | Lãnh đạo |
-| `faculty_staff` | `RoleCode.FACULTY_STAFF` | Cán bộ khoa/viện |
-| `student` | `RoleCode.STUDENT` | Sinh viên |
+| Backend DB           | Frontend Enum                 | Display Name      |
+| -------------------- | ----------------------------- | ----------------- |
+| `system_admin`       | `RoleCode.SYSTEM_ADMIN`       | Quản trị hệ thống |
+| `department_officer` | `RoleCode.DEPARTMENT_OFFICER` | Cán bộ phòng      |
+| `leadership`         | `RoleCode.LEADERSHIP`         | Lãnh đạo          |
+| `faculty_staff`      | `RoleCode.FACULTY_STAFF`      | Cán bộ khoa/viện  |
+| `student`            | `RoleCode.STUDENT`            | Sinh viên         |
 
 ---
 
