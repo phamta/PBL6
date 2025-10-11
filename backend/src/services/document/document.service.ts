@@ -208,14 +208,6 @@ export class DocumentService {
     const skip = (page - 1) * limit;
     const where: Prisma.DocumentWhereInput = {};
     
-    // Debug logs: print incoming filter and user summary to help debug empty results
-    try {
-      // Avoid logging sensitive info; only id, actions length and unitId
-      console.log('[DEBUG] DocumentService.findAll called with filter:', JSON.stringify({ page, limit, status, type, partnerName, partnerCountry, year, title, unitId, createdBy, expiringSoon, sortBy, sortOrder }));
-      console.log('[DEBUG] Requesting user summary:', JSON.stringify({ id: user.id, actionsCount: Array.isArray(user.actions) ? user.actions.length : 0, unitId: user.unitId }));
-    } catch (e) {
-      // swallow logging errors
-    }
     // Filter by status
     if (status) {
       where.status = status;
