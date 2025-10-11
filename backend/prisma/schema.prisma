@@ -161,6 +161,7 @@ model User {
   systemConfigs         SystemConfig[]
   notificationsSent     NotificationLog[]  @relation("NotificationSentBy")
   notificationsReceived UserNotification[]
+  templatesUploaded     Template[]         @relation("TemplateUploadedBy")
 
   @@map("users")
 }
@@ -224,6 +225,13 @@ model Document {
   cooperationField      String?
   proposalReason        String?
   handlingStatus        String?
+  proposalCode          String? // Generated code for MOU proposal (e.g., "MOU-2025-001")
+  contactPerson         String? // Contact person of proposing unit
+  contactEmail          String? // Contact email
+  isExtended            Boolean        @default(false) // Whether MOU has been extended
+  renewalDate           DateTime? // Date of renewal/extension
+  terminationDate       DateTime? // Early termination date
+  relatedFiles          Json? // Array of related files (draft, letters, reports, etc.)
   createdById           String
   approvedById          String?
   approvedAt            DateTime?
@@ -239,7 +247,30 @@ model Document {
   partner    Partner? @relation(fields: [partnerId], references: [id])
   unit       Unit?    @relation(fields: [unitId], references: [id])
 
+  @@index([proposalCode])
+  @@index([status])
   @@map("documents")
+}
+
+model Template {
+  id           String   @id @default(cuid())
+  name         String
+  category     String // e.g., "Tờ trình", "Dự thảo MOU", "Thư mời", "Báo cáo"
+  filePath     String // Path to the uploaded template file
+  fileType     String? // "DOCX", "PDF"
+  isMandatory  Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  description  String?
+  uploadedById String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  uploadedBy User? @relation("TemplateUploadedBy", fields: [uploadedById], references: [id])
+
+  @@index([category])
+  @@index([isActive])
+  @@map("templates")
 }
 
 // ==================== VISA SERVICE MODELS ====================

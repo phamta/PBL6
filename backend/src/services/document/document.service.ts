@@ -853,4 +853,475 @@ export class DocumentService {
       });
     }
   }
+
+  // ==================== Enhanced MOU Management Methods ====================
+
+  /**
+   * Generate unique proposal code (e.g., MOU-2025-001)
+   */
+  private async generateProposalCode(): Promise<string> {
+    const year = new Date().getFullYear();
+    const prefix = `MOU-${year}-`;
+
+    // Find the latest document with the same year prefix
+    const latestDoc = await this.prisma.document.findFirst({
+      where: {
+        proposalCode: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        proposalCode: 'desc',
+      },
+    });
+
+    let sequence = 1;
+    if (latestDoc?.proposalCode) {
+      const lastSequence = parseInt(latestDoc.proposalCode.split('-').pop() || '0');
+      sequence = lastSequence + 1;
+    }
+
+    return `${prefix}${sequence.toString().padStart(3, '0')}`;
+  }
+
+  /**
+   * Create MOU proposal with auto-generated proposal code
+   */
+  async createProposal(
+    createDocumentDto: CreateDocumentDto,
+    user: DocumentUser
+  ): Promise<DocumentWithRelations> {
+    if (!user.actions.includes('DOCUMENT_PROPOSE') && !user.actions.includes('DOCUMENT_CREATE')) {
+      throw new ForbiddenException('You do not have permission to propose documents');
+    }
+
+    const proposalCode = await this.generateProposalCode();
+
+    // Validate partner exists if partnerId is provided
+    if (createDocumentDto.partnerId) {
+      const partner = await this.prisma.partner.findUnique({
+        where: { id: createDocumentDto.partnerId },
+      });
+      if (!partner) {
+        throw new NotFoundException(`Partner with ID ${createDocumentDto.partnerId} not found`);
+      }
+    }
+
+    // Validate unit exists if unitId is provided
+    if (createDocumentDto.unitId) {
+      const unit = await this.prisma.unit.findUnique({
+        where: { id: createDocumentDto.unitId },
+      });
+      if (!unit) {
+        throw new NotFoundException(`Unit with ID ${createDocumentDto.unitId} not found`);
+      }
+    }
+
+    const data: Prisma.DocumentCreateInput = {
+      proposalCode,
+      title: createDocumentDto.title,
+      type: createDocumentDto.type || DocumentType.MOU,
+      partnerName: createDocumentDto.partnerName,
+      partnerCountry: createDocumentDto.partnerCountry,
+      partnerAddress: createDocumentDto.partnerAddress,
+      partnerField: createDocumentDto.partnerField,
+      description: createDocumentDto.description,
+      content: createDocumentDto.content,
+      proposingUnit: createDocumentDto.proposingUnit,
+      signingLevel: createDocumentDto.signingLevel,
+      signedBy: createDocumentDto.signedBy,
+      isHighLevelDelegation: createDocumentDto.isHighLevelDelegation || false,
+      cooperationField: createDocumentDto.cooperationField,
+      proposalReason: createDocumentDto.proposalReason,
+      handlingStatus: createDocumentDto.handlingStatus,
+      contactPerson: createDocumentDto['contactPerson'],
+      contactEmail: createDocumentDto['contactEmail'],
+      signedDate: createDocumentDto.signedDate ? new Date(createDocumentDto.signedDate) : null,
+      effectiveDate: createDocumentDto.effectiveDate ? new Date(createDocumentDto.effectiveDate) : null,
+      expirationDate: createDocumentDto.expirationDate ? new Date(createDocumentDto.expirationDate) : null,
+      attachments: createDocumentDto.attachments || [],
+      status: DocumentStatus.DRAFT,
+      createdBy: {
+        connect: { id: user.id },
+      },
+    };
+
+    if (createDocumentDto.partnerId) {
+      data.partner = { connect: { id: createDocumentDto.partnerId } };
+    }
+
+    if (createDocumentDto.unitId) {
+      data.unit = { connect: { id: createDocumentDto.unitId } };
+    }
+
+    const document = await this.prisma.document.create({
+      data,
+      include: this.documentInclude,
+    });
+
+    this.eventEmitter.emit('document.proposal.created', {
+      document,
+      user,
+      timestamp: new Date(),
+    });
+
+    return document;
+  }
+
+  /**
+   * Approve MOU proposal
+   */
+  async approveProposal(id: string, user: DocumentUser): Promise<DocumentWithRelations> {
+    if (!user.actions.includes('DOCUMENT_APPROVE')) {
+      throw new ForbiddenException('You do not have permission to approve documents');
+    }
+
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+      include: this.documentInclude,
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${id} not found`);
+    }
+
+    if (document.status !== DocumentStatus.REVIEWING) {
+      throw new BadRequestException('Only documents in REVIEWING status can be approved');
+    }
+
+    const updatedDocument = await this.prisma.document.update({
+      where: { id },
+      data: {
+        status: DocumentStatus.APPROVED,
+        approvedById: user.id,
+        approvedAt: new Date(),
+      },
+      include: this.documentInclude,
+    });
+
+    this.eventEmitter.emit('document.approved', {
+      document: updatedDocument,
+      approver: user,
+      timestamp: new Date(),
+    });
+
+    return updatedDocument;
+  }
+
+  /**
+   * Mark document as signed
+   */
+  async markSigned(id: string, signedBy: string, user: DocumentUser): Promise<DocumentWithRelations> {
+    if (!user.actions.includes('DOCUMENT_SIGN')) {
+      throw new ForbiddenException('You do not have permission to sign documents');
+    }
+
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${id} not found`);
+    }
+
+    if (document.status !== DocumentStatus.APPROVED) {
+      throw new BadRequestException('Only approved documents can be marked as signed');
+    }
+
+    const updatedDocument = await this.prisma.document.update({
+      where: { id },
+      data: {
+        status: DocumentStatus.SIGNED,
+        signedBy,
+        signedDate: new Date(),
+      },
+      include: this.documentInclude,
+    });
+
+    this.eventEmitter.emit('document.signed', {
+      document: updatedDocument,
+      user,
+      timestamp: new Date(),
+    });
+
+    return updatedDocument;
+  }
+
+  /**
+   * Mark document as active
+   */
+  async markActive(id: string, user: DocumentUser): Promise<DocumentWithRelations> {
+    if (!user.actions.includes('DOCUMENT_ACTIVATE')) {
+      throw new ForbiddenException('You do not have permission to activate documents');
+    }
+
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${id} not found`);
+    }
+
+    if (document.status !== DocumentStatus.SIGNED) {
+      throw new BadRequestException('Only signed documents can be activated');
+    }
+
+    const updatedDocument = await this.prisma.document.update({
+      where: { id },
+      data: {
+        status: DocumentStatus.ACTIVE,
+        effectiveDate: new Date(),
+      },
+      include: this.documentInclude,
+    });
+
+    this.eventEmitter.emit('document.activated', {
+      document: updatedDocument,
+      user,
+      timestamp: new Date(),
+    });
+
+    return updatedDocument;
+  }
+
+  /**
+   * Mark document as expired or extended
+   */
+  async markExpiredOrExtended(
+    id: string,
+    isExtended: boolean,
+    renewalDate: Date | null,
+    user: DocumentUser
+  ): Promise<DocumentWithRelations> {
+    if (!user.actions.includes('DOCUMENT_UPDATE')) {
+      throw new ForbiddenException('You do not have permission to update documents');
+    }
+
+    const document = await this.prisma.document.findUnique({
+      where: { id },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${id} not found`);
+    }
+
+    const updateData: any = {
+      isExtended,
+    };
+
+    if (isExtended && renewalDate) {
+      updateData.renewalDate = renewalDate;
+      updateData.expirationDate = renewalDate;
+      updateData.status = DocumentStatus.ACTIVE; // Reset to active if extended
+    } else {
+      updateData.status = DocumentStatus.EXPIRED;
+    }
+
+    const updatedDocument = await this.prisma.document.update({
+      where: { id },
+      data: updateData,
+      include: this.documentInclude,
+    });
+
+    this.eventEmitter.emit(isExtended ? 'document.extended' : 'document.expired', {
+      document: updatedDocument,
+      user,
+      timestamp: new Date(),
+    });
+
+    return updatedDocument;
+  }
+
+  /**
+   * Get expiring MOUs (within 90 days)
+   */
+  async getExpiringMous(days: number = 90): Promise<DocumentWithRelations[]> {
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(today.getDate() + days);
+
+    return this.prisma.document.findMany({
+      where: {
+        status: DocumentStatus.ACTIVE,
+        expirationDate: {
+          gte: today,
+          lte: futureDate,
+        },
+      },
+      include: this.documentInclude,
+      orderBy: {
+        expirationDate: 'asc',
+      },
+    });
+  }
+
+  /**
+   * Get MOU statistics
+   */
+  async getMouStats(user: DocumentUser): Promise<any> {
+    const where: Prisma.DocumentWhereInput = {};
+
+    // Base stats
+    const totalSigned = await this.prisma.document.count({
+      where: {
+        ...where,
+        status: {
+          in: [DocumentStatus.SIGNED, DocumentStatus.ACTIVE],
+        },
+      },
+    });
+
+    const totalExtended = await this.prisma.document.count({
+      where: {
+        ...where,
+        isExtended: true,
+      },
+    });
+
+    const totalExpired = await this.prisma.document.count({
+      where: {
+        ...where,
+        status: DocumentStatus.EXPIRED,
+      },
+    });
+
+    // Group by year (signedDate)
+    const byYear = await this.prisma.document.groupBy({
+      by: ['signedDate'],
+      where: {
+        ...where,
+        signedDate: { not: null },
+      },
+      _count: true,
+    });
+
+    const yearStats: Record<number, number> = {};
+    byYear.forEach((item) => {
+      if (item.signedDate) {
+        const year = item.signedDate.getFullYear();
+        yearStats[year] = (yearStats[year] || 0) + item._count;
+      }
+    });
+
+    // Group by cooperation field
+    const byField = await this.prisma.document.groupBy({
+      by: ['cooperationField'],
+      where: {
+        ...where,
+        cooperationField: { not: null },
+      },
+      _count: true,
+    });
+
+    const fieldStats: Record<string, number> = {};
+    byField.forEach((item) => {
+      if (item.cooperationField) {
+        fieldStats[item.cooperationField] = item._count;
+      }
+    });
+
+    // Group by partner
+    const byPartner = await this.prisma.document.groupBy({
+      by: ['partnerId'],
+      where: {
+        ...where,
+        partnerId: { not: null },
+      },
+      _count: true,
+    });
+
+    // Get partner names
+    const partnerStats: Record<string, number> = {};
+    for (const item of byPartner) {
+      if (item.partnerId) {
+        const partner = await this.prisma.partner.findUnique({
+          where: { id: item.partnerId },
+        });
+        if (partner) {
+          partnerStats[partner.name] = item._count;
+        }
+      }
+    }
+
+    // Group by unit
+    const byUnit = await this.prisma.document.groupBy({
+      by: ['unitId'],
+      where: {
+        ...where,
+        unitId: { not: null },
+      },
+      _count: true,
+    });
+
+    // Get unit names
+    const unitStats: Record<string, number> = {};
+    for (const item of byUnit) {
+      if (item.unitId) {
+        const unit = await this.prisma.unit.findUnique({
+          where: { id: item.unitId },
+        });
+        if (unit) {
+          unitStats[unit.name] = item._count;
+        }
+      }
+    }
+
+    return {
+      totalSigned,
+      totalExtended,
+      totalExpired,
+      byYear: yearStats,
+      byField: fieldStats,
+      byPartner: partnerStats,
+      byUnit: unitStats,
+    };
+  }
+
+  /**
+   * Upload and attach files to a document
+   */
+  async uploadAttachments(
+    documentId: string,
+    files: Array<{ filename: string; path: string; mimetype: string; size: number }>,
+    user: DocumentUser
+  ): Promise<DocumentWithRelations> {
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${documentId} not found`);
+    }
+
+    // Check permissions
+    if (
+      document.createdById !== user.id &&
+      !user.actions.includes('DOCUMENT_UPDATE')
+    ) {
+      throw new ForbiddenException('You do not have permission to update this document');
+    }
+
+    // Get existing related files
+    const existingFiles = (document.relatedFiles as any) || [];
+
+    // Add new files
+    const newFiles = files.map((file) => ({
+      filename: file.filename,
+      path: file.path,
+      mimetype: file.mimetype,
+      size: file.size,
+      uploadedAt: new Date().toISOString(),
+    }));
+
+    const updatedDocument = await this.prisma.document.update({
+      where: { id: documentId },
+      data: {
+        relatedFiles: [...existingFiles, ...newFiles],
+      },
+      include: this.documentInclude,
+    });
+
+    return updatedDocument;
+  }
 }

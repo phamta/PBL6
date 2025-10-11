@@ -332,6 +332,16 @@ async function main() {
       },
     }),
     prisma.action.upsert({
+      where: { code: 'DOCUMENT_PROPOSE' },
+      update: {},
+      create: {
+        code: 'DOCUMENT_PROPOSE',
+        name: 'Propose Document',
+        description: 'Can propose new MOU/documents',
+        category: 'DOCUMENT_MANAGEMENT',
+      },
+    }),
+    prisma.action.upsert({
       where: { code: 'DOCUMENT_APPROVE' },
       update: {},
       create: {
@@ -359,6 +369,48 @@ async function main() {
         name: 'Activate Document',
         description: 'Can activate documents',
         category: 'DOCUMENT_MANAGEMENT',
+      },
+    }),
+    prisma.action.upsert({
+      where: { code: 'DOCUMENT_VIEW' },
+      update: {},
+      create: {
+        code: 'DOCUMENT_VIEW',
+        name: 'View Document',
+        description: 'Can view documents',
+        category: 'DOCUMENT_MANAGEMENT',
+      },
+    }),
+
+    // Template Management Actions
+    prisma.action.upsert({
+      where: { code: 'TEMPLATE_UPLOAD' },
+      update: {},
+      create: {
+        code: 'TEMPLATE_UPLOAD',
+        name: 'Upload Template',
+        description: 'Can upload document templates',
+        category: 'TEMPLATE_MANAGEMENT',
+      },
+    }),
+    prisma.action.upsert({
+      where: { code: 'TEMPLATE_MANAGE' },
+      update: {},
+      create: {
+        code: 'TEMPLATE_MANAGE',
+        name: 'Manage Templates',
+        description: 'Can manage document templates (create, update, delete)',
+        category: 'TEMPLATE_MANAGEMENT',
+      },
+    }),
+    prisma.action.upsert({
+      where: { code: 'TEMPLATE_VIEW' },
+      update: {},
+      create: {
+        code: 'TEMPLATE_VIEW',
+        name: 'View Templates',
+        description: 'Can view and download templates',
+        category: 'TEMPLATE_MANAGEMENT',
       },
     }),
 
@@ -879,6 +931,16 @@ async function main() {
     },
   });
 
+  const templateManagementPermission = await prisma.permission.upsert({
+    where: { code: 'TEMPLATE_MANAGEMENT' },
+    update: {},
+    create: {
+      code: 'TEMPLATE_MANAGEMENT',
+      name: 'Template Management',
+      description: 'Full access to template operations',
+    },
+  });
+
   console.log('✅ Created additional permissions');
 
   // Assign actions to new permissions
@@ -886,7 +948,7 @@ async function main() {
 
   // Document Management Permission Actions
   const documentManagementActions = actions.filter(action => 
-    ['DOCUMENT_CREATE', 'DOCUMENT_READ', 'DOCUMENT_UPDATE', 'DOCUMENT_DELETE', 'DOCUMENT_APPROVE', 'DOCUMENT_SIGN', 'DOCUMENT_ACTIVATE']
+    ['DOCUMENT_CREATE', 'DOCUMENT_READ', 'DOCUMENT_UPDATE', 'DOCUMENT_DELETE', 'DOCUMENT_PROPOSE', 'DOCUMENT_APPROVE', 'DOCUMENT_SIGN', 'DOCUMENT_ACTIVATE', 'DOCUMENT_VIEW']
     .includes(action.code)
   );
   
@@ -1038,6 +1100,28 @@ async function main() {
     });
   }
 
+  // Template Management Permission Actions
+  const templateManagementActions = actions.filter(action => 
+    ['TEMPLATE_UPLOAD', 'TEMPLATE_MANAGE', 'TEMPLATE_VIEW']
+    .includes(action.code)
+  );
+  
+  for (const action of templateManagementActions) {
+    await prisma.permissionAction.upsert({
+      where: {
+        permissionId_actionId: {
+          permissionId: templateManagementPermission.id,
+          actionId: action.id,
+        },
+      },
+      update: {},
+      create: {
+        permissionId: templateManagementPermission.id,
+        actionId: action.id,
+      },
+    });
+  }
+
   console.log('✅ Assigned actions to new permissions');
 
   // Create Roles (using lowercase with underscore to match frontend)
@@ -1109,6 +1193,7 @@ async function main() {
     unitManagementPermission,
     notificationManagementPermission,
     systemManagementPermission,
+    templateManagementPermission,
   ];
   
   for (const permission of allPermissions) {
@@ -1137,6 +1222,7 @@ async function main() {
     reportManagementPermission,
     unitManagementPermission,
     notificationManagementPermission,
+    templateManagementPermission,
   ];
   
   for (const permission of departmentOfficerPermissions) {

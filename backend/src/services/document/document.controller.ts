@@ -440,4 +440,241 @@ export class DocumentController {
       data: document
     };
   }
+
+  // ==================== Enhanced MOU Management Routes ====================
+
+  /**
+   * Create MOU proposal with auto-generated proposal code
+   */
+  @Post('proposal')
+  @HttpCode(HttpStatus.CREATED)
+  @RequireAction('DOCUMENT_PROPOSE')
+  @ApiOperation({ 
+    summary: 'Tạo đề xuất ký MOU mới',
+    description: 'Tạo đề xuất MOU với mã đề xuất tự động (VD: MOU-2025-001)'
+  })
+  @ApiResponse({ status: 201, description: 'MOU proposal created successfully' })
+  @ApiResponse({ status: 403, description: 'Không có quyền tạo đề xuất' })
+  async createProposal(
+    @Body() createDocumentDto: CreateDocumentDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const user: DocumentUser = {
+      id: req.user.id,
+      actions: req.user.actions,
+      unitId: req.user.unitId
+    };
+
+    const document = await this.documentService.createProposal(createDocumentDto, user);
+    
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'MOU proposal created successfully',
+      data: document
+    };
+  }
+
+  /**
+   * Approve MOU proposal
+   */
+  @Patch(':id/approve-proposal')
+  @RequireAction('DOCUMENT_APPROVE')
+  @ApiOperation({ 
+    summary: 'Duyệt đề xuất MOU',
+    description: 'Duyệt đề xuất MOU và chuyển sang trạng thái APPROVED'
+  })
+  @ApiResponse({ status: 200, description: 'MOU proposal approved successfully' })
+  @ApiResponse({ status: 400, description: 'Chỉ có thể duyệt đề xuất ở trạng thái REVIEWING' })
+  @ApiResponse({ status: 403, description: 'Không có quyền duyệt đề xuất' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async approveProposal(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const user: DocumentUser = {
+      id: req.user.id,
+      actions: req.user.actions,
+      unitId: req.user.unitId
+    };
+
+    const document = await this.documentService.approveProposal(id, user);
+    
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'MOU proposal approved successfully',
+      data: document
+    };
+  }
+
+  /**
+   * Mark document as signed
+   */
+  @Patch(':id/mark-signed')
+  @RequireAction('DOCUMENT_SIGN')
+  @ApiOperation({ 
+    summary: 'Cập nhật trạng thái MOU đã ký',
+    description: 'Đánh dấu MOU đã được ký kết chính thức'
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        signedBy: { type: 'string', example: 'Hiệu trưởng' }
+      }
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Document marked as signed successfully' })
+  @ApiResponse({ status: 400, description: 'Chỉ có thể ký các document đã được duyệt' })
+  @ApiResponse({ status: 403, description: 'Không có quyền ký document' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async markSigned(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('signedBy') signedBy: string,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const user: DocumentUser = {
+      id: req.user.id,
+      actions: req.user.actions,
+      unitId: req.user.unitId
+    };
+
+    const document = await this.documentService.markSigned(id, signedBy, user);
+    
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Document marked as signed successfully',
+      data: document
+    };
+  }
+
+  /**
+   * Mark document as active
+   */
+  @Patch(':id/mark-active')
+  @RequireAction('DOCUMENT_ACTIVATE')
+  @ApiOperation({ 
+    summary: 'Kích hoạt MOU',
+    description: 'Kích hoạt MOU đã ký và đưa vào trạng thái hiệu lực'
+  })
+  @ApiResponse({ status: 200, description: 'Document marked as active successfully' })
+  @ApiResponse({ status: 400, description: 'Chỉ có thể kích hoạt document đã ký' })
+  @ApiResponse({ status: 403, description: 'Không có quyền kích hoạt document' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async markActiveDocument(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const user: DocumentUser = {
+      id: req.user.id,
+      actions: req.user.actions,
+      unitId: req.user.unitId
+    };
+
+    const document = await this.documentService.markActive(id, user);
+    
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Document marked as active successfully',
+      data: document
+    };
+  }
+
+  /**
+   * Mark document as expired or extended
+   */
+  @Patch(':id/expire-extend')
+  @RequireAction('DOCUMENT_UPDATE')
+  @ApiOperation({ 
+    summary: 'Đánh dấu MOU hết hạn hoặc gia hạn',
+    description: 'Cập nhật trạng thái hết hạn hoặc gia hạn cho MOU'
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        isExtended: { type: 'boolean', example: true },
+        renewalDate: { type: 'string', format: 'date-time', example: '2026-12-31T00:00:00.000Z' }
+      }
+    }
+  })
+  @ApiResponse({ status: 200, description: 'Document status updated successfully' })
+  @ApiResponse({ status: 403, description: 'Không có quyền cập nhật document' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async markExpiredOrExtended(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('isExtended') isExtended: boolean,
+    @Body('renewalDate') renewalDate: string,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const user: DocumentUser = {
+      id: req.user.id,
+      actions: req.user.actions,
+      unitId: req.user.unitId
+    };
+
+    const renewalDateObj = renewalDate ? new Date(renewalDate) : null;
+    const document = await this.documentService.markExpiredOrExtended(
+      id,
+      isExtended,
+      renewalDateObj,
+      user
+    );
+    
+    return {
+      statusCode: HttpStatus.OK,
+      message: `Document ${isExtended ? 'extended' : 'marked as expired'} successfully`,
+      data: document
+    };
+  }
+
+  /**
+   * Get expiring MOUs
+   */
+  @Get('expiring')
+  @RequireAction('DOCUMENT_READ')
+  @ApiOperation({ 
+    summary: 'Danh sách MOU sắp hết hạn (90 ngày)',
+    description: 'Lấy danh sách các MOU sẽ hết hạn trong 90 ngày tới'
+  })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of days to check (default: 90)' })
+  @ApiResponse({ status: 200, description: 'Expiring MOUs retrieved successfully' })
+  async getExpiring(
+    @Query('days') days?: number,
+    @Req() req?: AuthenticatedRequest
+  ) {
+    const documents = await this.documentService.getExpiringMous(days || 90);
+    
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Expiring MOUs retrieved successfully',
+      data: documents,
+      count: documents.length
+    };
+  }
+
+  /**
+   * Get MOU statistics
+   */
+  @Get('stats/mou')
+  @RequireAction('DOCUMENT_READ')
+  @ApiOperation({ 
+    summary: 'Thống kê MOU theo năm, lĩnh vực, đối tác',
+    description: 'Lấy thống kê chi tiết về các MOU đã ký theo nhiều tiêu chí'
+  })
+  @ApiResponse({ status: 200, description: 'MOU statistics retrieved successfully' })
+  async getMouStats(@Req() req: AuthenticatedRequest) {
+    const user: DocumentUser = {
+      id: req.user.id,
+      actions: req.user.actions,
+      unitId: req.user.unitId
+    };
+
+    const stats = await this.documentService.getMouStats(user);
+    
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'MOU statistics retrieved successfully',
+      data: stats
+    };
+  }
 }

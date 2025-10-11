@@ -231,4 +231,22 @@ export class UpdateDocumentDto {
   @IsOptional()
   @IsString({ message: 'Expected benefits must be a string' })
   expectedBenefits?: string;
+
+  @ApiProperty({
+    description: 'Contact person of proposing unit',
+    required: false,
+    example: 'Dr. Nguyen Van A (Updated)'
+  })
+  @IsOptional()
+  @IsString({ message: 'Contact person must be a string' })
+  contactPerson?: string;
+
+  @ApiProperty({
+    description: 'Contact email of proposing unit',
+    required: false,
+    example: 'updated-contact@university.edu.vn'
+  })
+  @IsOptional()
+  @IsString({ message: 'Contact email must be a string' })
+  contactEmail?: string;
 }
