@@ -11,6 +11,7 @@ import {
   Req,
   HttpStatus,
   ParseUUIDPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -270,7 +271,7 @@ export class VisaController {
   @ApiParam({ name: 'id', description: 'Visa ID', type: 'string' })
   @ApiBody({ type: ExtendVisaDto })
   async createExtension(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() extendVisaDto: ExtendVisaDto,
     @Req() req: AuthenticatedRequest,
   ) {
@@ -416,6 +417,175 @@ export class VisaController {
       statusCode: HttpStatus.OK,
       message: 'Reminder status reset successfully',
       data: { resetCount: count },
+    };
+  }
+
+  /**
+   * Get all foreign students associated with a specific visa
+   */
+  @Get(':id/students')
+  @RequireAction('VISA_READ')
+  @ApiOperation({
+    summary: 'Get foreign students by visa ID',
+    description: 'Get all foreign students associated with a specific visa. Requires VISA_READ action.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Visa ID',
+    type: String,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Foreign students retrieved successfully',
+  })
+  async getAllStudentsByVisaId(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const students = await this.visaService.getAllStudentsByVisaId(id, req.user);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Foreign students retrieved successfully',
+      data: students,
+    };
+  }
+
+  /**
+   * Get foreign students by unit ID
+   */
+  @Get('foreign-students/unit/:unitId')
+  @RequireAction('VISA_READ')
+  @ApiOperation({
+    summary: 'Get foreign students by unit ID',
+    description: 'Get all foreign students belonging to a specific unit/department. Requires VISA_READ action.',
+  })
+  @ApiParam({
+    name: 'unitId',
+    description: 'Unit/Department ID',
+    type: String,
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Foreign students retrieved successfully',
+  })
+  async getForeignStudentsByUnitId(
+    @Param('unitId', ParseUUIDPipe) unitId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const students = await this.visaService.getForeignStudentsByUnitId(unitId, req.user);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Foreign students retrieved successfully',
+      data: students,
+    };
+  }
+
+  /**
+   * Get foreign students by multiple unit IDs
+   */
+  @Get('foreign-students/units')
+  @RequireAction('VISA_READ')
+  @ApiOperation({
+    summary: 'Get foreign students by multiple unit IDs',
+    description: 'Get all foreign students belonging to multiple units/departments. Requires VISA_READ action.',
+  })
+  @ApiQuery({
+    name: 'unitIds',
+    description: 'Comma-separated list of unit IDs',
+    type: String,
+    example: 'unit1,unit2,unit3',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Foreign students retrieved successfully',
+  })
+  async getForeignStudentsByUnitIds(
+    @Query('unitIds') unitIds: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    if (!unitIds) {
+      throw new BadRequestException('unitIds query parameter is required');
+    }
+
+    const unitIdArray = unitIds.split(',').map(id => id.trim()).filter(id => id.length > 0);
+
+    if (unitIdArray.length === 0) {
+      throw new BadRequestException('At least one valid unit ID is required');
+    }
+
+    const students = await this.visaService.getForeignStudentsByUnitIds(unitIdArray, req.user);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Foreign students retrieved successfully',
+      data: students,
+    };
+  }
+
+  
+  /**
+   * Get foreign students by current user's unit
+   */
+  @Get('foreign-students/my-unit')
+  @RequireAction('VISA_READ')
+  @ApiOperation({
+    summary: 'Get foreign students by current user\'s unit',
+    description: 'Get all foreign students belonging to the current user\'s unit/department. Requires VISA_READ action.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Foreign students retrieved successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions',
+  })
+  async getForeignStudentsByCurrentUserUnit(
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const students = await this.visaService.getForeignStudentsByCurrentUserUnit(req.user);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Foreign students retrieved successfully',
+      data: students,
+    };
+  }
+
+  /**
+   * Get foreign student by ID
+   */
+  @Get('foreign-students/:id')
+  @RequireAction('VISA_READ')
+  @ApiOperation({
+    summary: 'Get foreign student by ID',
+    description: 'Get detailed information of a specific foreign student including visa and unit information. Requires VISA_READ action.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Foreign student ID',
+    type: String,
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Foreign student retrieved successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Foreign student not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Insufficient permissions',
+  })
+  async getForeignStudentById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const student = await this.visaService.getForeignStudentById(id, req.user);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Foreign student retrieved successfully',
+      data: student,
     };
   }
 }

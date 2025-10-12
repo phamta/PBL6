@@ -38,7 +38,7 @@ export const API_ENDPOINTS = {
     STATS: '/documents/stats',
     DETAIL: (id: string) => `/documents/${id}`,
     CREATE: '/documents',
-    UPDATE: (id: string) => `/documents/${id}`,
+    PATCH: (id: string) => `/documents/${id}`,
     DELETE: (id: string) => `/documents/${id}`,
     SUBMIT: (id: string) => `/documents/${id}/submit`,
     REVIEW: (id: string) => `/documents/${id}/review`,
@@ -57,6 +57,9 @@ export const API_ENDPOINTS = {
   VISAS: {
     LIST: '/visas',
     DETAIL: (id: string) => `/visas/${id}`,
+    FOREIGN_STUDENTS_BY_UNIT: (unitId: string) => `/visas/foreign-students/unit/${unitId}`,
+    FOREIGN_STUDENTS_BY_MYUNIT: '/visas/foreign-students/my-unit',
+    CREATE_EXTENSION: (id: string) => `/visas/${id}/extend`,
   },
   // Translation endpoints
   TRANSLATIONS: {

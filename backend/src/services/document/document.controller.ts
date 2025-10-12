@@ -145,7 +145,7 @@ export class DocumentController {
   @ApiResponse({ status: 200, description: 'Document details retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Document not found' })
   @ApiResponse({ status: 403, description: 'Không có quyền xem document này' })
-  async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+  async findOne(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     const user: DocumentUser = {
       id: req.user.id,
       actions: req.user.actions,
@@ -176,7 +176,7 @@ export class DocumentController {
   @ApiResponse({ status: 404, description: 'Document not found' })
   @ApiBody({ type: UpdateDocumentDto })
   async update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() updateDocumentDto: UpdateDocumentDto,
     @Req() req: AuthenticatedRequest
   ) {

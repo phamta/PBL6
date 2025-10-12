@@ -147,7 +147,7 @@ export class DocumentService {
       effectiveDate: createDocumentDto.effectiveDate ? new Date(createDocumentDto.effectiveDate) : null,
       expirationDate: createDocumentDto.expirationDate ? new Date(createDocumentDto.expirationDate) : null,
       attachments: createDocumentDto.attachments || [],
-      status: DocumentStatus.DRAFT,
+      status: DocumentStatus.SUBMITTED,
       createdBy: {
         connect: { id: user.id },
       },

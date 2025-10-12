@@ -6,6 +6,7 @@ export { authService } from './auth.service';
 export { userService } from './user.service';
 export { unitService } from './unit.service';
 export { documentsService } from './documents.service';
+export { visaService } from './visa.service';
 export type {
     DocumentItem,
     DocumentStatus,
@@ -14,6 +15,13 @@ export type {
     DocumentListQuery,
     DocumentStats
 } from './documents.service';
+export type {
+    VisaWithRelations,
+    VisaListResult,
+    FilterVisaDto,
+    InternationalMember,
+    VisaStatus
+} from './visa.service';
 
 export * from './types';
 export * from './config';

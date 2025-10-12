@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { NotificationService } from './notification.service';
+import { PrismaService } from '../../database/prisma.service';
 import { NotificationType } from '@prisma/client';
 
 interface SystemUser {
@@ -91,7 +92,10 @@ export class NotificationListener {
     email: 'system@pbl6.edu.vn',
   };
 
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   // ==================== DOCUMENT EVENTS ====================
 
@@ -103,16 +107,43 @@ export class NotificationListener {
     this.logger.log(`📄 Document created: ${event.document.title} by ${event.user.fullName}`);
 
     try {
-      // Gửi system notification cho Department Officers
-      // (Giả định có role hoặc tìm users có permission document:approve)
-      await this.notificationService.sendNotification({
-        type: NotificationType.SYSTEM,
-        recipient: 'department-officers', // TODO: Thay bằng logic tìm department officers
-        subject: 'Tài liệu mới cần duyệt',
-        content: `Tài liệu "${event.document.title}" vừa được tạo bởi ${event.user.fullName} và đang chờ duyệt.`,
-      }, this.systemUser);
+      // Tìm Department Officers (users có role 'department_officer')
+      const departmentOfficers = await this.prisma.user.findMany({
+        where: {
+          roles: {
+            some: {
+              role: {
+                code: 'department_officer'
+              }
+            }
+          },
+          isActive: true
+        },
+        select: {
+          id: true,
+          fullName: true,
+          email: true
+        }
+      });
 
-      this.logger.log(`✅ Notification sent for document creation: ${event.document.id}`);
+      if (departmentOfficers.length === 0) {
+        this.logger.warn('No department officers found to notify');
+        return;
+      }
+
+      // Gửi system notification cho từng Department Officer
+      const notificationPromises = departmentOfficers.map(officer =>
+        this.notificationService.sendNotification({
+          type: NotificationType.SYSTEM,
+          recipient: officer.id,
+          subject: 'Tài liệu mới cần duyệt',
+          content: `Tài liệu "${event.document.title}" vừa được tạo bởi ${event.user.fullName} và đang chờ duyệt.`,
+        }, this.systemUser)
+      );
+
+      await Promise.all(notificationPromises);
+
+      this.logger.log(`✅ Notifications sent to ${departmentOfficers.length} department officers for document: ${event.document.id}`);
     } catch (error) {
       this.logger.error(`❌ Failed to send document created notification: ${error.message}`, error.stack);
     }

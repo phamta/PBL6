@@ -2,8 +2,9 @@
 
 import React from "react";
 import { useEffect, useState } from "react";
-import { documentsService, type DocumentItem, type DocumentStatus, type PaginatedDocuments } from "@/lib/api/documents.service";
+import { documentsService, type DocumentItem, type DocumentStatus, type PaginatedDocuments, type FullDocument, type DocumentType } from "@/lib/api/documents.service";
 import FileUploadBox from "@/components/FileUploadBox";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   FileText,
   Search,
@@ -82,10 +83,16 @@ export function DocumentManagement() {
   const [limit, setLimit] = useState(10);
   const [loading, setLoading] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<DocumentItem | null>(null);
+  const [fullDocument, setFullDocument] = useState<FullDocument | null>(null);
   const [isNewProposalOpen, setIsNewProposalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("list");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const { user } = useAuth();
 
   const loadData = async () => {
     try {
@@ -114,6 +121,33 @@ export function DocumentManagement() {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, limit, searchQuery, statusFilter]);
+
+  // Set contact person from logged in user
+  useEffect(() => {
+    if (user?.fullName) {
+      setProposal(prev => ({ 
+        ...prev, 
+        contactPerson: user.fullName,
+        contactEmail: user.email,
+        proposingUnit: user.unit?.name || prev.proposingUnit
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (selectedProposal) {
+      setFullDocument(null); // Reset while loading
+      documentsService.get(selectedProposal.id)
+        .then(setFullDocument)
+        .catch((error) => {
+          console.error('Failed to load document details:', error);
+          if (error.response) {
+            console.error('Backend error:', error.response.status, error.response.data);
+          }
+          // Optionally show error message to user
+        });
+    }
+  }, [selectedProposal]);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string }> = {
@@ -165,9 +199,135 @@ const handleFile = (file: File | null, key: string) => {
   }));
 };
 
-  const handleSubmit = () => {
-    console.log("Proposal:", proposal);
-    setIsNewProposalOpen(false);
+  // Update dialog title and button text based on mode
+  const dialogTitle = isEditing ? "Edit MOU Proposal" : "New MOU Proposal";
+  const dialogDescription = isEditing ? "Update the MOU proposal details" : "Submit a new MOU/Agreement proposal for review";
+  const submitButtonText = isEditing ? "Update Proposal" : "Submit Proposal";
+
+  // Function to populate form for editing
+  const populateFormForEdit = (document: FullDocument) => {
+    setProposal({
+      proposingUnit: document.proposingUnit || document.unit?.name || "",
+      docType: document.type.toLowerCase(),
+      signingLevel: document.signingLevel || "",
+      purpose: document.proposalReason || document.description || "",
+      contactPerson: document.createdBy?.fullName || "",
+      contactEmail: document.createdBy?.email || "",
+      partnerName: document.partnerName || document.partner?.name || "",
+      partnerCountry: document.partnerCountry || document.partner?.country || "",
+      yearFounded: "", // Not available in backend
+      partnerAddress: document.partnerAddress || "",
+      fieldActivity: document.partnerField || document.cooperationField || "",
+      files: {
+        draft: null, // Files not loaded for edit, user can re-upload
+        supporting: null,
+        institutional: null,
+        correspondence: null,
+      },
+    });
+  };
+  const [isWaitingToEdit, setIsWaitingToEdit] = useState(false);
+
+  useEffect(() => {
+    if (selectedProposal && fullDocument && isWaitingToEdit) {
+      handleEdit();
+      setIsWaitingToEdit(false);
+    }
+  }, [fullDocument]);
+  // Handle Edit button click
+  const handleEdit = () => {
+    if (selectedProposal && fullDocument) {
+      setIsEditing(true);
+      setEditingId(selectedProposal.id);
+      populateFormForEdit(fullDocument);
+      setIsNewProposalOpen(true);
+      setSelectedProposal(null); // Close view dialog
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      // Validate required fields
+      if (!proposal.docType || !proposal.signingLevel || !proposal.purpose || 
+          !proposal.partnerName || !proposal.partnerCountry) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      // Prepare data for API - only include defined values
+      const baseData = {
+        title: `${proposal.docType.toUpperCase()} with ${proposal.partnerName}`,
+        partnerName: proposal.partnerName,
+        partnerCountry: proposal.partnerCountry,
+        description: proposal.purpose,
+        proposingUnit: proposal.proposingUnit,
+        signingLevel: proposal.signingLevel,
+        proposalReason: proposal.purpose,
+        unitId: user?.unitId || undefined,
+        attachments: []
+      };
+
+      // Add type field only for creation
+      const documentData: any = isEditing ? { ...baseData } : {
+        ...baseData,
+        type: proposal.docType.toUpperCase() === 'MOA' ? 'AGREEMENT' :
+              proposal.docType.toUpperCase() === 'LOI' ? 'OTHER' :
+              proposal.docType.toUpperCase()
+      };
+
+      // Only add optional fields if they have values
+      if (proposal.partnerAddress) documentData.partnerAddress = proposal.partnerAddress;
+      if (proposal.fieldActivity) {
+        documentData.partnerField = proposal.fieldActivity;
+        documentData.cooperationField = proposal.fieldActivity;
+      }
+
+      console.log(`${isEditing ? 'Updating' : 'Creating'} document:`, documentData);
+      
+      if (isEditing && editingId) {
+        // Update existing document
+        await documentsService.update(editingId, documentData);
+      } else {
+        // Create new document
+        await documentsService.create(documentData);
+      }
+      
+      // Reset form and state
+      setProposal({
+        proposingUnit: user?.unit?.name || "Faculty of Engineering",
+        docType: "",
+        signingLevel: "",
+        purpose: "",
+        contactPerson: user?.fullName || "",
+        contactEmail: user?.email || "",
+        partnerName: "",
+        partnerCountry: "",
+        yearFounded: "",
+        partnerAddress: "",
+        fieldActivity: "",
+        files: {
+          draft: null,
+          supporting: null,
+          institutional: null,
+          correspondence: null,
+        },
+      });
+      setIsEditing(false);
+      setEditingId(null);
+      setIsNewProposalOpen(false);
+      
+      // Reload the list to show the new document
+      loadData();
+      
+      alert('Proposal submitted successfully!');
+    } catch (error: any) {
+      console.error(`Failed to ${isEditing ? 'update' : 'create'} document:`, error);
+      alert(`Failed to ${isEditing ? 'update' : 'submit'} proposal. Please try again.`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -208,7 +368,7 @@ const handleFile = (file: File | null, key: string) => {
                   placeholder="Search by partner, ID, or country..."
                   className="pl-10"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -218,14 +378,14 @@ const handleFile = (file: File | null, key: string) => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="DRAFT">Bản nháp</SelectItem>
-                  <SelectItem value="SUBMITTED">Đã nộp</SelectItem>
-                  <SelectItem value="REVIEWING">Đang xét duyệt</SelectItem>
-                  <SelectItem value="APPROVED">Đã phê duyệt</SelectItem>
-                  <SelectItem value="SIGNED">Đã ký</SelectItem>
-                  <SelectItem value="ACTIVE">Hiệu lực</SelectItem>
-                  <SelectItem value="EXPIRED">Hết hạn</SelectItem>
-                  <SelectItem value="CANCELLED">Đã hủy</SelectItem>
+                  <SelectItem value="DRAFT">DRAFT</SelectItem>
+                  <SelectItem value="SUBMITTED">SUBMITTED</SelectItem>
+                  <SelectItem value="REVIEWING">REVIEWING</SelectItem>
+                  <SelectItem value="APPROVED">APPROVED</SelectItem>
+                  <SelectItem value="SIGNED">SIGNED</SelectItem>
+                  <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                  <SelectItem value="EXPIRED">EXPIRED</SelectItem>
+                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -243,15 +403,17 @@ const handleFile = (file: File | null, key: string) => {
                     <TableHead>Document Type</TableHead>
                     <TableHead>Signing Level</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Contact</TableHead>
+                    <TableHead>CreateBy</TableHead>
                     <TableHead>Last Updated</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {(items || []).map((proposal) => (
+               <TableBody>
+                  {(items || []).map((proposal, index) => (
                     <TableRow key={proposal.id}>
-                      <TableCell className="text-muted-foreground">{proposal.id}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        #{(page - 1) * limit + index + 1} {/* Số thứ tự liên tục: #1, #2, #3... */}
+                      </TableCell>
                       <TableCell>{proposal.partnerName}</TableCell>
                       <TableCell>{proposal.partnerCountry}</TableCell>
                       <TableCell>
@@ -274,10 +436,17 @@ const handleFile = (file: File | null, key: string) => {
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          {(proposal.status === "DRAFT" || proposal.status === "SUBMITTED") && (
-                            <Button size="sm" variant="ghost">
-                              <Edit className="w-4 h-4" />
-                            </Button>
+                          {proposal.status === "DRAFT" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedProposal(proposal);
+                              setIsWaitingToEdit(true); // báo là người dùng muốn edit
+                            }}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
                           )}
                         </div>
                       </TableCell>
@@ -288,6 +457,8 @@ const handleFile = (file: File | null, key: string) => {
             </div>
           </Card>
         </TabsContent>
+
+        {/* Workflow Tab */}
 
         {/* Workflow Tab */}
         <TabsContent value="workflow" className="space-y-6">
@@ -338,172 +509,289 @@ const handleFile = (file: File | null, key: string) => {
             </motion.div>
           </div>
 
-          {/* Workflow placeholder (awaiting backend data mapping) */}
-          <Card className="p-6">
-            <p className="text-muted-foreground">Quy trình sẽ hiển thị dữ liệu thực khi hoàn thiện tích hợp.</p>
+
+
+          <Card className="p-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background">
+            <h4 className="mb-4">Quy trình xử lý đề xuất MOU</h4>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                  1
+                </div>
+                <div>
+                  <h4 className="mb-1">Nộp đề xuất</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Đơn vị nộp đề xuất MOU
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                  2
+                </div>
+                <div>
+                  <h4 className="mb-1">Xét duyệt</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Phòng KHĐN xem xét
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                  3
+                </div>
+                <div>
+                  <h4 className="mb-1">Phê duyệt</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Ban giám hiệu duyệt
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-cyan-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                  4
+                </div>
+                <div>
+                  <h4 className="mb-1">Chờ ký kết</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Chuẩn bị ký kết
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                  5
+                </div>
+                <div>
+                  <h4 className="mb-1">Hoàn thành</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Đã ký và lưu trữ
+                  </p>
+                </div>
+              </div>
+            </div>
           </Card>
-        </TabsContent>
-      </Tabs>
+          {/* MOU Proposals with Timeline - Chèn phần này vào */}
+          <div className="space-y-4">
+            <h3>Quy trình xử lý đề xuất MOU</h3>
+            {(items || []).map((proposal, index) => (
+              <motion.div
+                key={proposal.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ scale: 1.01 }}
+              >
+                <Card className="p-6 hover:shadow-lg transition-all">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4>{proposal.partnerName}</h4>
+                        {getStatusBadge(proposal.status)}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Mã đơn: #{(page - 1) * limit + index + 1} • Nộp ngày: {new Date(proposal.createdAt).toLocaleDateString()}
+                      </p>
+                      <div className="flex items-center gap-4 mt-2 text-sm">
+                        <span className="flex items-center gap-1">
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          {proposal.type}
+                        </span>
+                        <span className="text-muted-foreground">•</span>
+                        <span className="text-muted-foreground">{proposal.contactPerson}</span>
+                      </div>
+                    </div>
+                  </div>
 
-      {/* New Proposal Dialog */}
-      {/* <Dialog open={isNewProposalOpen} onOpenChange={setIsNewProposalOpen}>
-        <DialogContent className="max-w-4xl dialog-content">
-          <DialogHeader>
-            <DialogTitle>New MOU Proposal</DialogTitle>
-            <DialogDescription>
-              Submit a new MOU/Agreement proposal for review
-            </DialogDescription>
-          </DialogHeader>
-          <div className="dialog-body">
-            <Tabs defaultValue="basic" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                <TabsTrigger value="partner">Partner Details</TabsTrigger>
-                <TabsTrigger value="files">Documents</TabsTrigger>
-              </TabsList>
+                  {/* Timeline Progress - Giả sử timeline dựa trên status */}
+                 <div className="mt-4">
+                    {/* --- Thanh tiến trình --- */}
+                    <div className="flex items-center gap-2 mb-2">
+                      {[
+                        { step: "Nộp đề xuất" },
+                        { step: "Xét duyệt" },
+                        { step: "Phê duyệt" },
+                        { step: "Chờ ký kết" },
+                        { step: "Hoàn thành" },
+                      ].map((item, idx) => {
+                        let status = "pending";
 
-              <TabsContent value="basic" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <Label htmlFor="proposing-unit">Proposing Unit</Label>
-                    <Input
-                      id="proposing-unit"
-                      defaultValue="Faculty of Engineering"
-                      className="mt-2"
-                      disabled
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="doc-type">Document Type *</Label>
-                    <Select>
-                      <SelectTrigger id="doc-type" className="mt-2">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="mou">MOU</SelectItem>
-                        <SelectItem value="moa">MOA</SelectItem>
-                        <SelectItem value="agreement">Agreement</SelectItem>
-                        <SelectItem value="loi">Letter of Intent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="signing-level">Signing Level *</Label>
-                    <Select>
-                      <SelectTrigger id="signing-level" className="mt-2">
-                        <SelectValue placeholder="Select level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="university">University</SelectItem>
-                        <SelectItem value="faculty">Faculty</SelectItem>
-                        <SelectItem value="ud-level">UD-level</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="purpose">Purpose & Justification *</Label>
-                    <Textarea
-                      id="purpose"
-                      placeholder="Describe the purpose and justification for this agreement..."
-                      className="mt-2"
-                      rows={4}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="contact-person">Contact Person *</Label>
-                    <Input
-                      id="contact-person"
-                      placeholder="Name of contact person"
-                      className="mt-2"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="contact-email">Contact Email *</Label>
-                    <Input
-                      id="contact-email"
-                      type="email"
-                      placeholder="email@university.edu"
-                      className="mt-2"
-                    />
-                  </div>
-                </div>
-              </TabsContent>
+                        if (proposal.status === "DRAFT") {
+                          status = "rejected";
+                        } else if (proposal.status === "SUBMITTED" && idx === 0) {
+                          status = "current";
+                        } else if (proposal.status === "REVIEWING" && idx === 1) {
+                          status = "current";
+                        } else if (proposal.status === "APPROVED" && idx === 2) {
+                          status = "current";
+                        } else if (proposal.status === "SIGNED" && idx === 3) {
+                          status = "current";
+                        } else if (proposal.status === "ACTIVE" && idx === 4) {
+                          status = "current";
+                        }
 
-              <TabsContent value="partner" className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
-                    <Label htmlFor="partner-name">Foreign Partner Name *</Label>
-                    <Input
-                      id="partner-name"
-                      placeholder="Official name of partner institution"
-                      className="mt-2"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="partner-country">Country *</Label>
-                    <Input
-                      id="partner-country"
-                      placeholder="Country"
-                      className="mt-2"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="year-founded">Year Founded</Label>
-                    <Input
-                      id="year-founded"
-                      type="number"
-                      placeholder="e.g., 1950"
-                      className="mt-2"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="partner-address">Address</Label>
-                    <Textarea
-                      id="partner-address"
-                      placeholder="Full address of partner institution"
-                      className="mt-2"
-                      rows={2}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="field-activity">Field of Activity</Label>
-                    <Textarea
-                      id="field-activity"
-                      placeholder="Areas of expertise and collaboration"
-                      className="mt-2"
-                      rows={3}
-                    />
-                  </div>
-                </div>
-              </TabsContent>
+                        // Đánh dấu bước đã hoàn thành (mọi bước trước bước current)
+                        if (
+                          ["REVIEWING", "APPROVED", "SIGNED", "ACTIVE"].includes(proposal.status) &&
+                          idx <
+                            ["SUBMITTED", "REVIEWING", "APPROVED", "SIGNED", "ACTIVE"].indexOf(
+                              proposal.status
+                            )
+                        ) {
+                          status = "completed";
+                        }
 
-              <TabsContent value="files" className="space-y-4">
-                <div className="space-y-4">
-                  <FileUploadBox label="Draft MOU/Agreement *" accept=".pdf,.doc,.docx" maxSizeMB={10} onFileSelect={handleFile} />
-                  <FileUploadBox label="Supporting Documents" accept=".pdf,.doc,.docx,.jpg,.png" maxSizeMB={10} onFileSelect={handleFile} />
-                  <FileUploadBox label="Institutional Profile" accept=".pdf,.doc,.docx,.jpg,.png" maxSizeMB={10} onFileSelect={handleFile} />
-                  <FileUploadBox label="Email Correspondence" accept=".pdf,.doc,.docx,.jpg,.png" maxSizeMB={10} onFileSelect={handleFile} />
+                        return (
+                          <div key={idx} className="flex items-center flex-1">
+                            <div
+                              className={`flex-1 h-2 rounded-full transition-all ${
+                                status === "completed"
+                                  ? "bg-green-500"
+                                  : status === "current"
+                                  ? "bg-blue-500 animate-pulse"
+                                  : status === "rejected"
+                                  ? "bg-red-500"
+                                  : "bg-gray-200"
+                              }`}
+                            />
+                            {idx < 4 && (
+                              <ArrowRight
+                                className={`w-4 h-4 mx-1 ${
+                                  status === "rejected"
+                                    ? "text-red-500"
+                                    : "text-muted-foreground"
+                                }`}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                </div>
-              </TabsContent>
-            </Tabs>
+                    {/* --- Nhãn và ngày --- */}
+                    <div className="grid grid-cols-5 gap-2 text-xs">
+                      {[
+                        {
+                          step: "Nộp đề xuất",
+                          date: proposal.createdAt
+                            ? new Date(proposal.createdAt).toLocaleDateString()
+                            : null,
+                        },
+                        {
+                          step: "Xét duyệt",
+                          date: ["REVIEWING", "APPROVED", "SIGNED", "ACTIVE"].includes(
+                            proposal.status
+                          )
+                            ? new Date(proposal.updatedAt).toLocaleDateString()
+                            : null,
+                        },
+                        {
+                          step: "Phê duyệt",
+                          date: ["APPROVED", "SIGNED", "ACTIVE"].includes(proposal.status)
+                            ? new Date(proposal.updatedAt).toLocaleDateString()
+                            : null,
+                        },
+                        {
+                          step: "Chờ ký kết",
+                          date: ["SIGNED", "ACTIVE"].includes(proposal.status)
+                            ? new Date(proposal.updatedAt).toLocaleDateString()
+                            : null,
+                        },
+                        {
+                          step: "Hoàn thành",
+                          date:
+                            proposal.status === "ACTIVE"
+                              ? new Date(proposal.updatedAt).toLocaleDateString()
+                              : null,
+                        },
+                      ].map((item, idx) => (
+                        <div key={idx} className="text-center">
+                          <p
+                            className={`${
+                              proposal.status === "DRAFT"
+                                ? "text-red-600 font-semibold"
+                                : "text-muted-foreground"
+                            }`}
+                          >
+                            {item.step}
+                          </p>
+                          {item.date && (
+                            <p
+                              className={`mt-1 ${
+                                proposal.status === "DRAFT"
+                                  ? "text-red-500"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {item.date}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Current Status Note */}
+                  <Card className="p-3 mt-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200">
+                    <p className="text-sm flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-blue-600" />
+                      <span className="text-blue-900 dark:text-blue-100">
+                        {proposal.status === "DRAFT" ? "Đề xuất bị từ chối, cần chỉnh sửa" :
+                         proposal.status === "SUBMITTED" ? "Đã nộp, chờ xét duyệt" :
+                         proposal.status === "REVIEWING" ? "Đang được xét duyệt" :
+                         proposal.status === "APPROVED" ? "Đã được phê duyệt, chuẩn bị ký kết" :
+                         proposal.status === "SIGNED" ? "Đã ký, chờ hiệu lực" :
+                         proposal.status === "ACTIVE" ? "Đã hoàn thành" :
+                         "Trạng thái không xác định"}
+                      </span>
+                    </p>
+                  </Card>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedProposal(proposal)}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Xem chi tiết
+                    </Button>
+                    {proposal.status === "DRAFT" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedProposal(proposal);
+                          setIsWaitingToEdit(true);
+                        }}
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Sửa đề xuất
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
           </div>
-          <DialogFooter className="mt-4 border-t pt-4">
-            <Button variant="outline" onClick={() => setIsNewProposalOpen(false)}>
-              Cancel
-            </Button>
-            <Button className="bg-primary">
-              <FileText className="w-4 h-4 mr-2" />
-              Submit Proposal
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog> */}
-        <Dialog open={isNewProposalOpen} onOpenChange={setIsNewProposalOpen}>
+
+          {/* Workflow Steps Info - Giữ nguyên */}
+
+        </TabsContent>
+        
+      </Tabs>
+        <Dialog open={isNewProposalOpen} onOpenChange={(open) => {
+          if (!open) {
+            setIsNewProposalOpen(false);
+            setIsEditing(false);
+            setEditingId(null);
+          }
+        }}>
           <DialogContent className="max-w-4xl dialog-content">
             <DialogHeader>
-              <DialogTitle>New MOU Proposal</DialogTitle>
-              <DialogDescription>Submit a new MOU/Agreement proposal for review</DialogDescription>
+              <DialogTitle>{dialogTitle}</DialogTitle>
+              <DialogDescription>{dialogDescription}</DialogDescription>
             </DialogHeader>
 
             <div className="dialog-body">
@@ -567,19 +855,19 @@ const handleFile = (file: File | null, key: string) => {
                       <Label>Contact Person *</Label>
                       <Input
                         value={proposal.contactPerson}
-                        onChange={e => handleChange("contactPerson", e.target.value)}
-                        placeholder="Name of contact person"
-                        className="mt-2"
+                        disabled
+                        placeholder="Auto-filled from logged in user"
+                        className="mt-2 bg-muted"
                       />
                     </div>
                     <div>
                       <Label>Contact Email *</Label>
                       <Input
                         value={proposal.contactEmail}
-                        onChange={e => handleChange("contactEmail", e.target.value)}
+                        disabled
                         type="email"
-                        placeholder="email@university.edu"
-                        className="mt-2"
+                        placeholder="Auto-filled from logged in user"
+                        className="mt-2 bg-muted"
                       />
                     </div>
                   </div>
@@ -670,96 +958,225 @@ const handleFile = (file: File | null, key: string) => {
             </div>
 
             <DialogFooter className="mt-4 border-t pt-4">
-              <Button variant="outline" onClick={() => setIsNewProposalOpen(false)}>Cancel</Button>
-              <Button className="bg-primary" onClick={handleSubmit}>
-                <FileText className="w-4 h-4 mr-2" /> Submit Proposal
+              <Button variant="outline" onClick={() => {
+                setIsNewProposalOpen(false);
+                setIsEditing(false);
+                setEditingId(null);
+              }} disabled={isSubmitting}>Cancel</Button>
+              <Button className="bg-primary" onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    {isEditing ? 'Updating...' : 'Submitting...'}
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4 mr-2" /> {submitButtonText}
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       {/* View Proposal Dialog */}
-      <Dialog
-        open={!!selectedProposal}
-        onOpenChange={(open) => !open && setSelectedProposal(null)}
-      >
-        <DialogContent className="max-w-3xl dialog-content">
-          <DialogHeader>
-            <DialogTitle>Proposal Details</DialogTitle>
-            <DialogDescription>
-              View and track MOU proposal status
-            </DialogDescription>
-          </DialogHeader>
-          {selectedProposal && (
+        {/* View Document Details Dialog */}
+        <Dialog
+                open={!!selectedProposal}
+                onOpenChange={(open) => !open && setSelectedProposal(null)}
+              >
+          <DialogContent className="max-w-4xl dialog-content">
+            <DialogHeader>
+              <DialogTitle>MOU/Agreement Details</DialogTitle>
+              <DialogDescription>
+                View the detailed content of the document
+              </DialogDescription>
+            </DialogHeader>
+            {selectedProposal && fullDocument ? (
             <div className="dialog-body">
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Proposal ID</Label>
-                    <p className="mt-1">{selectedProposal.id}</p>
-                  </div>
-                  <div>
-                    <Label>Status</Label>
-                    <div className="mt-1">{getStatusBadge(selectedProposal.status)}</div>
-                  </div>
-                  <div className="col-span-2">
-                    <Label>Partner Institution</Label>
-                    <p className="mt-1">{selectedProposal.partnerName}</p>
-                  </div>
-                  <div>
-                    <Label>Country</Label>
-                    <p className="mt-1">{selectedProposal.partnerCountry}</p>
-                  </div>
-                  <div>
-                    <Label>Document Type</Label>
-                    <p className="mt-1">{selectedProposal.type}</p>
-                  </div>
-                  <div>
-                    <Label>Signing Level</Label>
-                    <p className="mt-1">{selectedProposal.signingLevel}</p>
-                  </div>
-                  <div>
-                    <Label>Contact Person</Label>
-                    <p className="mt-1">{selectedProposal.contactPerson}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <Label>Last Updated</Label>
-                    <p className="mt-1">{new Date(selectedProposal.updatedAt).toLocaleString()}</p>
-                  </div>
-                </div>
+              <Tabs defaultValue="basic" className="space-y-4">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                  <TabsTrigger value="partner">Partner Details</TabsTrigger>
+                  <TabsTrigger value="files">Documents</TabsTrigger>
+                </TabsList>
 
-                {/* Admin feedback (optional field when backend provides) */}
-                {/* Placeholder removed until backend field available */}
-
-                <div>
-                  <Label>Attached Documents</Label>
-                  <div className="mt-2 space-y-2">
-                    <Card className="p-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm">draft_mou.pdf</span>
-                      </div>
-                      <Button size="sm" variant="ghost">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </Card>
+                <TabsContent value="basic" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <Label htmlFor="proposing-unit">Proposing Unit</Label>
+                      <Input
+                        id="proposing-unit"
+                        value={fullDocument.proposingUnit || fullDocument.unit?.name || ''}
+                        className="mt-2"
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="doc-type">Document Type</Label>
+                      <Input
+                        id="doc-type"
+                        value={fullDocument.type}
+                        className="mt-2"
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="signing-level">Signing Level</Label>
+                      <Input
+                        id="signing-level"
+                        value={fullDocument.signingLevel || ''}
+                        className="mt-2"
+                        disabled
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="purpose">Purpose & Justification</Label>
+                      <Textarea
+                        id="purpose"
+                        value={fullDocument.proposalReason || fullDocument.description || ''}
+                        className="mt-2"
+                        rows={4}
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contact-person">Contact Person</Label>
+                      <Input
+                        id="contact-person"
+                        value={fullDocument.createdBy?.fullName || ''}
+                        className="mt-2"
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="contact-email">Contact Email</Label>
+                      <Input
+                        id="contact-email"
+                        type="email"
+                        value={fullDocument.createdBy?.email || fullDocument.partner?.contactEmail || ''}
+                        className="mt-2"
+                        disabled
+                      />
+                    </div>
                   </div>
-                </div>
-              </div>
+                </TabsContent>
+
+                <TabsContent value="partner" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <Label htmlFor="partner-name">Foreign Partner Name</Label>
+                      <Input
+                        id="partner-name"
+                        value={fullDocument.partnerName || fullDocument.partner?.name || ''}
+                        className="mt-2"
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="partner-country">Country</Label>
+                      <Input
+                        id="partner-country"
+                        value={fullDocument.partnerCountry || fullDocument.partner?.country || ''}
+                        className="mt-2"
+                        disabled
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="year-founded">Year Founded</Label>
+                      <Input
+                        id="year-founded"
+                        type="number"
+                        value=""  // If yearFounded is not available in backend, leave empty or remove field
+                        className="mt-2"
+                        disabled
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="partner-address">Address</Label>
+                      <Textarea
+                        id="partner-address"
+                        value={fullDocument.partnerAddress || ''}
+                        className="mt-2"
+                        rows={2}
+                        disabled
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="field-activity">Field of Activity</Label>
+                      <Textarea
+                        id="field-activity"
+                        value={fullDocument.partnerField || fullDocument.cooperationField || ''}
+                        className="mt-2"
+                        rows={3}
+                        disabled
+                      />
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="files" className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Draft MOU/Agreement</Label>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {fullDocument.attachments?.[0] ? (
+                          <a href={fullDocument.attachments[0].path} className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer">
+                            {fullDocument.attachments[0].path.split('/').pop() || 'draft_mou.pdf'}
+                          </a>
+                        ) : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Supporting Documents</Label>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {fullDocument.attachments?.[1] ? (
+                          <a href={fullDocument.attachments[1].path} className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer">
+                            {fullDocument.attachments[1].path.split('/').pop() || 'supporting_docs.pdf'}
+                          </a>
+                        ) : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Institutional Profile</Label>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {fullDocument.attachments?.[2] ? (
+                          <a href={fullDocument.attachments[2].path} className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer">
+                            {fullDocument.attachments[2].path.split('/').pop() || 'profile.pdf'}
+                          </a>
+                        ) : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <Label>Email Correspondence</Label>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        {fullDocument.attachments?.[3] ? (
+                          <a href={fullDocument.attachments[3].path} className="text-blue-500 hover:underline" target="_blank" rel="noopener noreferrer">
+                            {fullDocument.attachments[3].path.split('/').pop() || 'emails.pdf'}
+                          </a>
+                        ) : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
-          )}
-          <DialogFooter className="mt-4 border-t pt-4">
+            ) : (
+              <p>Loading document details...</p>
+            )}
+            <DialogFooter className="mt-4 border-t pt-4">
             <Button variant="outline" onClick={() => setSelectedProposal(null)}>
               Close
             </Button>
-            {(selectedProposal?.status === "DRAFT" || selectedProposal?.status === "SUBMITTED") && (
-              <Button variant="outline">
+            {selectedProposal?.status === "DRAFT" && (
+              <Button variant="outline" onClick={handleEdit}>
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Proposal
               </Button>
             )}
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
     </div>
   );
 }
+

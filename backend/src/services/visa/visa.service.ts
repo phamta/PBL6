@@ -1,7 +1,7 @@
 ﻿import { Injectable, NotFoundException, BadRequestException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Prisma, Visa, VisaStatus, VisaExtension } from '@prisma/client';
+import { Prisma, Visa, VisaStatus, VisaExtension, ForeignStudent } from '@prisma/client';
 import { CreateVisaDto, UpdateVisaDto, FilterVisaDto, ExtendVisaDto, ApproveVisaDto, ApprovalAction } from './dto';
 
 export interface VisaUser {
@@ -343,7 +343,7 @@ export class VisaService {
 
     // Check permission
     if (!user.actions.includes('VISA_READ_ALL')) {
-      if (visa.createdById !== user.id) {
+      if (visa.unitId !== user.unitId) {
         throw new ForbiddenException('You do not have permission to view this visa');
       }
     }
@@ -798,5 +798,192 @@ export class VisaService {
     });
 
     return result.count;
+  }
+
+  /**
+   * Get all foreign students associated with a specific visa
+   */
+  async getAllStudentsByVisaId(visaId: string, user: VisaUser): Promise<ForeignStudent[]> {
+    // Check if user has permission to view visa
+    await this.findOne(visaId, user);
+
+    return this.prisma.foreignStudent.findMany({
+      where: { visaId },
+      include: {
+        unit: {
+          select: { id: true, name: true, code: true },
+        },
+        visa: {
+          select: {
+            id: true,
+            visaNumber: true,
+            holderName: true,
+            status: true,
+            expirationDate: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Get foreign students by unit ID
+   */
+  async getForeignStudentsByUnitId(unitId: string, user: VisaUser): Promise<ForeignStudent[]> {
+    // Check if user has permission to read foreign students
+    if (!user.actions.includes('VISA_READ_ALL') && !user.actions.includes('STUDENT_READ')) {
+      throw new ForbiddenException('You do not have permission to view foreign students');
+    }
+
+    return this.prisma.foreignStudent.findMany({
+      where: { departmentId: unitId },
+      include: {
+        unit: {
+          select: { id: true, name: true, code: true },
+        },
+        visa: {
+          select: {
+            id: true,
+            visaNumber: true,
+            holderName: true,
+            status: true,
+            expirationDate: true,
+            purpose: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Get foreign students by multiple unit IDs
+   */
+  async getForeignStudentsByUnitIds(unitIds: string[], user: VisaUser): Promise<ForeignStudent[]> {
+    // Check if user has permission to read foreign students
+    if (!user.actions.includes('VISA_READ_ALL') && !user.actions.includes('STUDENT_READ')) {
+      throw new ForbiddenException('You do not have permission to view foreign students');
+    }
+
+    return this.prisma.foreignStudent.findMany({
+      where: {
+        departmentId: { in: unitIds },
+      },
+      include: {
+        unit: {
+          select: { id: true, name: true, code: true },
+        },
+        visa: {
+          select: {
+            id: true,
+            visaNumber: true,
+            holderName: true,
+            status: true,
+            expirationDate: true,
+            purpose: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Get foreign student by ID with full details
+   */
+  async getForeignStudentById(id: string, user: VisaUser): Promise<ForeignStudent> {
+    // Check if user has permission to read foreign students
+    if (!user.actions.includes('VISA_READ_ALL') && !user.actions.includes('STUDENT_READ')) {
+      throw new ForbiddenException('You do not have permission to view foreign students');
+    }
+
+    const student = await this.prisma.foreignStudent.findUnique({
+      where: { id },
+      include: {
+        unit: {
+          select: { id: true, name: true, code: true },
+        },
+        visa: {
+          select: {
+            id: true,
+            visaNumber: true,
+            holderName: true,
+            holderCountry: true,
+            passportNumber: true,
+            status: true,
+            expirationDate: true,
+            purpose: true,
+            issueDate: true,
+            sponsorUnit: true,
+            program: true,
+            department: true,
+            supervisorName: true,
+            email: true,
+            phone: true,
+            attachments: true,
+            createdBy: {
+              select: { id: true, fullName: true, email: true },
+            },
+            approvedBy: {
+              select: { id: true, fullName: true, email: true },
+            },
+            partner: {
+              select: { id: true, name: true, country: true, contactEmail: true },
+            },
+            unit: {
+              select: { id: true, name: true, code: true },
+            },
+            extensions: {
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException(`Foreign student with ID ${id} not found`);
+    }
+
+    return student;
+  }
+
+  /**
+   * Get foreign students by current user's unit
+   */
+  async getForeignStudentsByCurrentUserUnit(user: VisaUser): Promise<ForeignStudent[]> {
+    // Check if user has permission to read foreign students
+    // Staff users with VISA_READ can view foreign students in their unit
+    if (!user.actions.includes('VISA_READ_ALL') && !user.actions.includes('VISA_READ') && !user.actions.includes('STUDENT_READ')) {
+      throw new ForbiddenException('You do not have permission to view foreign students');
+    }
+
+    // If user doesn't have a unitId, return empty array
+    if (!user.unitId) {
+      return [];
+    }
+
+    return this.prisma.foreignStudent.findMany({
+      where: { departmentId: user.unitId },
+      include: {
+        unit: {
+          select: { id: true, name: true, code: true },
+        },
+        visa: {
+          select: {
+            id: true,
+            visaNumber: true,
+            holderName: true,
+            status: true,
+            expirationDate: true,
+            purpose: true,
+            issueDate: true,
+            attachments: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 }

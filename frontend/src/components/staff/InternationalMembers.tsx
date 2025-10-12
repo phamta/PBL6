@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRef } from "react";
 import FileUploadBox from "@/components/FileUploadBox";
+import { visaService, type InternationalMember } from "@/lib/api";
 import {
   GraduationCap,
   Search,
@@ -137,38 +138,79 @@ const membersData = [
   },
 ];
 
-const visaExpiringData = [
-  { status: "< 1 month", count: 3, color: "#ef4444" },
-  { status: "1-3 months", count: 5, color: "#f59e0b" },
-  { status: "> 3 months", count: 20, color: "#10b981" },
-];
-
-const nationalityData = [
-  { country: "China", count: 8 },
-  { country: "Spain", count: 5 },
-  { country: "India", count: 4 },
-  { country: "Egypt", count: 3 },
-  { country: "Vietnam", count: 2 },
-];
-
 interface InternationalMembersProps {
   onNavigate?: (page: string) => void;
 }
 
+// Helper function to format date
+const formatDate = (dateString: string) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return dateString;
+  }
+};
+
 export function InternationalMembers({ onNavigate }: InternationalMembersProps = {}) {
-  const [selectedMember, setSelectedMember] = useState<typeof membersData[0] | null>(
-    null
-  );
+  const [members, setMembers] = useState<InternationalMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedMember, setSelectedMember] = useState<InternationalMember | null>(null);
   const [isRegistrationOpen, setIsRegistrationOpen] = useState(false);
   const [isVisaExtensionOpen, setIsVisaExtensionOpen] = useState(false);
-  const [selectedForExtension, setSelectedForExtension] = useState<typeof membersData[0] | null>(
-    null
-  );
+  const [selectedForExtension, setSelectedForExtension] = useState<InternationalMember | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("members");
+  const [isSubmittingExtension, setIsSubmittingExtension] = useState(false);
 
-  const filteredMembers = membersData.filter((member) => {
+  // Fetch international members data
+  useEffect(() => {
+    const fetchMembers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await visaService.getInternationalMembers();
+        console.log('Data received from API:', data);
+        console.log('Setting members state with:', data.length, 'items');
+        setMembers(data);
+        console.log('Members state after set:', members);
+      } catch (err) {
+        console.error('Error fetching international members:', err);
+        setError('Failed to load international members data');
+        // Fallback to mock data if API fails
+        setMembers(membersData as InternationalMember[]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMembers();
+  }, []);
+
+  // Helper function to get status badge
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
+      case 'pending':
+        return <Badge variant="destructive">Pending</Badge>;
+      case 'expiring-soon':
+        return <Badge className="bg-orange-100 text-orange-800 border-orange-200">Expiring Soon</Badge>;
+      case 'extension-requested':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Extension Requested</Badge>;
+      default:
+        return <Badge variant="secondary">{status}</Badge>;
+    }
+  };
+
+  const filteredMembers = members.filter((member) => {
     const matchesSearch =
       member.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.nationality.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -177,32 +219,121 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string; icon: React.ReactNode }> = {
-      active: {
-        variant: "default",
-        label: "Active",
-        icon: <Check className="w-3 h-3 mr-1" />,
-      },
-      pending: {
-        variant: "secondary",
-        label: "Pending",
-        icon: <Clock className="w-3 h-3 mr-1" />,
-      },
-      "extension-requested": {
-        variant: "outline",
-        label: "Extension Requested",
-        icon: <AlertCircle className="w-3 h-3 mr-1" />,
-      },
-    };
-    const config = variants[status] || { variant: "outline" as const, label: status, icon: null };
-    return (
-      <Badge variant={config.variant} className="flex items-center w-fit">
-        {config.icon}
-        {config.label}
-      </Badge>
-    );
+  console.log('Current state:', { members, filteredMembers, loading, error, searchQuery, statusFilter });
+
+  // Computed statistics
+  const expiringSoonCount = members.filter((m) => {
+    const expiry = new Date(m.visaExpiry);
+    const today = new Date();
+    const daysUntil = Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntil <= 30;
+  }).length;
+
+  const extensionRequestsCount = members.filter((m) => m.extensionRequest).length;
+  const totalActiveCount = members.filter((m) => m.status === 'active').length;
+
+  // Handle extension request submission
+  const handleSubmitExtension = async () => {
+    if (!selectedForExtension) return;
+
+    // Get form values
+    const requestedDate = (document.getElementById('ext-requested-date') as HTMLInputElement)?.value;
+    const duration = (document.getElementById('ext-duration') as HTMLSelectElement)?.value;
+    const reason = (document.getElementById('ext-reason') as HTMLTextAreaElement)?.value;
+    const programStatus = (document.getElementById('ext-program-status') as HTMLTextAreaElement)?.value;
+
+    // Basic validation
+    if (!requestedDate) {
+      alert('Vui lòng chọn ngày gia hạn yêu cầu');
+      return;
+    }
+    if (!reason || reason.length < 10) {
+      alert('Vui lòng nhập lý do gia hạn (tối thiểu 10 ký tự)');
+      return;
+    }
+
+    try {
+      setIsSubmittingExtension(true);
+
+      // Calculate new expiration date based on duration
+      let newExpirationDate = new Date(requestedDate);
+      if (duration === '3') {
+        newExpirationDate.setMonth(newExpirationDate.getMonth() + 3);
+      } else if (duration === '6') {
+        newExpirationDate.setMonth(newExpirationDate.getMonth() + 6);
+      } else if (duration === '12') {
+        newExpirationDate.setFullYear(newExpirationDate.getFullYear() + 1);
+      } else if (duration === '24') {
+        newExpirationDate.setFullYear(newExpirationDate.getFullYear() + 2);
+      }
+
+      // Call API to create extension request
+      await visaService.createExtension(selectedForExtension.visaId, {
+        newExpirationDate: newExpirationDate.toISOString().split('T')[0],
+        reason: reason + (programStatus ? `\n\nTình trạng chương trình: ${programStatus}` : ''),
+      });
+
+      // Update member status locally
+      setMembers(prev => prev.map(member =>
+        member.id === selectedForExtension.id
+          ? { ...member, status: 'extension-requested' as const }
+          : member
+      ));
+
+      // Close dialog and reset state
+      setIsVisaExtensionOpen(false);
+      setSelectedForExtension(null);
+
+      alert('Đơn gia hạn visa đã được gửi thành công!');
+
+    } catch (error) {
+      console.error('Error submitting extension request:', error);
+      alert('Có lỗi xảy ra khi gửi đơn gia hạn. Vui lòng thử lại.');
+    } finally {
+      setIsSubmittingExtension(false);
+    }
   };
+
+  // Computed chart data
+  const visaExpiringData = [
+    {
+      status: "< 1 month",
+      count: members.filter((m) => {
+        const expiry = new Date(m.visaExpiry);
+        const today = new Date();
+        const daysUntil = Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return daysUntil <= 30;
+      }).length,
+      color: "#ef4444"
+    },
+    {
+      status: "1-3 months",
+      count: members.filter((m) => {
+        const expiry = new Date(m.visaExpiry);
+        const today = new Date();
+        const daysUntil = Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return daysUntil > 30 && daysUntil <= 90;
+      }).length,
+      color: "#f59e0b"
+    },
+    {
+      status: "> 3 months",
+      count: members.filter((m) => {
+        const expiry = new Date(m.visaExpiry);
+        const today = new Date();
+        const daysUntil = Math.floor((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        return daysUntil > 90;
+      }).length,
+      color: "#10b981"
+    },
+  ];
+
+  const nationalityData = Object.entries(
+    members.reduce((acc, member) => {
+      acc[member.nationality] = (acc[member.nationality] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([country, count]) => ({ country, count }));
 
   const chartConfig = {
     count: {
@@ -267,6 +398,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="expiring-soon">Expiring Soon</SelectItem>
                   <SelectItem value="extension-requested">Extension Requested</SelectItem>
                 </SelectContent>
               </Select>
@@ -274,9 +406,39 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
           </Card>
 
           {/* Members Table */}
-          <Card className="p-6">
-            <div className="overflow-x-auto">
-              <Table>
+          {loading && (
+            <Card className="p-6">
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center">
+                  <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2" />
+                  <p>Loading international members...</p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {error && (
+            <Card className="p-6">
+              <div className="flex items-center justify-center py-8">
+                <div className="text-center text-destructive">
+                  <AlertCircle className="w-8 h-8 mx-auto mb-2" />
+                  <p>{error}</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.reload()}
+                    className="mt-2"
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {!loading && !error && (
+            <Card className="p-6">
+              <div className="overflow-x-auto">
+                <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID</TableHead>
@@ -290,64 +452,89 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredMembers.map((member) => (
-                    <TableRow key={member.id}>
+                  {filteredMembers.map((member, index) => {
+                    console.log('Rendering member:', member);
+                    const typedMember = member as InternationalMember;
+                    return (
+                    <TableRow key={typedMember.id}>
                       <TableCell className="text-muted-foreground">
-                        {member.id}
+                        {index + 1}
                       </TableCell>
-                      <TableCell>{member.fullName}</TableCell>
-                      <TableCell>{member.nationality}</TableCell>
+                      <TableCell>{typedMember.fullName}</TableCell>
+                      <TableCell>{typedMember.nationality}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {member.visaType}
+                        {typedMember.visaType}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {member.department}
+                        {typedMember.department}
                       </TableCell>
-                      <TableCell>{member.visaExpiry}</TableCell>
-                      <TableCell>{getStatusBadge(member.status)}</TableCell>
+                      <TableCell>{formatDate(typedMember.visaExpiry)}</TableCell>
+                      <TableCell>{getStatusBadge(typedMember.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {member.status === "extension-requested" ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
-                              onClick={() => setSelectedMember(member)}
-                            >
-                              <FileText className="w-4 h-4 mr-2" />
-                              Xem đơn gia hạn
-                            </Button>
-                          ) : (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setSelectedMember(member)}
-                              >
-                                <Eye className="w-4 h-4 mr-2" />
-                                Xem
-                              </Button>
-                              <Button
-                                size="sm"
-                                className="bg-primary"
-                                onClick={() => {
-                                  setSelectedForExtension(member);
-                                  setIsVisaExtensionOpen(true);
-                                }}
-                              >
-                                <RefreshCw className="w-4 h-4 mr-2" />
-                                Lập đơn gia hạn visa
-                              </Button>
-                            </>
-                          )}
+                          {(() => {
+                            const expiryDate = new Date(typedMember.visaExpiry);
+                            const today = new Date();
+                            const daysUntilExpiry = Math.floor((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                            const needsExtension = daysUntilExpiry <= 90;
+
+                            if (typedMember.status === "extension-requested") {
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-blue-600 border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                                  onClick={() => setSelectedMember(typedMember)}
+                                >
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Xem đơn gia hạn
+                                </Button>
+                              );
+                            }
+
+                            return (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setSelectedMember(typedMember)}
+                                >
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  Xem
+                                </Button>
+                                {typedMember.status === 'expiring-soon' && (
+                                  <Button
+                                    size="sm"
+                                    className="bg-primary"
+                                    onClick={() => {
+                                      setSelectedForExtension(typedMember);
+                                      setIsVisaExtensionOpen(true);
+                                    }}
+                                  >
+                                    <RefreshCw className="w-4 h-4 mr-2" />
+                                    Lập đơn gia hạn visa
+                                  </Button>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
+                  {filteredMembers.length === 0 && !loading && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No international members found
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
           </Card>
+          )}
         </TabsContent>
 
         {/* Visa Extension Tab */}
@@ -387,19 +574,60 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
               </Card>
             </motion.div>
           </div>
-
+          <Card className="p-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background">
+                      <h4 className="mb-4">Quy trình xử lý gia hạn visa</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                            1
+                          </div>
+                          <div>
+                            <h4 className="mb-1">Nộp đơn</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Cán bộ nộp đơn và tài liệu
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                            2
+                          </div>
+                          <div>
+                            <h4 className="mb-1">Xét duyệt</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Phòng KHCN kiểm tra tài liệu
+                            </p>
+                          </div>
+                        </div>
+                       <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-cyan-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                          3
+                        </div>
+                          <div>
+                            <h4 className="mb-1">Phê duyệt</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Cấp NA5/NA6
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                            4
+                          </div>
+                          <div>
+                            <h4 className="mb-1">Hoàn thành</h4>
+                            <p className="text-sm text-muted-foreground">
+                             Visa đã gia hạn
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+          </Card>
           {/* Students needing visa extension */}
           <div className="space-y-4">
             <h3>Sinh viên cần gia hạn visa</h3>
-            {membersData
-              .filter((m) => {
-                const expiry = new Date(m.visaExpiry);
-                const today = new Date();
-                const daysUntil = Math.floor(
-                  (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-                );
-                return daysUntil <= 90;
-              })
+            {members
+              .filter((m) => m.status === 'expiring-soon')
               .map((member) => {
                 const expiry = new Date(member.visaExpiry);
                 const today = new Date();
@@ -457,7 +685,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                             Ngày hết hạn
                           </Label>
                           <p className="mt-1 font-medium text-destructive">
-                            {member.visaExpiry}
+                            {formatDate(member.visaExpiry)}
                           </p>
                         </div>
                         <div>
@@ -504,10 +732,10 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
           </div>
 
           {/* Visa Extension Requests in Progress */}
-          {membersData.filter((m) => m.extensionRequest).length > 0 && (
+          {members.filter((m) => m.extensionRequest).length > 0 && (
             <div className="space-y-4 mt-8">
               <h3>Đơn gia hạn đang xử lý</h3>
-              {membersData
+              {members
                 .filter((m) => m.extensionRequest)
                 .map((member, index) => (
                   <motion.div
@@ -546,7 +774,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                               Hết hạn hiện tại
                             </Label>
                             <p className="mt-1 text-destructive font-medium">
-                              {member.visaExpiry}
+                              {formatDate(member.visaExpiry)}
                             </p>
                           </div>
                           <div>
@@ -587,7 +815,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                                     <div className="h-full bg-blue-400 rounded-full animate-pulse" />
                                   )}
                                 </div>
-                                {idx < member.extensionRequest.timeline.length - 1 && (
+                                {idx < (member.extensionRequest?.timeline.length || 0) - 1 && (
                                   <ArrowRight className="w-4 h-4 mx-1 text-muted-foreground" />
                                 )}
                               </div>
@@ -648,66 +876,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
           )}
 
           {/* Workflow Steps Info */}
-          <Card className="p-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background mt-6">
-            <h4 className="mb-4">Quy trình xử lý gia hạn visa</h4>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
-                  1
-                </div>
-                <div>
-                  <h4 className="mb-1">N���p đơn</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Cán bộ nộp đơn và tài liệu
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
-                  2
-                </div>
-                <div>
-                  <h4 className="mb-1">Xét duyệt</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Admin kiểm tra hồ sơ
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
-                  3
-                </div>
-                <div>
-                  <h4 className="mb-1">Phê duyệt</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Ban giám hiệu duyệt
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-cyan-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
-                  4
-                </div>
-                <div>
-                  <h4 className="mb-1">Cấp công văn</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Cấp NA5/NA6
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
-                  5
-                </div>
-                <div>
-                  <h4 className="mb-1">Hoàn thành</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Visa đã gia hạn
-                  </p>
-                </div>
-              </div>
-            </div>
-          </Card>
+         
         </TabsContent>
 
         {/* Statistics Tab */}
@@ -762,7 +931,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-muted-foreground">Visa sắp hết hạn</p>
-                    <h2 className="mt-1">3</h2>
+                    <h2 className="mt-1">{expiringSoonCount}</h2>
                     <p className="text-sm text-muted-foreground mt-1">
                       Trong vòng 1 tháng
                     </p>
@@ -794,7 +963,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-muted-foreground">Đơn gia hạn</p>
-                    <h2 className="mt-1">2</h2>
+                    <h2 className="mt-1">{extensionRequestsCount}</h2>
                     <p className="text-sm text-muted-foreground mt-1">
                       Đang xét duyệt
                     </p>
@@ -827,7 +996,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-muted-foreground">Tổng số</p>
-                    <h2 className="mt-1">28</h2>
+                    <h2 className="mt-1">{totalActiveCount}</h2>
                     <p className="text-sm text-muted-foreground mt-1">
                       Đang theo học
                     </p>
@@ -1062,19 +1231,6 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                       />
                     </div>
                   </div>
-
-                  {/* <div>
-                    <Label>Supporting Documents</Label>
-                    <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
-                      <FileText className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        Upload supporting documents
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        PDF, DOC, DOCX up to 10MB
-                      </p>
-                    </div>
-                  </div> */}
                 <FileUploadBox label="Supporting Documents" onFileSelect={handleFile} />
               </div>
               </TabsContent>
@@ -1110,7 +1266,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label>Member ID</Label>
-                    <p className="mt-1">{selectedMember.id}</p>
+                    <p className="mt-1">{selectedMember.id.slice(0, 8)}</p>
                   </div>
                   <div>
                     <Label>Status</Label>
@@ -1138,7 +1294,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                   </div>
                   <div>
                     <Label>Visa Expiry Date</Label>
-                    <p className="mt-1">{selectedMember.visaExpiry}</p>
+                    <p className="mt-1">{formatDate(selectedMember.visaExpiry)}</p>
                   </div>
                   <div>
                     <Label>Last Entry Date</Label>
@@ -1221,7 +1377,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                           <span className="text-muted-foreground">
                             Mã sinh viên:
                           </span>
-                          <p className="mt-0.5">{selectedForExtension?.id}</p>
+                          <p className="mt-0.5">{selectedForExtension?.id.slice(0, 8)}</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground">
@@ -1236,7 +1392,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                             Ngày hết hạn:
                           </span>
                           <p className="mt-0.5 font-medium text-destructive">
-                            {selectedForExtension?.visaExpiry}
+                            {formatDate(selectedForExtension?.visaExpiry || "")}
                           </p>
                         </div>
                       </div>
@@ -1349,71 +1505,14 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
                       </h4>
 
                       <div className="space-y-3">
-                        {/* <div>
-                          <Label>Current Passport Copy *</Label>
-                          <motion.div
-                            whileHover={{ scale: 1.01 }}
-                            className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
-                          >
-                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">
-                              Upload passport (pages with photo and visa)
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              PDF, JPG, PNG up to 5MB
-                            </p>
-                          </motion.div>
-                        </div> */}
+                       
                         <FileUploadBox label="Current Passport Copy*" onFileSelect={handleFile} />
-                        {/* <div>
-                          <Label>Current Visa Page Copy *</Label>
-                          <motion.div
-                            whileHover={{ scale: 1.01 }}
-                            className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
-                          >
-                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">
-                              Upload current visa page
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              PDF, JPG, PNG up to 5MB
-                            </p>
-                          </motion.div>
-                        </div> */}
+                       
                         <FileUploadBox label="Current Visa Page Copy*" onFileSelect={handleFile} />
 
-                        {/* <div>
-                          <Label>Academic Progress Report (Optional)</Label>
-                          <motion.div
-                            whileHover={{ scale: 1.01 }}
-                            className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
-                          >
-                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">
-                              Upload transcript or progress report
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              PDF, DOC up to 10MB
-                            </p>
-                          </motion.div>
-                        </div> */}
+                        
                         <FileUploadBox label="Academic Progress Report (Optional)" onFileSelect={handleFile} />
 
-                        {/* <div>
-                          <Label>Additional Documents (Optional)</Label>
-                          <motion.div
-                            whileHover={{ scale: 1.01 }}
-                            className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer"
-                          >
-                            <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">
-                              Upload any additional supporting documents
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Multiple files accepted
-                            </p>
-                          </motion.div>
-                        </div> */}
                         <FileUploadBox label="Additional Documents (Optional)" onFileSelect={handleFile} />
                       </div>
                     </div>
@@ -1466,9 +1565,9 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
               <FileText className="w-4 h-4 mr-2" />
               Lưu nháp
             </Button>
-            <Button className="bg-primary">
+            <Button className="bg-primary" onClick={handleSubmitExtension} disabled={isSubmittingExtension}>
               <Send className="w-4 h-4 mr-2" />
-              Gửi yêu cầu gia hạn
+              {isSubmittingExtension ? 'Đang gửi...' : 'Gửi yêu cầu gia hạn'}
             </Button>
           </DialogFooter>
         </DialogContent>

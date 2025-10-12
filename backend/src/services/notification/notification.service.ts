@@ -328,7 +328,7 @@ export class NotificationService {
           subject: finalSubject,
           content: finalContent,
           status: NotificationStatus.PENDING,
-          sentById: user.id,
+          sentById: user.id === 'system' ? null : user.id, // Don't set sentById for system notifications
         },
         include: {
           sentBy: {
