@@ -63,8 +63,15 @@ export const API_ENDPOINTS = {
   },
   // Translation endpoints
   TRANSLATIONS: {
-    LIST: '/translations',
-    DETAIL: (id: string) => `/translations/${id}`,
+    LIST: '/api/v1/translations',
+    STATS: '/api/v1/translations/stats',
+    DETAIL: (id: string) => `/api/v1/translations/${id}`,
+    CREATE: '/api/v1/translations',
+    UPDATE: (id: string) => `/api/v1/translations/${id}`,
+    DELETE: (id: string) => `/api/v1/translations/${id}`,
+    APPROVE: (id: string) => `/api/v1/translations/${id}/approve`,
+    REJECT: (id: string) => `/api/v1/translations/${id}/reject`,
+    COMPLETE: (id: string) => `/api/v1/translations/${id}/complete`,
   },
   // Report endpoints
   REPORTS: {

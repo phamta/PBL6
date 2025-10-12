@@ -78,10 +78,10 @@ export class TranslationController {
    * GET /api/v1/translations - Lấy danh sách translation với filtering
    */
   @Get()
-  @RequireAction('translation:view')
-  @ApiOperation({ 
+  @RequireAction('TRANSLATION_READ')
+  @ApiOperation({
     summary: 'Lấy danh sách translation',
-    description: 'Lấy danh sách translation với filtering, sorting và pagination'
+    description: 'Lấy danh sách translation với filtering, pagination và sorting.',
   })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Trang hiện tại (default: 1)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Số item trên trang (default: 20)' })
@@ -116,10 +116,10 @@ export class TranslationController {
    * GET /api/v1/translations/stats - Lấy thống kê translation
    */
   @Get('stats')
-  @RequireAction('translation:view')
-  @ApiOperation({ 
+  @RequireAction('TRANSLATION_READ')
+  @ApiOperation({
     summary: 'Lấy thống kê translation',
-    description: 'Lấy thống kê tổng quan về translation requests'
+    description: 'Lấy thống kê tổng quan về translation requests.',
   })
   @ApiResponse({
     status: 200,
@@ -137,7 +137,7 @@ export class TranslationController {
    * GET /api/v1/translations/:id - Lấy chi tiết translation theo ID
    */
   @Get(':id')
-  @RequireAction('translation:view')
+  @RequireAction('TRANSLATION_READ')
   @ApiOperation({ 
     summary: 'Lấy chi tiết translation',
     description: 'Lấy thông tin chi tiết của một translation request'

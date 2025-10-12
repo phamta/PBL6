@@ -208,7 +208,13 @@ class VisaService {
 
       console.log('Expiry calculation:', { expiryDate, today, daysUntilExpiry, isExpiringSoon });
       let status: 'active' | 'pending' | 'expiring-soon' | 'extension-requested' = 'active';
-      if (visa?.status === 'EXPIRED' || visa?.status === 'CANCELLED') {
+
+      // Kiểm tra nếu đã có extension request đang pending
+      const hasPendingExtension = (visa?.extensions as any)?.some((ext: any) => ext.status === 'PENDING');
+
+      if (hasPendingExtension) {
+        status = 'extension-requested'; // đã gửi yêu cầu gia hạn
+      } else if (visa?.status === 'EXPIRED' || visa?.status === 'CANCELLED') {
         status = 'pending';
       } else if (isExpiringSoon) {
         status = 'expiring-soon'; // visa sắp hết hạn, cần lập đơn gia hạn

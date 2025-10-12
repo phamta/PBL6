@@ -63,7 +63,7 @@ export interface TranslationStats {
  * 
  * Action permissions:
  * - translation:create: Tạo translation request mới
- * - translation:view: Xem translation information  
+ * - TRANSLATION_READ: Xem translation information  
  * - translation:update: Cập nhật translation information  
  * - translation:delete: Xóa/hủy translation request
  * - translation:approve: Approve translation request
@@ -153,6 +153,7 @@ export class TranslationService {
         urgentLevel: createTranslationDto.urgentLevel || 'NORMAL',
         status: TranslationStatus.PENDING,
         originalFile: createTranslationDto.originalFile,
+        translatedFile: createTranslationDto.translatedFile,
         attachments: createTranslationDto.attachments || undefined,
         notes: createTranslationDto.notes,
         unitName: createTranslationDto['unitName'],
@@ -207,7 +208,7 @@ export class TranslationService {
    */
   async findAll(filterDto: FilterTranslationDto, user: TranslationUser): Promise<TranslationListResult> {
     // Check permission
-    if (!user.actions.includes('translation:view')) {
+    if (!user.actions.includes('TRANSLATION_READ')) {
       throw new ForbiddenException('You do not have permission to view translations');
     }
 
@@ -321,7 +322,7 @@ export class TranslationService {
    */
   async findOne(id: string, user: TranslationUser): Promise<TranslationWithRelations> {
     // Check permission
-    if (!user.actions.includes('translation:view')) {
+    if (!user.actions.includes('TRANSLATION_READ')) {
       throw new ForbiddenException('You do not have permission to view translations');
     }
 
@@ -642,7 +643,7 @@ export class TranslationService {
    * Get translation statistics
    */
   async getStats(user: TranslationUser): Promise<TranslationStats> {
-    if (!user.actions.includes('translation:view')) {
+    if (!user.actions.includes('TRANSLATION_READ')) {
       throw new ForbiddenException('You do not have permission to view translation statistics');
     }
 

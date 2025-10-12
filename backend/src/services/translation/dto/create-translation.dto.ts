@@ -85,6 +85,14 @@ export class CreateTranslationDto {
   originalFile: string;
 
   @ApiPropertyOptional({ 
+    description: 'Đường dẫn tệp đã dịch', 
+    example: 'uploads/documents/translated_diploma.pdf' 
+  })
+  @IsString()
+  @IsOptional()
+  translatedFile?: string;
+
+  @ApiPropertyOptional({ 
     description: 'File đính kèm (JSON array of file paths)', 
     example: ['uploads/passport.jpg', 'uploads/invitation.pdf'] 
   })

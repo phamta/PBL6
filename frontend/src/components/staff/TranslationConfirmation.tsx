@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FileUploadBox from "@/components/FileUploadBox";
 import {
   Languages,
@@ -65,103 +65,45 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const translationsData = [
-  {
-    id: "TR-2025-001",
-    documentName: "Thỏa thuận đối tác quốc tế",
-    unit: "Khoa Kỹ thuật",
-    sourceLang: "Tiếng Anh",
-    targetLang: "Tiếng Tây Ban Nha",
-    confirmationDate: "28/09/2025",
-    status: "confirmed",
-    translator: "Công ty Dịch thuật ABC",
-    submittedBy: "TS. Nguyễn Văn A",
-    submittedDate: "15/09/2025",
-    timeline: [
-      { step: "Nộp đơn", date: "15/09/2025", status: "completed" as const, note: "Đơn đã được nộp" },
-      { step: "Xét duyệt", date: "18/09/2025", status: "completed" as const, note: "Kiểm tra tài liệu" },
-      { step: "Phê duyệt", date: "22/09/2025", status: "completed" as const, note: "Đã phê duyệt" },
-      { step: "Cấp thư xác nhận", date: "28/09/2025", status: "completed" as const, note: "Thư đã được cấp" },
-    ],
-  },
-  {
-    id: "TR-2025-002",
-    documentName: "MOU hợp tác nghiên cứu",
-    unit: "Khoa Kỹ thuật",
-    sourceLang: "Tiếng Pháp",
-    targetLang: "Tiếng Anh",
-    confirmationDate: "25/09/2025",
-    status: "confirmed",
-    translator: "GS. Trần Văn B",
-    submittedBy: "TS. Lê Thị C",
-    submittedDate: "10/09/2025",
-    timeline: [
-      { step: "Nộp đơn", date: "10/09/2025", status: "completed" as const, note: "Đơn đã được nộp" },
-      { step: "Xét duyệt", date: "12/09/2025", status: "completed" as const, note: "Kiểm tra tài liệu" },
-      { step: "Phê duyệt", date: "18/09/2025", status: "completed" as const, note: "Đã phê duyệt" },
-      { step: "Cấp thư xác nhận", date: "25/09/2025", status: "completed" as const, note: "Thư đã được cấp" },
-    ],
-  },
-  {
-    id: "TR-2025-003",
-    documentName: "Thỏa thuận trao đổi sinh viên",
-    unit: "Khoa Kỹ thuật",
-    sourceLang: "Tiếng Đức",
-    targetLang: "Tiếng Anh",
-    confirmationDate: "",
-    status: "under-review",
-    translator: "",
-    submittedBy: "GS. Phạm Văn D",
-    submittedDate: "01/10/2025",
-    timeline: [
-      { step: "Nộp đơn", date: "01/10/2025", status: "completed" as const, note: "Đơn đã được nộp" },
-      { step: "Xét duyệt", date: "02/10/2025", status: "current" as const, note: "Đang kiểm tra tài liệu" },
-      { step: "Phê duyệt", date: "", status: "pending" as const },
-      { step: "Cấp thư xác nhận", date: "", status: "pending" as const },
-    ],
-  },
-  {
-    id: "TR-2025-004",
-    documentName: "Hợp đồng hợp tác đào tạo",
-    unit: "Khoa Kỹ thuật",
-    sourceLang: "Tiếng Nhật",
-    targetLang: "Tiếng Anh",
-    confirmationDate: "",
-    status: "pending",
-    translator: "",
-    submittedBy: "TS. Hoàng Thị E",
-    submittedDate: "03/10/2025",
-    timeline: [
-      { step: "Nộp đơn", date: "03/10/2025", status: "completed" as const, note: "Đơn đã được nộp" },
-      { step: "Xét duyệt", date: "", status: "pending" as const },
-      { step: "Phê duyệt", date: "", status: "pending" as const },
-      { step: "Cấp thư xác nhận", date: "", status: "pending" as const },
-    ],
-  },
-];
-
-const languageStats = [
-  { language: "English-Spanish", count: 12 },
-  { language: "English-French", count: 8 },
-  { language: "English-German", count: 6 },
-  { language: "English-Chinese", count: 5 },
-  { language: "Other", count: 4 },
-];
-
-const documentTypeStats = [
-  { type: "MOU/Agreement", count: 15 },
-  { type: "Letter", count: 10 },
-  { type: "Contract", count: 6 },
-  { type: "Report", count: 4 },
-];
+import { translationService, TranslationConfirmationData, CreateTranslationDto } from '../../lib/api/translation.service';
 
 export function TranslationConfirmation() {
-  const [selectedTranslation, setSelectedTranslation] = useState<
-    typeof translationsData[0] | null
-  >(null);
+  const [translationsData, setTranslationsData] = useState<TranslationConfirmationData[]>([]);
+  const [languageStats, setLanguageStats] = useState<Array<{ language: string; count: number }>>([]);
+  const [documentTypeStats, setDocumentTypeStats] = useState<Array<{ type: string; count: number }>>([]);
+  const [selectedTranslation, setSelectedTranslation] = useState<TranslationConfirmationData | null>(null);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("list");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load data from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Load translations
+        const translations = await translationService.getConfirmations();
+
+        // Load chart stats
+        const chartStats = await translationService.getChartStats();
+
+        setTranslationsData(translations);
+        setLanguageStats(chartStats.languageStats);
+        setDocumentTypeStats(chartStats.documentTypeStats);
+      } catch (err) {
+        console.error('Error loading translation data:', err);
+        setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const filteredTranslations = translationsData.filter((trans) => {
     const matchesSearch =
@@ -187,9 +129,138 @@ export function TranslationConfirmation() {
       color: "hsl(var(--chart-1))",
     },
   };
-  const handleFile = (file: File | null) => {
-    console.log("File nhận được:", file);
+
+  const handleFile = (file: File | null, type: 'original' | 'translated') => {
+    console.log(`${type} file received:`, file);
+    if (file) {
+      if (type === 'original') {
+        setFormData(prev => ({ ...prev, originalFile: file.name }));
+      } else if (type === 'translated') {
+        setFormData(prev => ({ ...prev, translatedFile: file.name }));
+      }
+    }
   };
+
+  const [formData, setFormData] = useState({
+    applicantName: '',
+    applicantEmail: '',
+    applicantPhone: '',
+    documentTitle: '',
+    sourceLanguage: '',
+    targetLanguage: '',
+    documentType: '',
+    purpose: '',
+    urgentLevel: 'NORMAL' as const,
+    originalFile: '',
+    translatedFile: '',
+    attachments: [],
+    notes: '',
+    unitName: '',
+    translatorName: '',
+    reason: '',
+    verificationFile: '',
+    languagePair: '',
+    partnerId: '',
+    unitId: '',
+  });
+
+  // Handle form submission for new translation request
+  const handleSubmitTranslation = async () => {
+    // Basic validation
+    if (!formData.documentTitle.trim()) {
+      alert('Vui lòng nhập tên tài liệu');
+      return;
+    }
+    if (!formData.sourceLanguage) {
+      alert('Vui lòng chọn ngôn ngữ gốc');
+      return;
+    }
+    if (!formData.targetLanguage) {
+      alert('Vui lòng chọn ngôn ngữ đích');
+      return;
+    }
+    if (!formData.reason.trim()) {
+      alert('Vui lòng nhập lý do xác nhận');
+      return;
+    }
+    if (!formData.originalFile) {
+      alert('Vui lòng tải lên tài liệu gốc');
+      return;
+    }
+    if (!formData.translatedFile) {
+      alert('Vui lòng tải lên bản dịch đã dịch');
+      return;
+    }
+
+    try {
+      await translationService.create(formData);
+
+      // Reload data
+      const translations = await translationService.getConfirmations();
+      setTranslationsData(translations);
+
+      setIsSubmitOpen(false);
+      // Reset form
+      setFormData({
+        applicantName: '',
+        applicantEmail: '',
+        applicantPhone: '',
+        documentTitle: '',
+        sourceLanguage: '',
+        targetLanguage: '',
+        documentType: '',
+        purpose: '',
+        urgentLevel: 'NORMAL' as const,
+        originalFile: '',
+        translatedFile: '',
+        attachments: [],
+        notes: '',
+        unitName: '',
+        translatorName: '',
+        reason: '',
+        verificationFile: '',
+        languagePair: '',
+        partnerId: '',
+        unitId: '',
+      });
+    } catch (err) {
+      console.error('Error creating translation request:', err);
+      // Handle error (could show toast notification)
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Breadcrumbs items={[{ label: "Xác nhận dịch thuật" }]} />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p>Đang tải dữ liệu...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Breadcrumbs items={[{ label: "Xác nhận dịch thuật" }]} />
+        <Card className="p-6">
+          <div className="text-center text-red-600">
+            <p>{error}</p>
+            <Button
+              onClick={() => window.location.reload()}
+              className="mt-4"
+            >
+              Thử lại
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -305,7 +376,7 @@ export function TranslationConfirmation() {
                   <p className="text-muted-foreground">Chờ xử lý</p>
                   <Clock className="w-8 h-8 text-blue-500" />
                 </div>
-                <h2 className="mb-1">1</h2>
+                <h2 className="mb-1">{translationsData.filter(t => t.status === 'pending').length}</h2>
                 <p className="text-sm text-muted-foreground">Đơn mới</p>
               </Card>
             </motion.div>
@@ -316,7 +387,7 @@ export function TranslationConfirmation() {
                   <p className="text-muted-foreground">Đang xét</p>
                   <AlertCircle className="w-8 h-8 text-orange-500" />
                 </div>
-                <h2 className="mb-1">1</h2>
+                <h2 className="mb-1">{translationsData.filter(t => t.status === 'under-review').length}</h2>
                 <p className="text-sm text-muted-foreground">Đang kiểm tra</p>
               </Card>
             </motion.div>
@@ -327,7 +398,7 @@ export function TranslationConfirmation() {
                   <p className="text-muted-foreground">Hoàn thành</p>
                   <CheckCircle className="w-8 h-8 text-green-500" />
                 </div>
-                <h2 className="mb-1">2</h2>
+                <h2 className="mb-1">{translationsData.filter(t => t.status === 'confirmed').length}</h2>
                 <p className="text-sm text-muted-foreground">Đã cấp thư</p>
               </Card>
             </motion.div>
@@ -338,7 +409,7 @@ export function TranslationConfirmation() {
                   <p className="text-muted-foreground">Tổng số</p>
                   <FileText className="w-8 h-8 text-purple-500" />
                 </div>
-                <h2 className="mb-1">4</h2>
+                <h2 className="mb-1">{translationsData.length}</h2>
                 <p className="text-sm text-muted-foreground">Đơn đang xử lý</p>
               </Card>
             </motion.div>
@@ -518,7 +589,7 @@ export function TranslationConfirmation() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-muted-foreground">Total Translations</p>
-                  <h2 className="mt-1">35</h2>
+                  <h2 className="mt-1">{translationsData.length}</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     This year
                   </p>
@@ -530,7 +601,7 @@ export function TranslationConfirmation() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-muted-foreground">Confirmed</p>
-                  <h2 className="mt-1">32</h2>
+                  <h2 className="mt-1">{translationsData.filter(t => t.status === 'confirmed').length}</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Completed
                   </p>
@@ -542,7 +613,7 @@ export function TranslationConfirmation() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-muted-foreground">Pending</p>
-                  <h2 className="mt-1">3</h2>
+                  <h2 className="mt-1">{translationsData.filter(t => t.status === 'pending' || t.status === 'under-review').length}</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     In progress
                   </p>
@@ -623,15 +694,18 @@ export function TranslationConfirmation() {
                     id="submit-doc-name"
                     placeholder="e.g., Partnership Agreement with University X"
                     className="mt-2"
+                    value={formData.documentTitle}
+                    onChange={(e) => setFormData(prev => ({ ...prev, documentTitle: e.target.value }))}
                   />
                 </div>
                 <div>
                   <Label htmlFor="submit-source">Source Language *</Label>
-                  <Select>
+                  <Select value={formData.sourceLanguage} onValueChange={(value) => setFormData(prev => ({ ...prev, sourceLanguage: value }))}>
                     <SelectTrigger id="submit-source" className="mt-2">
                       <SelectValue placeholder="Select language" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="vietnamese">Tiếng Việt</SelectItem>
                       <SelectItem value="english">English</SelectItem>
                       <SelectItem value="spanish">Spanish</SelectItem>
                       <SelectItem value="french">French</SelectItem>
@@ -644,11 +718,12 @@ export function TranslationConfirmation() {
                 </div>
                 <div>
                   <Label htmlFor="submit-target">Target Language *</Label>
-                  <Select>
+                  <Select value={formData.targetLanguage} onValueChange={(value) => setFormData(prev => ({ ...prev, targetLanguage: value }))}>
                     <SelectTrigger id="submit-target" className="mt-2">
                       <SelectValue placeholder="Select language" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="vietnamese">Tiếng Việt</SelectItem>
                       <SelectItem value="english">English</SelectItem>
                       <SelectItem value="spanish">Spanish</SelectItem>
                       <SelectItem value="french">French</SelectItem>
@@ -666,6 +741,8 @@ export function TranslationConfirmation() {
                     placeholder="Explain why translation confirmation is needed..."
                     className="mt-2"
                     rows={3}
+                    value={formData.reason}
+                    onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
                   />
                 </div>
                 <div>
@@ -674,6 +751,8 @@ export function TranslationConfirmation() {
                     id="submit-translator"
                     placeholder="Name of translator or agency"
                     className="mt-2"
+                    value={formData.translatorName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, translatorName: e.target.value }))}
                   />
                 </div>
                 <div className="col-span-2">
@@ -683,14 +762,36 @@ export function TranslationConfirmation() {
                     placeholder="Any additional information..."
                     className="mt-2"
                     rows={2}
+                    value={formData.notes}
+                    onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
                   />
                 </div>
               </div>
 
               {/* File Uploads */}
               <div className="space-y-4">
-                <FileUploadBox label="Original Document *" accept=".pdf,.doc,.docx" maxSizeMB={10} onFileSelect={handleFile} />
-                <FileUploadBox label="Translated Document *" accept=".pdf,.doc,.docx" maxSizeMB={10} onFileSelect={handleFile} />
+                <div className="space-y-2">
+                  <FileUploadBox 
+                    label="Original Document *" 
+                    accept=".pdf,.doc,.docx" 
+                    maxSizeMB={10} 
+                    onFileSelect={(file) => handleFile(file, 'original')} 
+                  />
+                  {formData.originalFile && (
+                    <p className="text-sm text-green-600">✓ Đã chọn: {formData.originalFile}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <FileUploadBox 
+                    label="Translated Document *" 
+                    accept=".pdf,.doc,.docx" 
+                    maxSizeMB={10} 
+                    onFileSelect={(file) => handleFile(file, 'translated')} 
+                  />
+                  {formData.translatedFile && (
+                    <p className="text-sm text-green-600">✓ Đã chọn: {formData.translatedFile}</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -698,7 +799,7 @@ export function TranslationConfirmation() {
             <Button variant="outline" onClick={() => setIsSubmitOpen(false)}>
               Reset
             </Button>
-            <Button className="bg-primary">
+            <Button className="bg-primary" onClick={handleSubmitTranslation}>
               <Languages className="w-4 h-4 mr-2" />
               Submit Request
             </Button>

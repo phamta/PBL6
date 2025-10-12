@@ -588,4 +588,26 @@ export class VisaController {
       data: student,
     };
   }
+
+  /**
+   * Get foreign students by current user's unit
+   */
+  @Get('foreign-students/my-unit')
+  @RequireAction('VISA_READ')
+  @ApiOperation({
+    summary: 'Get foreign students by current user\'s unit',
+    description: 'Get all foreign students belonging to the current user\'s unit/department. Requires VISA_READ action.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Foreign students retrieved successfully',
+  })
+  async getForeignStudentsByMyUnit(@Req() req: AuthenticatedRequest) {
+    const students = await this.visaService.getForeignStudentsByCurrentUserUnit(req.user);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Foreign students retrieved successfully',
+      data: students,
+    };
+  }
 }

@@ -1,4 +1,4 @@
-import { InternationalMembersPage } from "@/components/admin/InternationalMembersPage";
+import { InternationalMembersPage } from "@/components/officer/InternationalMembersPage";
 
 export default function AdminInternationalPage() {
   return <InternationalMembersPage />;

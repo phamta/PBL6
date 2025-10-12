@@ -1,4 +1,4 @@
-import { UsersPage } from "@/components/admin/UsersPage";
+import { UsersPage } from "@/components/officer/UsersPage";
 
 export default function AdminUsersPage() {
   return <UsersPage />;

@@ -980,6 +980,9 @@ export class VisaService {
             purpose: true,
             issueDate: true,
             attachments: true,
+            extensions: {
+              orderBy: { createdAt: 'desc' },
+            },
           },
         },
       },
