@@ -13,27 +13,18 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 
-interface OfficerSidebarProps {
+interface AdminSidebarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
 }
 
 const menuItems = [
   { id: "home", label: "Home", icon: Home },
-  { id: "documents", label: "Signed Document Management", icon: FileText },
-  { id: "delegations", label: "Incoming Delegation Management", icon: Users },
-  {
-    id: "international",
-    label: "International Students/Trainees/Lecturers",
-    icon: Globe,
-  },
-  { id: "translations", label: "Translation Confirmation Requests", icon: Languages },
-  { id: "statistics", label: "Automatic Statistics & Reports", icon: BarChart3 },
-  // { id: "users", label: "User Management", icon: UserCog },
-  // { id: "roles", label: "Role & Permission Management", icon: Shield },
+  { id: "users", label: "User Management", icon: UserCog },
+  { id: "roles", label: "Role & Permission Management", icon: Shield },
 ];
 
-export function OfficerSidebar({ currentPage, onNavigate }: OfficerSidebarProps) {
+export function AdminSidebar({ currentPage, onNavigate }: AdminSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
