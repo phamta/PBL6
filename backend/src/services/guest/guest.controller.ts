@@ -36,14 +36,14 @@ interface AuthenticatedRequest extends Request {
  * Guest Controller with RBAC Action-Based Permissions
  * 
  * Actions:
- * - guest:create: Tạo guest registration mới
- * - guest:view: Xem guest information
- * - guest:update: Cập nhật guest information
- * - guest:delete: Xóa/hủy guest registration
- * - guest:approve: Approve guest registration
- * - guest:reject: Reject guest registration
- * - guest:checkin: Check-in khi guest đến
- * - guest:checkout: Check-out khi guest rời đi
+ * - GUEST_CREATE: Tạo guest registration mới
+ * - GUEST_READ: Xem guest information
+ * - GUEST_UPDATE: Cập nhật guest information
+ * - GUEST_DELETE: Xóa/hủy guest registration
+ * - GUEST_APPROVE: Approve guest registration
+ * - GUEST_REJECT: Reject guest registration
+ * - GUEST_CHECKIN: Check-in khi guest đến
+ * - GUEST_CHECKOUT: Check-out khi guest rời đi
  */
 @ApiTags('Guest Management')
 @ApiBearerAuth()
@@ -56,7 +56,7 @@ export class GuestController {
    * Tạo guest registration mới
    */
   @Post()
-  @RequireAction('guest:create')
+  @RequireAction('GUEST_CREATE')
   @ApiOperation({ 
     summary: 'Tạo guest registration mới',
     description: 'Đăng ký đoàn khách quốc tế hoặc khách cá nhân' 
@@ -85,7 +85,7 @@ export class GuestController {
    * Lấy danh sách guest với filtering và pagination
    */
   @Get()
-  @RequireAction('guest:view')
+  @RequireAction('GUEST_READ')
   @ApiOperation({ 
     summary: 'Lấy danh sách guest',
     description: 'Lấy danh sách guest với các bộ lọc và phân trang' 
@@ -122,7 +122,7 @@ export class GuestController {
    * Lấy thống kê guest
    */
   @Get('statistics')
-  @RequireAction('guest:view')
+  @RequireAction('GUEST_READ')
   @ApiOperation({ 
     summary: 'Lấy thống kê guest',
     description: 'Lấy các thống kê tổng quan về guest' 
@@ -143,7 +143,7 @@ export class GuestController {
    * Lấy chi tiết guest theo ID
    */
   @Get(':id')
-  @RequireAction('guest:view')
+  @RequireAction('GUEST_READ')
   @ApiOperation({ 
     summary: 'Lấy chi tiết guest',
     description: 'Lấy thông tin chi tiết của guest theo ID' 
@@ -172,7 +172,7 @@ export class GuestController {
    * Cập nhật thông tin guest
    */
   @Patch(':id')
-  @RequireAction('guest:update')
+  @RequireAction('GUEST_UPDATE')
   @ApiOperation({ 
     summary: 'Cập nhật guest',
     description: 'Cập nhật thông tin guest (chỉ cho phép khi chưa hoàn thành hoặc bị hủy)' 
@@ -207,7 +207,7 @@ export class GuestController {
    * Hủy guest registration
    */
   @Delete(':id')
-  @RequireAction('guest:delete')
+  @RequireAction('GUEST_DELETE')
   @ApiOperation({ 
     summary: 'Hủy guest registration',
     description: 'Hủy guest registration (chuyển trạng thái thành CANCELLED)' 
@@ -240,7 +240,7 @@ export class GuestController {
    * Approve guest registration (REGISTERED → APPROVED)
    */
   @Post(':id/approve')
-  @RequireAction('guest:approve')
+  @RequireAction('GUEST_APPROVE')
   @ApiOperation({ 
     summary: 'Duyệt guest registration',
     description: 'Duyệt guest registration (REGISTERED → APPROVED)' 
@@ -275,7 +275,7 @@ export class GuestController {
    * Reject guest registration (REGISTERED/APPROVED → CANCELLED)
    */
   @Post(':id/reject')
-  @RequireAction('guest:reject')
+  @RequireAction('GUEST_REJECT')
   @ApiOperation({ 
     summary: 'Từ chối guest registration',
     description: 'Từ chối guest registration (REGISTERED/APPROVED → CANCELLED)' 
@@ -310,7 +310,7 @@ export class GuestController {
    * Check-in guest (APPROVED → ARRIVED)
    */
   @Post(':id/checkin')
-  @RequireAction('guest:checkin')
+  @RequireAction('GUEST_CHECKIN')
   @ApiOperation({ 
     summary: 'Check-in guest',
     description: 'Check-in guest khi đến (APPROVED → ARRIVED)' 
@@ -343,7 +343,7 @@ export class GuestController {
    * Check-out guest (ARRIVED → DEPARTED)
    */
   @Post(':id/checkout')
-  @RequireAction('guest:checkout')
+  @RequireAction('GUEST_CHECKOUT')
   @ApiOperation({ 
     summary: 'Check-out guest',
     description: 'Check-out guest khi rời đi (ARRIVED → DEPARTED)' 

@@ -72,72 +72,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const membersData = [
-  {
-    id: "INT-2025-001",
-    fullName: "Maria Garcia Rodriguez",
-    nationality: "Spain",
-    visaType: "Student Visa (F-1)",
-    department: "Faculty of Engineering",
-    visaExpiry: "2026-06-30",
-    startDate: "2024-09-01",
-    expectedEndDate: "2026-06-30",
-    status: "active",
-    program: "Master's in Computer Science",
-    supervisor: "Prof. Johnson",
-    passportNo: "ESP123456",
-    visaNumber: "F1234567",
-    lastEntry: "2024-08-25",
-    visaCode: "F-1",
-  },
-  {
-    id: "INT-2025-002",
-    fullName: "Chen Wei",
-    nationality: "China",
-    visaType: "Exchange Visitor (J-1)",
-    department: "Faculty of Engineering",
-    visaExpiry: "2025-10-20",
-    startDate: "2025-03-01",
-    expectedEndDate: "2025-08-31",
-    status: "extension-requested",
-    program: "Research Internship - AI Lab",
-    supervisor: "Dr. Smith",
-    passportNo: "CHN789012",
-    visaNumber: "J9876543",
-    lastEntry: "2025-02-28",
-    visaCode: "J-1",
-    extensionRequest: {
-      requestedExpiry: "2026-04-20",
-      submittedDate: "01/10/2025",
-      reason: "Tiếp tục dự án nghiên cứu AI",
-      timeline: [
-        { step: "Nộp đơn", date: "01/10/2025", status: "completed" as const, note: "Đơn đã được nộp" },
-        { step: "Xét duyệt", date: "02/10/2025", status: "current" as const, note: "Đang chờ admin xem xét" },
-        { step: "Phê duyệt", date: "", status: "pending" as const },
-        { step: "Cấp công văn NA5", date: "", status: "pending" as const },
-        { step: "Hoàn thành", date: "", status: "pending" as const },
-      ],
-    },
-  },
-  {
-    id: "INT-2025-003",
-    fullName: "Ahmed Hassan",
-    nationality: "Egypt",
-    visaType: "Student Visa (F-1)",
-    department: "Faculty of Engineering",
-    visaExpiry: "2029-06-30",
-    startDate: "2025-10-15",
-    expectedEndDate: "2029-06-30",
-    status: "pending",
-    program: "PhD in Mechanical Engineering",
-    supervisor: "Prof. Martinez",
-    passportNo: "EGY345678",
-    visaNumber: "F8765432",
-    lastEntry: "2025-10-10",
-    visaCode: "F-1",
-  },
-];
-
 interface InternationalMembersProps {
   onNavigate?: (page: string) => void;
 }
@@ -185,7 +119,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
         console.error('Error fetching international members:', err);
         setError('Failed to load international members data');
         // Fallback to mock data if API fails
-        setMembers(membersData as InternationalMember[]);
+        // setMembers(membersData as InternationalMember[]);
       } finally {
         setLoading(false);
       }

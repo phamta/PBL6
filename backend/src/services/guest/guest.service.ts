@@ -62,14 +62,14 @@ export interface GuestStats {
  * Guest Service - Quản lý khách quốc tế và thành viên đoàn
  * 
  * Action permissions:
- * - guest:create: Tạo guest registration mới
- * - guest:view: Xem guest information  
- * - guest:update: Cập nhật guest information  
- * - guest:delete: Xóa/hủy guest registration
- * - guest:approve: Approve guest registration
- * - guest:reject: Reject guest registration
- * - guest:checkin: Check-in khi guest đến
- * - guest:checkout: Check-out khi guest rời đi
+ * - GUEST_CREATE: Tạo guest registration mới
+ * - GUEST_READ: Xem guest information
+ * - GUEST_UPDATE: Cập nhật guest information
+ * - GUEST_DELETE: Xóa/hủy guest registration
+ * - GUEST_APPROVE: Approve guest registration
+ * - GUEST_REJECT: Reject guest registration
+ * - GUEST_CHECKIN: Check-in khi guest đến
+ * - GUEST_CHECKOUT: Check-out khi guest rời đi
  */
 @Injectable()
 export class GuestService {
@@ -117,7 +117,7 @@ export class GuestService {
    */
   async create(createGuestDto: CreateGuestDto, user: GuestUser): Promise<GuestWithRelations> {
     // Check permission
-    if (!user.actions.includes('guest:create')) {
+    if (!user.actions.includes('GUEST_CREATE')) {
       throw new ForbiddenException('You do not have permission to create guests');
     }
 
@@ -238,7 +238,7 @@ export class GuestService {
    */
   async findAll(filterDto: FilterGuestDto, user: GuestUser): Promise<GuestListResult> {
     // Check permission
-    if (!user.actions.includes('guest:view')) {
+    if (!user.actions.includes('GUEST_READ')) {
       throw new ForbiddenException('You do not have permission to view guests');
     }
 
@@ -350,7 +350,7 @@ export class GuestService {
    */
   async findOne(id: string, user: GuestUser): Promise<GuestWithRelations> {
     // Check permission
-    if (!user.actions.includes('guest:view')) {
+    if (!user.actions.includes('GUEST_READ')) {
       throw new ForbiddenException('You do not have permission to view guests');
     }
 
@@ -378,7 +378,7 @@ export class GuestService {
    */
   async update(id: string, updateGuestDto: UpdateGuestDto, user: GuestUser): Promise<GuestWithRelations> {
     // Check permission
-    if (!user.actions.includes('guest:update')) {
+    if (!user.actions.includes('GUEST_UPDATE')) {
       throw new ForbiddenException('You do not have permission to update guests');
     }
 
@@ -525,7 +525,7 @@ export class GuestService {
    */
   async cancel(id: string, user: GuestUser): Promise<GuestWithRelations> {
     // Check permission
-    if (!user.actions.includes('guest:delete')) {
+    if (!user.actions.includes('GUEST_DELETE')) {
       throw new ForbiddenException('You do not have permission to delete guests');
     }
 
@@ -569,7 +569,7 @@ export class GuestService {
    */
   async approve(id: string, approveDto: ApproveGuestDto, user: GuestUser): Promise<GuestWithRelations> {
     // Check permission
-    if (!user.actions.includes('guest:approve')) {
+    if (!user.actions.includes('GUEST_APPROVE')) {
       throw new ForbiddenException('You do not have permission to approve guests');
     }
 
@@ -615,7 +615,7 @@ export class GuestService {
    */
   async reject(id: string, rejectDto: RejectGuestDto, user: GuestUser): Promise<GuestWithRelations> {
     // Check permission
-    if (!user.actions.includes('guest:reject')) {
+    if (!user.actions.includes('GUEST_REJECT')) {
       throw new ForbiddenException('You do not have permission to reject guests');
     }
 
@@ -661,7 +661,7 @@ export class GuestService {
    */
   async checkin(id: string, user: GuestUser): Promise<GuestWithRelations> {
     // Check permission
-    if (!user.actions.includes('guest:checkin')) {
+    if (!user.actions.includes('GUEST_CHECKIN')) {
       throw new ForbiddenException('You do not have permission to check-in guests');
     }
 
@@ -702,7 +702,7 @@ export class GuestService {
    */
   async checkout(id: string, user: GuestUser): Promise<GuestWithRelations> {
     // Check permission
-    if (!user.actions.includes('guest:checkout')) {
+    if (!user.actions.includes('GUEST_CHECKOUT')) {
       throw new ForbiddenException('You do not have permission to check-out guests');
     }
 
@@ -742,7 +742,7 @@ export class GuestService {
    * Get guest statistics
    */
   async getStats(user: GuestUser): Promise<GuestStats> {
-    if (!user.actions.includes('guest:view')) {
+    if (!user.actions.includes('GUEST_READ')) {
       throw new ForbiddenException('You do not have permission to view guest statistics');
     }
 

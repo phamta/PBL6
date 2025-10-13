@@ -51,7 +51,15 @@ export const API_ENDPOINTS = {
   // Guest endpoints
   GUESTS: {
     LIST: '/guests',
+    STATS: '/guests/statistics',
     DETAIL: (id: string) => `/guests/${id}`,
+    CREATE: '/guests',
+    UPDATE: (id: string) => `/guests/${id}`,
+    DELETE: (id: string) => `/guests/${id}`,
+    APPROVE: (id: string) => `/guests/${id}/approve`,
+    REJECT: (id: string) => `/guests/${id}/reject`,
+    CHECKIN: (id: string) => `/guests/${id}/check-in`,
+    CHECKOUT: (id: string) => `/guests/${id}/check-out`,
   },
   // Visa endpoints
   VISAS: {
@@ -77,6 +85,12 @@ export const API_ENDPOINTS = {
   REPORTS: {
     LIST: '/reports',
     STATS: '/reports/stats',
+  },
+  // Partner endpoints
+  PARTNERS: {
+    LIST: '/partners',
+    ALL: '/partners/all',
+    DETAIL: (id: string) => `/partners/${id}`,
   },
   // Notification endpoints
   NOTIFICATIONS: {

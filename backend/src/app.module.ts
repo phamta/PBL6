@@ -27,6 +27,7 @@ import { TranslationModule } from './services/translation/translation.module';
 import { NotificationModule } from './services/notification/notification.module';
 import { ReportModule } from './services/report/report.module';
 import { TemplateModule } from './services/config/templates/template.module';
+import { PartnerModule } from './services/partner/partner.module';
 // Import other service modules here when they're complete
 
 /**
@@ -58,6 +59,7 @@ import { TemplateModule } from './services/config/templates/template.module';
     NotificationModule,
     ReportModule,
     TemplateModule,
+    PartnerModule,
 
     // TODO: Add other service modules:
     // SystemConfigModule,

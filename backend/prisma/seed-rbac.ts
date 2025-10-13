@@ -527,6 +527,78 @@ async function main() {
         category: 'GUEST_MANAGEMENT',
       },
     }),
+    prisma.action.upsert({
+      where: { code: 'GUEST_REJECT' },
+      update: {},
+      create: {
+        code: 'GUEST_REJECT',
+        name: 'Reject Guest',
+        description: 'Reject guest registration',
+        category: 'GUEST_MANAGEMENT',
+      },
+    }),
+    prisma.action.upsert({
+      where: { code: 'GUEST_CHECKIN' },
+      update: {},
+      create: {
+        code: 'GUEST_CHECKIN',
+        name: 'Check-in Guest',
+        description: 'Check-in khi guest đến',
+        category: 'GUEST_MANAGEMENT',
+      },
+    }),
+    prisma.action.upsert({
+      where: { code: 'GUEST_CHECKOUT' },
+      update: {},
+      create: {
+        code: 'GUEST_CHECKOUT',
+        name: 'Check-out Guest',
+        description: 'Check-out khi guest rời đi',
+        category: 'GUEST_MANAGEMENT',
+      },
+    }),
+
+    // Partner Management Actions
+    prisma.action.upsert({
+      where: { code: 'PARTNER_READ' },
+      update: {},
+      create: {
+        code: 'PARTNER_READ',
+        name: 'Read Partner',
+        description: 'Can view partner information',
+        category: 'PARTNER_MANAGEMENT',
+      },
+    }),
+    prisma.action.upsert({
+      where: { code: 'PARTNER_CREATE' },
+      update: {},
+      create: {
+        code: 'PARTNER_CREATE',
+        name: 'Create Partner',
+        description: 'Can create new partners',
+        category: 'PARTNER_MANAGEMENT',
+      },
+    }),
+    prisma.action.upsert({
+      where: { code: 'PARTNER_UPDATE' },
+      update: {},
+      create: {
+        code: 'PARTNER_UPDATE',
+        name: 'Update Partner',
+        description: 'Can modify partner information',
+        category: 'PARTNER_MANAGEMENT',
+      },
+    }),
+    prisma.action.upsert({
+      where: { code: 'PARTNER_DELETE' },
+      update: {},
+      create: {
+        code: 'PARTNER_DELETE',
+        name: 'Delete Partner',
+        description: 'Can delete partners',
+        category: 'PARTNER_MANAGEMENT',
+      },
+    }),
 
     // Report Management Actions
     prisma.action.upsert({
@@ -891,6 +963,16 @@ async function main() {
     },
   });
 
+  const partnerManagementPermission = await prisma.permission.upsert({
+    where: { code: 'PARTNER_MANAGEMENT' },
+    update: {},
+    create: {
+      code: 'PARTNER_MANAGEMENT',
+      name: 'Partner Management',
+      description: 'Full access to partner management operations',
+    },
+  });
+
   const reportManagementPermission = await prisma.permission.upsert({
     where: { code: 'REPORT_MANAGEMENT' },
     update: {},
@@ -992,7 +1074,7 @@ async function main() {
 
   // Guest Management Permission Actions
   const guestManagementActions = actions.filter(action => 
-    ['GUEST_CREATE', 'GUEST_READ', 'GUEST_UPDATE', 'GUEST_DELETE', 'GUEST_APPROVE']
+    ['GUEST_CREATE', 'GUEST_READ', 'GUEST_UPDATE', 'GUEST_DELETE', 'GUEST_APPROVE','GUEST_REJECT', 'GUEST_CHECKIN', 'GUEST_CHECKOUT']
     .includes(action.code)
   );
   
@@ -1007,6 +1089,28 @@ async function main() {
       update: {},
       create: {
         permissionId: guestManagementPermission.id,
+        actionId: action.id,
+      },
+    });
+  }
+
+  // Partner Management Permission Actions
+  const partnerManagementActions = actions.filter(action =>
+    ['PARTNER_READ', 'PARTNER_CREATE', 'PARTNER_UPDATE', 'PARTNER_DELETE']
+    .includes(action.code)
+  );
+
+  for (const action of partnerManagementActions) {
+    await prisma.permissionAction.upsert({
+      where: {
+        permissionId_actionId: {
+          permissionId: partnerManagementPermission.id,
+          actionId: action.id,
+        },
+      },
+      update: {},
+      create: {
+        permissionId: partnerManagementPermission.id,
         actionId: action.id,
       },
     });
@@ -1189,6 +1293,7 @@ async function main() {
     documentManagementPermission,
     translationManagementPermission,
     guestManagementPermission,
+    partnerManagementPermission,
     reportManagementPermission,
     unitManagementPermission,
     notificationManagementPermission,
@@ -1219,6 +1324,7 @@ async function main() {
     documentManagementPermission,
     translationManagementPermission,
     guestManagementPermission,
+    partnerManagementPermission,
     reportManagementPermission,
     unitManagementPermission,
     notificationManagementPermission,
