@@ -68,6 +68,7 @@ export const API_ENDPOINTS = {
     FOREIGN_STUDENTS_BY_UNIT: (unitId: string) => `/visas/foreign-students/unit/${unitId}`,
     FOREIGN_STUDENTS_BY_MYUNIT: '/visas/foreign-students/my-unit',
     CREATE_EXTENSION: (id: string) => `/visas/${id}/extend`,
+    CREATE: '/visas',
   },
   // Translation endpoints
   TRANSLATIONS: {

@@ -59,6 +59,34 @@ export interface VisaWithRelations {
   foreignStudents: ForeignStudent[];
 }
 
+export interface CreateVisaDto {
+  holderName: string;
+  holderCountry: string;
+  passportNumber: string;
+  visaNumber?: string; // có thể backend tự tạo
+  issueDate: string;
+  expirationDate: string;
+  purpose: string;
+  sponsorUnit: string;
+  visaType?: string;
+  dateOfBirth?: string;
+  entryDate?: string;
+  program?: string;
+  department?: string;
+  supervisorName?: string;
+  email?: string;
+  phone?: string;
+  attachments?: string[]; // danh sách file upload
+  partnerId?: string;
+  unitId?: string;
+  na5Request?: boolean;
+  foreignStudents?: {
+    fullName: string;
+    nationality: string;
+    status?: string;
+  }[];
+}
+
 export interface VisaListResult {
   visas: VisaWithRelations[];
   total: number;
@@ -127,6 +155,17 @@ class VisaService {
   async getById(id: string): Promise<VisaWithRelations> {
     const response = await axiosClient.get(API_ENDPOINTS.VISAS.DETAIL(id));
     return response.data;
+  }
+
+  // 🆕 Tạo mới visa
+  async create(data: CreateVisaDto): Promise<VisaWithRelations> {
+    try {
+      const response = await axiosClient.post(API_ENDPOINTS.VISAS.CREATE, data);
+      return response.data;
+    } catch (error: any) {
+      console.error("❌ Error creating visa:", error.response?.data || error.message);
+      throw new Error(error.response?.data?.message || "Không thể tạo visa mới");
+    }
   }
 
   // Transform visa data to international member format
