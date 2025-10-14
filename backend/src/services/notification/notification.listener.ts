@@ -65,7 +65,7 @@ interface GuestEvent {
       email: string;
     };
   };
-  user: SystemUser;
+  user?: SystemUser; // Làm user optional để tránh lỗi undefined
 }
 
 /**
@@ -104,7 +104,7 @@ export class NotificationListener {
    */
   @OnEvent('document.created')
   async handleDocumentCreated(event: DocumentEvent) {
-    this.logger.log(`📄 Document created: ${event.document.title} by ${event.user.fullName}`);
+    this.logger.log(`📄 Document created: ${event.document.title} by ${event.user?.fullName || 'Unknown User'}`);
 
     try {
       // Tìm Department Officers (users có role 'department_officer')
@@ -137,7 +137,7 @@ export class NotificationListener {
           type: NotificationType.SYSTEM,
           recipient: officer.id,
           subject: 'Tài liệu mới cần duyệt',
-          content: `Tài liệu "${event.document.title}" vừa được tạo bởi ${event.user.fullName} và đang chờ duyệt.`,
+          content: `Tài liệu "${event.document.title}" vừa được tạo bởi ${event.user?.fullName || 'Unknown User'} và đang chờ duyệt.`,
         }, this.systemUser)
       );
 
@@ -203,7 +203,7 @@ Hệ thống quản lý HTQT`,
         type: NotificationType.SYSTEM,
         recipient: 'department-officers', // TODO: Thay bằng logic tìm department officers
         subject: 'Visa application mới',
-        content: `Visa application cho ${event.visa.holderName} (Passport: ${event.visa.passportNumber}) vừa được tạo bởi ${event.user.fullName}.`,
+        content: `Visa application cho ${event.visa.holderName} (Passport: ${event.visa.passportNumber}) vừa được tạo bởi ${event.user?.fullName || 'Unknown User'}.`,
       }, this.systemUser);
 
       this.logger.log(`✅ Notification sent for visa creation: ${event.visa.id}`);
@@ -453,7 +453,7 @@ International Relations Office / Phòng Quan hệ Quốc tế`,
         type: NotificationType.SYSTEM,
         recipient: 'system-admins', // TODO: Thay bằng logic tìm system admins
         subject: 'Cấu hình hệ thống đã thay đổi',
-        content: `Cấu hình "${event.key}" đã được thay đổi thành "${event.value}" bởi ${event.user.fullName}.`,
+        content: `Cấu hình "${event.key}" đã được thay đổi thành "${event.value}" bởi ${event.user?.fullName || 'Unknown User'}.`,
       }, this.systemUser);
 
       this.logger.log(`✅ System config update notification sent`);

@@ -349,8 +349,54 @@ export class NotificationService {
             break;
 
           case NotificationType.SYSTEM:
-            await this.sendSystemNotification(sendDto.recipient, finalSubject, finalContent);
-            deliveryStatus = NotificationStatus.DELIVERED;
+            // Xử lý recipient là nhóm hoặc user cụ thể
+            if (sendDto.recipient === 'department-officers') {
+              // Query tất cả users có role department_officer
+              const departmentOfficers = await this.prisma.user.findMany({
+                where: {
+                  roles: {
+                    some: {
+                      role: {
+                        code: 'department_officer'
+                      }
+                    }
+                  },
+                  isActive: true
+                },
+                select: { id: true }
+              });
+
+              // Gửi notification cho từng officer
+              for (const officer of departmentOfficers) {
+                await this.sendSystemNotification(officer.id, finalSubject, finalContent);
+              }
+              deliveryStatus = NotificationStatus.DELIVERED;
+            } else if (sendDto.recipient === 'system-admins') {
+              // Query tất cả users có role system_admin
+              const systemAdmins = await this.prisma.user.findMany({
+                where: {
+                  roles: {
+                    some: {
+                      role: {
+                        code: 'system_admin'
+                      }
+                    }
+                  },
+                  isActive: true
+                },
+                select: { id: true }
+              });
+
+              // Gửi notification cho từng admin
+              for (const admin of systemAdmins) {
+                await this.sendSystemNotification(admin.id, finalSubject, finalContent);
+              }
+              deliveryStatus = NotificationStatus.DELIVERED;
+            } else {
+              // Recipient là userId cụ thể
+              await this.sendSystemNotification(sendDto.recipient, finalSubject, finalContent);
+              deliveryStatus = NotificationStatus.DELIVERED;
+            }
             break;
 
           case NotificationType.SMS:
