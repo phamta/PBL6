@@ -466,6 +466,16 @@ async function main() {
       },
     }),
     prisma.action.upsert({
+      where: { code: 'TRANSLATION_REJECT' },
+      update: {},
+      create: {
+        code: 'TRANSLATION_REJECT',
+        name: 'Reject Translation',
+        description: 'Can reject translation requests',
+        category: 'TRANSLATION_MANAGEMENT',
+      },
+    }),
+    prisma.action.upsert({
       where: { code: 'TRANSLATION_COMPLETE' },
       update: {},
       create: {
@@ -1052,7 +1062,7 @@ async function main() {
 
   // Translation Management Permission Actions
   const translationManagementActions = actions.filter(action => 
-    ['TRANSLATION_CREATE', 'TRANSLATION_READ', 'TRANSLATION_UPDATE', 'TRANSLATION_DELETE', 'TRANSLATION_APPROVE', 'TRANSLATION_COMPLETE']
+    ['TRANSLATION_CREATE', 'TRANSLATION_READ', 'TRANSLATION_UPDATE', 'TRANSLATION_DELETE', 'TRANSLATION_APPROVE', 'TRANSLATION_REJECT', 'TRANSLATION_COMPLETE']
     .includes(action.code)
   );
   

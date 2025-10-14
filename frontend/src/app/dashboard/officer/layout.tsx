@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { AdminSidebar } from "@/components/officer/OfficerSidebar";
-import { AdminTopbar } from "@/components/officer/OfficerTopbar";
+import { OfficerSidebar } from "@/components/officer/OfficerSidebar";
+import { OfficerTopbar } from "@/components/officer/OfficerTopbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { usePathname, useRouter } from "next/navigation";
@@ -11,7 +11,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { RoleCode } from "@/lib/auth/roles";
 import { useRole } from "@/hooks/useRole";
 
-export default function AdminLayout({
+export default function OfficerLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -22,14 +22,14 @@ export default function AdminLayout({
   
   const getCurrentPage = () => {
     if (!pathname) return "home";
-    // normalize exact admin root
-    if (pathname === "/dashboard/admin" || pathname === "/dashboard/admin/") return "home";
-    // remove the prefix "/dashboard/admin/" if present
-    return pathname.replace(/^\/dashboard\/admin\/?/, "").replace(/^\/+/, "");
+    // normalize exact officer root
+    if (pathname === "/dashboard/officer" || pathname === "/dashboard/officer/") return "home";
+    // remove the prefix "/dashboard/officer/" if present
+    return pathname.replace(/^\/dashboard\/officer\/?/, "").replace(/^\/+/, "");
   };
 
   const handleNavigate = (page: string) => {
-    const base = "/dashboard/admin";
+    const base = "/dashboard/officer";
     if (page === "home") {
       router.push(base);
     } else {
@@ -39,7 +39,7 @@ export default function AdminLayout({
 
 
   return (
-    <ProtectedRoute allowedRoles={[RoleCode.SYSTEM_ADMIN]}>
+    <ProtectedRoute allowedRoles={[RoleCode.DEPARTMENT_OFFICER]}>
       <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar with animation */}
       <motion.div
@@ -47,7 +47,7 @@ export default function AdminLayout({
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
-        <AdminSidebar currentPage={getCurrentPage()} onNavigate={handleNavigate} />
+        <OfficerSidebar currentPage={getCurrentPage()} onNavigate={handleNavigate} />
       </motion.div>
 
       {/* Main Content */}
@@ -58,7 +58,7 @@ export default function AdminLayout({
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
         >
-          <AdminTopbar />
+          <OfficerTopbar />
         </motion.div>
 
         {/* Role Switcher - Demo Purpose */}

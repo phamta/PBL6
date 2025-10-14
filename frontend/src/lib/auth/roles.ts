@@ -109,13 +109,17 @@ export function getDashboardRoute(user: User | null): string {
       console.log('✅ Redirecting to admin dashboard');
       return '/dashboard/admin';
     case RoleCode.DEPARTMENT_OFFICER:
+      console.log('✅ Redirecting to department officer dashboard');
+      return '/dashboard/officer';
     case RoleCode.LEADERSHIP:
+      console.log('✅ Redirecting to leadership dashboard');
+      return '/dashboard/leadership';
     case RoleCode.FACULTY_STAFF:
       console.log('✅ Redirecting to staff dashboard');
       return '/dashboard/staff';
     case RoleCode.STUDENT:
       console.log('✅ Redirecting to student dashboard');
-      return '/dashboard';
+      return '/dashboard/student';
     default:
       console.log('⚠️ No specific role found, redirecting to default dashboard');
       return '/dashboard';
@@ -134,10 +138,7 @@ export function isAdmin(user: User | null): boolean {
  */
 export function isStaff(user: User | null): boolean {
   return hasAnyRole(user, [
-    RoleCode.SYSTEM_ADMIN,
-    RoleCode.DEPARTMENT_OFFICER,
-    RoleCode.LEADERSHIP,
-    RoleCode.FACULTY_STAFF,
+    RoleCode.FACULTY_STAFF
   ]);
 }
 
@@ -146,6 +147,13 @@ export function isStaff(user: User | null): boolean {
  */
 export function isStudent(user: User | null): boolean {
   return hasRole(user, RoleCode.STUDENT);
+}
+
+export function isOfficer(user: User | null): boolean {
+  return hasRole(user, RoleCode.DEPARTMENT_OFFICER);
+}
+export function isLeadership(user: User | null): boolean {
+  return hasRole(user, RoleCode.LEADERSHIP);
 }
 
 /**

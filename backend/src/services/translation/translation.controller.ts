@@ -155,7 +155,7 @@ export class TranslationController {
     description: 'Không tìm thấy translation',
   })
   async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Request() req: RequestWithUser,
   ) {
     return this.translationService.findOne(id, req.user);
@@ -165,7 +165,7 @@ export class TranslationController {
    * PATCH /api/v1/translations/:id - Cập nhật thông tin translation
    */
   @Patch(':id')
-  @RequireAction('translation:update')
+  @RequireAction('TRANSLATION_UPDATE')
   @ApiOperation({ 
     summary: 'Cập nhật translation',
     description: 'Cập nhật thông tin translation request (chỉ khi status = PENDING)'
@@ -187,7 +187,7 @@ export class TranslationController {
     description: 'Không tìm thấy translation',
   })
   async update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body(ValidationPipe) updateTranslationDto: UpdateTranslationDto,
     @Request() req: RequestWithUser,
   ) {
@@ -198,7 +198,7 @@ export class TranslationController {
    * DELETE /api/v1/translations/:id - Hủy/Xóa translation request
    */
   @Delete(':id')
-  @RequireAction('translation:delete')
+  @RequireAction('TRANSLATION_DELETE')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ 
     summary: 'Hủy translation request',
@@ -221,7 +221,7 @@ export class TranslationController {
     description: 'Không tìm thấy translation',
   })
   async cancel(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Request() req: RequestWithUser,
   ) {
     await this.translationService.cancel(id, req.user);
@@ -231,7 +231,7 @@ export class TranslationController {
    * POST /api/v1/translations/:id/approve - Duyệt translation request
    */
   @Post(':id/approve')
-  @RequireAction('translation:approve')
+  @RequireAction('TRANSLATION_APPROVE')
   @ApiOperation({ 
     summary: 'Duyệt translation request',
     description: 'Duyệt translation request từ PENDING → APPROVED'
@@ -253,7 +253,7 @@ export class TranslationController {
     description: 'Không tìm thấy translation',
   })
   async approve(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body(ValidationPipe) approveDto: ApproveTranslationDto,
     @Request() req: RequestWithUser,
   ) {
@@ -264,7 +264,7 @@ export class TranslationController {
    * POST /api/v1/translations/:id/reject - Từ chối translation request
    */
   @Post(':id/reject')
-  @RequireAction('translation:reject')
+  @RequireAction('TRANSLATION_REJECT')
   @ApiOperation({ 
     summary: 'Từ chối translation request',
     description: 'Từ chối translation request từ PENDING/APPROVED → REJECTED'
@@ -286,7 +286,7 @@ export class TranslationController {
     description: 'Không tìm thấy translation',
   })
   async reject(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body(ValidationPipe) rejectDto: RejectTranslationDto,
     @Request() req: RequestWithUser,
   ) {
@@ -297,7 +297,7 @@ export class TranslationController {
    * POST /api/v1/translations/:id/complete - Hoàn thành translation với file dịch
    */
   @Post(':id/complete')
-  @RequireAction('translation:complete')
+  @RequireAction('TRANSLATION_COMPLETE')
   @ApiOperation({ 
     summary: 'Hoàn thành translation',
     description: 'Hoàn thành translation với file đã dịch từ APPROVED → COMPLETED'
@@ -319,7 +319,7 @@ export class TranslationController {
     description: 'Không tìm thấy translation',
   })
   async complete(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body(ValidationPipe) completeDto: CompleteTranslationDto,
     @Request() req: RequestWithUser,
   ) {

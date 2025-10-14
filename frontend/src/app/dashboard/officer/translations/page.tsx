@@ -1,5 +1,5 @@
 import { TranslationsPage } from "@/components/officer/TranslationsPage";
 
-export default function AdminTranslationsPage() {
+export default function OfficerTranslationsPage() {
   return <TranslationsPage />;
 }

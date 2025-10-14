@@ -13,7 +13,7 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { ThemeToggle } from "../ThemeToggle";
 
-export function AdminTopbar() {
+export function OfficerTopbar() {
   return (
     <div className="h-16 bg-card border-b border-border flex items-center justify-between px-6">
       {/* Left: Logo (Mobile) */}
@@ -81,14 +81,14 @@ export function AdminTopbar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 px-2">
               <Avatar className="w-8 h-8">
-                <AvatarImage src="" alt="Admin User" />
+                <AvatarImage src="" alt="Officer User" />
                 <AvatarFallback className="bg-primary text-primary-foreground">
                   AU
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:block text-left">
-                <p className="text-sm">Admin User</p>
-                <p className="text-xs text-muted-foreground">admin@system.com</p>
+                <p className="text-sm">Officer User</p>
+                <p className="text-xs text-muted-foreground">Officer@system.com</p>
               </div>
             </Button>
           </DropdownMenuTrigger>

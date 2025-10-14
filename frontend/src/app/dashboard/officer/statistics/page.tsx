@@ -1,5 +1,5 @@
 import { StatisticsPage } from "@/components/officer/StatisticsPage";
 
-export default function AdminStatisticsPage() {
+export default function OfficerStatisticsPage() {
   return <StatisticsPage />;
 }

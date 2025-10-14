@@ -51,24 +51,25 @@ export interface TranslationListResult {
 }
 
 export interface TranslationStats {
-  totalTranslations: number;
-  byStatus: { status: TranslationStatus; count: number }[];
-  byUrgentLevel: { urgentLevel: string; count: number }[];
-  pendingTranslations: number;
-  myTranslations: number;
+  total: number;
+  byStatus: Record<string, number>;
+  byUrgentLevel: Record<string, number>;
+  byLanguagePair: Record<string, number>;
+  recentRequests: number;
+  completedThisMonth: number;
 }
 
 /**
  * Translation Service - Quản lý yêu cầu dịch thuật và công chứng
  * 
  * Action permissions:
- * - translation:create: Tạo translation request mới
- * - TRANSLATION_READ: Xem translation information  
- * - translation:update: Cập nhật translation information  
- * - translation:delete: Xóa/hủy translation request
- * - translation:approve: Approve translation request
- * - translation:reject: Reject translation request
- * - translation:complete: Complete translation với file dịch
+ * - TRANSLATION_CREATE: Tạo translation request mới
+ * - TRANSLATION_READ: Xem translation information
+ * - TRANSLATION_UPDATE: Cập nhật translation information
+ * - TRANSLATION_DELETE: Xóa/hủy translation request
+ * - TRANSLATION_APPROVE: Approve translation request
+ * - TRANSLATION_REJECT: Reject translation request
+ * - TRANSLATION_COMPLETE: Complete translation với file dịch
  */
 @Injectable()
 export class TranslationService {
@@ -115,7 +116,7 @@ export class TranslationService {
    */
   async create(createTranslationDto: CreateTranslationDto, user: TranslationUser): Promise<TranslationWithRelations> {
     // Check permission
-    if (!user.actions.includes('translation:create')) {
+    if (!user.actions.includes('TRANSLATION_CREATE')) {
       throw new ForbiddenException('You do not have permission to create translations');
     }
 
@@ -350,7 +351,7 @@ export class TranslationService {
    */
   async update(id: string, updateTranslationDto: UpdateTranslationDto, user: TranslationUser): Promise<TranslationWithRelations> {
     // Check permission
-    if (!user.actions.includes('translation:update')) {
+    if (!user.actions.includes('TRANSLATION_UPDATE')) {
       throw new ForbiddenException('You do not have permission to update translations');
     }
 
@@ -366,7 +367,7 @@ export class TranslationService {
 
     // Only creator can update when status = PENDING
     if (existingTranslation.status !== TranslationStatus.PENDING) {
-      if (!user.actions.includes('translation:approve')) {
+      if (!user.actions.includes('TRANSLATION_APPROVE')) {
         throw new BadRequestException('Can only update translations with status PENDING');
       }
     }
@@ -444,7 +445,7 @@ export class TranslationService {
       });
 
       // Emit event
-      this.eventEmitter.emit('translation.updated', {
+      this.eventEmitter.emit('TRANSLATION_UPDATED', {
         translationId: translation.id,
         userId: user.id,
         changes: Object.keys(data),
@@ -464,7 +465,7 @@ export class TranslationService {
    */
   async cancel(id: string, user: TranslationUser): Promise<TranslationWithRelations> {
     // Check permission
-    if (!user.actions.includes('translation:delete')) {
+    if (!user.actions.includes('TRANSLATION_DELETE')) {
       throw new ForbiddenException('You do not have permission to delete translations');
     }
 
@@ -504,7 +505,7 @@ export class TranslationService {
    */
   async approve(id: string, approveDto: ApproveTranslationDto, user: TranslationUser): Promise<TranslationWithRelations> {
     // Check permission
-    if (!user.actions.includes('translation:approve')) {
+    if (!user.actions.includes('TRANSLATION_APPROVE')) {
       throw new ForbiddenException('You do not have permission to approve translations');
     }
 
@@ -534,9 +535,19 @@ export class TranslationService {
 
       // Emit event
       this.eventEmitter.emit('translation.approved', {
-        translationId: translation.id,
-        approverId: user.id,
-        urgentLevel: translation.urgentLevel,
+        translation: {
+          id: translation.id,
+          applicantName: translation.applicantName,
+          applicantEmail: translation.applicantEmail,
+          documentTitle: translation.documentTitle,
+          status: translation.status,
+        },
+        user: {
+          id: user.id,
+          actions: user.actions,
+          fullName: '', // Will be populated by the listener if needed
+          email: '', // Will be populated by the listener if needed
+        },
       });
 
       return translation as TranslationWithRelations;
@@ -550,7 +561,7 @@ export class TranslationService {
    */
   async reject(id: string, rejectDto: RejectTranslationDto, user: TranslationUser): Promise<TranslationWithRelations> {
     // Check permission
-    if (!user.actions.includes('translation:reject')) {
+    if (!user.actions.includes('TRANSLATION_REJECT')) {
       throw new ForbiddenException('You do not have permission to reject translations');
     }
 
@@ -597,7 +608,7 @@ export class TranslationService {
    */
   async complete(id: string, completeDto: CompleteTranslationDto, user: TranslationUser): Promise<TranslationWithRelations> {
     // Check permission
-    if (!user.actions.includes('translation:complete')) {
+    if (!user.actions.includes('TRANSLATION_COMPLETE')) {
       throw new ForbiddenException('You do not have permission to complete translations');
     }
 
@@ -648,7 +659,7 @@ export class TranslationService {
     }
 
     try {
-      const [totalTranslations, byStatus, byUrgentLevel, pendingTranslations, myTranslations] = await Promise.all([
+      const [totalTranslations, byStatus, byUrgentLevel, pendingTranslations, myTranslations, completedThisMonth, recentRequests, languagePairs] = await Promise.all([
         this.prisma.translation.count(),
         this.prisma.translation.groupBy({
           by: ['status'],
@@ -664,20 +675,53 @@ export class TranslationService {
         this.prisma.translation.count({
           where: { createdById: user.id },
         }),
+        this.prisma.translation.count({
+          where: {
+            status: TranslationStatus.COMPLETED,
+            completedAt: {
+              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1), // First day of current month
+            },
+          },
+        }),
+        this.prisma.translation.count({
+          where: {
+            createdAt: {
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+            },
+          },
+        }),
+        this.prisma.translation.groupBy({
+          by: ['sourceLanguage'],
+          _count: true,
+        }),
       ]);
 
+      // Convert arrays to objects for frontend compatibility
+      const byStatusObj: Record<string, number> = {};
+      byStatus.forEach(item => {
+        byStatusObj[item.status] = item._count;
+      });
+
+      const byUrgentLevelObj: Record<string, number> = {};
+      byUrgentLevel.forEach(item => {
+        byUrgentLevelObj[item.urgentLevel] = item._count;
+      });
+
+      const byLanguagePairObj: Record<string, number> = {};
+      languagePairs.forEach(item => {
+        // Skip if sourceLanguage is null or empty
+        if (!item.sourceLanguage) return;
+        // Use source language as key for statistics
+        byLanguagePairObj[item.sourceLanguage] = item._count;
+      });
+
       return {
-        totalTranslations,
-        byStatus: byStatus.map(item => ({
-          status: item.status,
-          count: item._count,
-        })),
-        byUrgentLevel: byUrgentLevel.map(item => ({
-          urgentLevel: item.urgentLevel,
-          count: item._count,
-        })),
-        pendingTranslations,
-        myTranslations,
+        total: totalTranslations,
+        byStatus: byStatusObj,
+        byUrgentLevel: byUrgentLevelObj,
+        byLanguagePair: byLanguagePairObj,
+        recentRequests: recentRequests,
+        completedThisMonth: completedThisMonth,
       };
     } catch (error) {
       throw new BadRequestException(`Failed to fetch translation statistics: ${error.message}`);

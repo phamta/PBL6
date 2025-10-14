@@ -1,5 +1,5 @@
 import { InternationalMembersPage } from "@/components/officer/InternationalMembersPage";
 
-export default function AdminInternationalPage() {
+export default function OfficerInternationalPage() {
   return <InternationalMembersPage />;
 }

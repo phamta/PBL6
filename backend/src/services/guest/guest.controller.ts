@@ -162,7 +162,7 @@ export class GuestController {
     description: 'Không có quyền xem guest',
   })
   async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
   ) {
     return this.guestService.findOne(id, req.user);
@@ -196,7 +196,7 @@ export class GuestController {
     description: 'Không có quyền cập nhật guest',
   })
   async update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() updateGuestDto: UpdateGuestDto,
     @Req() req: AuthenticatedRequest,
   ) {
@@ -230,7 +230,7 @@ export class GuestController {
     description: 'Không có quyền hủy guest',
   })
   async cancel(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
   ) {
     return this.guestService.cancel(id, req.user);
@@ -264,7 +264,7 @@ export class GuestController {
     description: 'Không có quyền duyệt guest',
   })
   async approve(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() approveDto: ApproveGuestDto,
     @Req() req: AuthenticatedRequest,
   ) {
@@ -299,7 +299,7 @@ export class GuestController {
     description: 'Không có quyền từ chối guest',
   })
   async reject(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() rejectDto: RejectGuestDto,
     @Req() req: AuthenticatedRequest,
   ) {
@@ -333,7 +333,7 @@ export class GuestController {
     description: 'Không có quyền check-in guest',
   })
   async checkin(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
   ) {
     return this.guestService.checkin(id, req.user);
@@ -366,7 +366,7 @@ export class GuestController {
     description: 'Không có quyền check-out guest',
   })
   async checkout(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
   ) {
     return this.guestService.checkout(id, req.user);

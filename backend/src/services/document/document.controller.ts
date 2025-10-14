@@ -208,7 +208,7 @@ export class DocumentController {
   @ApiResponse({ status: 400, description: 'Document không thể hủy ở trạng thái hiện tại' })
   @ApiResponse({ status: 403, description: 'Không có quyền hủy document này' })
   @ApiResponse({ status: 404, description: 'Document not found' })
-  async remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+  async remove(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     const user: DocumentUser = {
       id: req.user.id,
       actions: req.user.actions,
@@ -238,7 +238,7 @@ export class DocumentController {
   @ApiResponse({ status: 400, description: 'Document không thể submit ở trạng thái hiện tại' })
   @ApiResponse({ status: 403, description: 'Không có quyền submit document này' })
   @ApiResponse({ status: 404, description: 'Document not found' })
-  async submit(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+  async submit(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     const user: DocumentUser = {
       id: req.user.id,
       actions: req.user.actions,
@@ -267,7 +267,7 @@ export class DocumentController {
   @ApiResponse({ status: 400, description: 'Document không thể review ở trạng thái hiện tại' })
   @ApiResponse({ status: 403, description: 'Không có quyền review document này' })
   @ApiResponse({ status: 404, description: 'Document not found' })
-  async startReview(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+  async startReview(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     const user: DocumentUser = {
       id: req.user.id,
       actions: req.user.actions,
@@ -298,7 +298,7 @@ export class DocumentController {
   @ApiResponse({ status: 404, description: 'Document not found' })
   @ApiBody({ type: ApproveDocumentDto })
   async approve(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() approveDto: ApproveDocumentDto,
     @Req() req: AuthenticatedRequest
   ) {
@@ -335,7 +335,7 @@ export class DocumentController {
     description: 'Feedback lý do reject' 
   })
   async reject(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() rejectDto: ApproveDocumentDto,
     @Req() req: AuthenticatedRequest
   ) {
@@ -367,7 +367,7 @@ export class DocumentController {
   @ApiResponse({ status: 400, description: 'Document không thể sign ở trạng thái hiện tại' })
   @ApiResponse({ status: 403, description: 'Không có quyền sign document này' })
   @ApiResponse({ status: 404, description: 'Document not found' })
-  async sign(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+  async sign(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     const user: DocumentUser = {
       id: req.user.id,
       actions: req.user.actions,
@@ -396,7 +396,7 @@ export class DocumentController {
   @ApiResponse({ status: 400, description: 'Document không thể activate ở trạng thái hiện tại' })
   @ApiResponse({ status: 403, description: 'Không có quyền activate document này' })
   @ApiResponse({ status: 404, description: 'Document not found' })
-  async activate(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+  async activate(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     const user: DocumentUser = {
       id: req.user.id,
       actions: req.user.actions,
@@ -425,7 +425,7 @@ export class DocumentController {
   @ApiResponse({ status: 400, description: 'Document không thể expire ở trạng thái hiện tại' })
   @ApiResponse({ status: 403, description: 'Không có quyền expire document này' })
   @ApiResponse({ status: 404, description: 'Document not found' })
-  async expire(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+  async expire(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     const user: DocumentUser = {
       id: req.user.id,
       actions: req.user.actions,
@@ -488,7 +488,7 @@ export class DocumentController {
   @ApiResponse({ status: 403, description: 'Không có quyền duyệt đề xuất' })
   @ApiResponse({ status: 404, description: 'Document not found' })
   async approveProposal(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Req() req: AuthenticatedRequest
   ) {
     const user: DocumentUser = {
@@ -528,7 +528,7 @@ export class DocumentController {
   @ApiResponse({ status: 403, description: 'Không có quyền ký document' })
   @ApiResponse({ status: 404, description: 'Document not found' })
   async markSigned(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body('signedBy') signedBy: string,
     @Req() req: AuthenticatedRequest
   ) {
@@ -561,7 +561,7 @@ export class DocumentController {
   @ApiResponse({ status: 403, description: 'Không có quyền kích hoạt document' })
   @ApiResponse({ status: 404, description: 'Document not found' })
   async markActiveDocument(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Req() req: AuthenticatedRequest
   ) {
     const user: DocumentUser = {
@@ -601,7 +601,7 @@ export class DocumentController {
   @ApiResponse({ status: 403, description: 'Không có quyền cập nhật document' })
   @ApiResponse({ status: 404, description: 'Document not found' })
   async markExpiredOrExtended(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body('isExtended') isExtended: boolean,
     @Body('renewalDate') renewalDate: string,
     @Req() req: AuthenticatedRequest
