@@ -66,6 +66,7 @@ import {
 } from "recharts";
 
 import { translationService, TranslationConfirmationData, CreateTranslationDto } from '../../lib/api/translation.service';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function TranslationConfirmation() {
   const [translationsData, setTranslationsData] = useState<TranslationConfirmationData[]>([]);
@@ -77,6 +78,8 @@ export function TranslationConfirmation() {
   const [activeTab, setActiveTab] = useState("list");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { user } = useAuth();
 
   // Load data from API
   useEffect(() => {
@@ -104,6 +107,20 @@ export function TranslationConfirmation() {
 
     loadData();
   }, []);
+
+  // Auto-fill applicant info from current user
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        applicantName: user.fullName,
+        applicantEmail: user.email,
+        applicantPhone: user.phoneNumber || prev.applicantPhone,
+        unitName: user.unit?.name || '',
+        unitId: user.unitId || '',
+      }));
+    }
+  }, [user]);
 
   const filteredTranslations = translationsData.filter((trans) => {
     const matchesSearch =
@@ -142,9 +159,9 @@ export function TranslationConfirmation() {
   };
 
   const [formData, setFormData] = useState({
-    applicantName: '',
-    applicantEmail: '',
-    applicantPhone: '',
+    applicantName: user?.fullName || '',
+    applicantEmail: user?.email || '',
+    applicantPhone: user?.phoneNumber || '',
     documentTitle: '',
     sourceLanguage: '',
     targetLanguage: '',
@@ -155,20 +172,28 @@ export function TranslationConfirmation() {
     translatedFile: '',
     attachments: [],
     notes: '',
-    unitName: '',
+    unitName: user?.unit?.name || '',
+    unitId: user?.unitId || '',
     translatorName: '',
     reason: '',
     verificationFile: '',
     languagePair: '',
     partnerId: '',
-    unitId: '',
   });
 
   // Handle form submission for new translation request
   const handleSubmitTranslation = async () => {
     // Basic validation
+    if (!formData.documentType) {
+      alert('Vui lòng chọn loại tài liệu');
+      return;
+    }
     if (!formData.documentTitle.trim()) {
       alert('Vui lòng nhập tên tài liệu');
+      return;
+    }
+    if (!formData.purpose.trim()) {
+      alert('Vui lòng nhập mục đích sử dụng');
       return;
     }
     if (!formData.sourceLanguage) {
@@ -202,9 +227,9 @@ export function TranslationConfirmation() {
       setIsSubmitOpen(false);
       // Reset form
       setFormData({
-        applicantName: '',
-        applicantEmail: '',
-        applicantPhone: '',
+        applicantName: user?.fullName || '',
+        applicantEmail: user?.email || '',
+        applicantPhone: user?.phoneNumber || '',
         documentTitle: '',
         sourceLanguage: '',
         targetLanguage: '',
@@ -215,13 +240,13 @@ export function TranslationConfirmation() {
         translatedFile: '',
         attachments: [],
         notes: '',
-        unitName: '',
+        unitName: user?.unit?.name || '',
+        unitId: user?.unitId || '',
         translatorName: '',
         reason: '',
         verificationFile: '',
         languagePair: '',
         partnerId: '',
-        unitId: '',
       });
     } catch (err) {
       console.error('Error creating translation request:', err);
@@ -683,10 +708,67 @@ export function TranslationConfirmation() {
                   <Label htmlFor="submit-unit">Proposing Unit *</Label>
                   <Input
                     id="submit-unit"
-                    defaultValue="Faculty of Engineering"
+                    placeholder="Your unit"
                     className="mt-2"
+                    value={formData.unitName}
                     disabled
+                    readOnly
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Auto-filled from your account</p>
+                </div>
+                <div>
+                  <Label htmlFor="submit-applicant-name">Applicant Name *</Label>
+                  <Input
+                    id="submit-applicant-name"
+                    placeholder="Enter applicant's full name"
+                    className="mt-2"
+                    value={formData.applicantName}
+                    disabled
+                    readOnly
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Auto-filled from your account</p>
+                </div>
+                <div>
+                  <Label htmlFor="submit-applicant-email">Applicant Email *</Label>
+                  <Input
+                    id="submit-applicant-email"
+                    type="email"
+                    placeholder="applicant@example.com"
+                    className="mt-2"
+                    value={formData.applicantEmail}
+                    disabled
+                    readOnly
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Auto-filled from your account</p>
+                </div>
+                <div>
+                  <Label htmlFor="submit-applicant-phone">Applicant Phone</Label>
+                  <Input
+                    id="submit-applicant-phone"
+                    placeholder="e.g., +84901234567"
+                    className="mt-2"
+                    value={formData.applicantPhone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, applicantPhone: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="submit-document-type">Document Type *</Label>
+                  <Select value={formData.documentType} onValueChange={(value) => setFormData(prev => ({ ...prev, documentType: value }))}>
+                    <SelectTrigger id="submit-document-type" className="mt-2">
+                      <SelectValue placeholder="Select document type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="diploma">Diploma</SelectItem>
+                      <SelectItem value="certificate">Certificate</SelectItem>
+                      <SelectItem value="transcript">Transcript</SelectItem>
+                      <SelectItem value="contract">Contract</SelectItem>
+                      <SelectItem value="agreement">Agreement</SelectItem>
+                      <SelectItem value="passport">Passport</SelectItem>
+                      <SelectItem value="birth_certificate">Birth Certificate</SelectItem>
+                      <SelectItem value="marriage_certificate">Marriage Certificate</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="col-span-2">
                   <Label htmlFor="submit-doc-name">Original Document Name *</Label>
@@ -696,6 +778,17 @@ export function TranslationConfirmation() {
                     className="mt-2"
                     value={formData.documentTitle}
                     onChange={(e) => setFormData(prev => ({ ...prev, documentTitle: e.target.value }))}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="submit-purpose">Purpose of Translation *</Label>
+                  <Textarea
+                    id="submit-purpose"
+                    placeholder="e.g., For university admission, job application, legal purposes..."
+                    className="mt-2"
+                    rows={2}
+                    value={formData.purpose}
+                    onChange={(e) => setFormData(prev => ({ ...prev, purpose: e.target.value }))}
                   />
                 </div>
                 <div>
