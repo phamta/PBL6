@@ -10,6 +10,7 @@ import {
   Shield,
   ChevronLeft,
   ChevronRight,
+  Key,
 } from "lucide-react";
 import { Button } from "../ui/button";
 
@@ -22,6 +23,7 @@ const menuItems = [
   { id: "home", label: "Home", icon: Home },
   { id: "users", label: "User Management", icon: UserCog },
   { id: "roles", label: "Role & Permission Management", icon: Shield },
+  { id: "passwords", label: "Password Management", icon: Key },
 ];
 
 export function AdminSidebar({ currentPage, onNavigate }: AdminSidebarProps) {
