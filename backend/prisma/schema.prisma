@@ -162,6 +162,7 @@ model User {
   notificationsSent     NotificationLog[]  @relation("NotificationSentBy")
   notificationsReceived UserNotification[]
   templatesUploaded     Template[]         @relation("TemplateUploadedBy")
+  feedbacksAuthored     MOUFeedback[]      @relation("FeedbackAuthor")
 
   @@map("users")
 }
@@ -242,10 +243,11 @@ model Document {
   updatedAt             DateTime       @updatedAt
 
   // Relations
-  createdBy  User     @relation("DocumentCreatedBy", fields: [createdById], references: [id])
-  approvedBy User?    @relation("DocumentApprovedBy", fields: [approvedById], references: [id])
-  partner    Partner? @relation(fields: [partnerId], references: [id])
-  unit       Unit?    @relation(fields: [unitId], references: [id])
+  createdBy  User          @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  approvedBy User?         @relation("DocumentApprovedBy", fields: [approvedById], references: [id])
+  partner    Partner?      @relation(fields: [partnerId], references: [id])
+  unit       Unit?         @relation(fields: [unitId], references: [id])
+  feedbacks  MOUFeedback[] // Feedback/comments on this document
 
   @@index([proposalCode])
   @@index([status])
@@ -271,6 +273,24 @@ model Template {
   @@index([category])
   @@index([isActive])
   @@map("templates")
+}
+
+model MOUFeedback {
+  id          String   @id @default(cuid())
+  documentId  String
+  authorId    String
+  content     String   @db.Text
+  attachments Json? // Array of attachment file paths
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author   User     @relation("FeedbackAuthor", fields: [authorId], references: [id])
+
+  @@index([documentId])
+  @@index([authorId])
+  @@map("mou_feedbacks")
 }
 
 // ==================== VISA SERVICE MODELS ====================

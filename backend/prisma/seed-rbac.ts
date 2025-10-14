@@ -381,6 +381,16 @@ async function main() {
         category: 'DOCUMENT_MANAGEMENT',
       },
     }),
+    prisma.action.upsert({
+      where: { code: 'DOCUMENT_FEEDBACK' },
+      update: {},
+      create: {
+        code: 'DOCUMENT_FEEDBACK',
+        name: 'Feedback on Document',
+        description: 'Can provide feedback/comments on documents',
+        category: 'DOCUMENT_MANAGEMENT',
+      },
+    }),
 
     // Template Management Actions
     prisma.action.upsert({
@@ -948,7 +958,7 @@ async function main() {
 
   // Document Management Permission Actions
   const documentManagementActions = actions.filter(action => 
-    ['DOCUMENT_CREATE', 'DOCUMENT_READ', 'DOCUMENT_UPDATE', 'DOCUMENT_DELETE', 'DOCUMENT_PROPOSE', 'DOCUMENT_APPROVE', 'DOCUMENT_SIGN', 'DOCUMENT_ACTIVATE', 'DOCUMENT_VIEW']
+    ['DOCUMENT_CREATE', 'DOCUMENT_READ', 'DOCUMENT_UPDATE', 'DOCUMENT_DELETE', 'DOCUMENT_PROPOSE', 'DOCUMENT_APPROVE', 'DOCUMENT_SIGN', 'DOCUMENT_ACTIVATE', 'DOCUMENT_VIEW', 'DOCUMENT_FEEDBACK']
     .includes(action.code)
   );
   

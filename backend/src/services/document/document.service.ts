@@ -1324,4 +1324,156 @@ export class DocumentService {
 
     return updatedDocument;
   }
+
+  // ==================== Feedback Management ====================
+
+  /**
+   * Create feedback for a document
+   * Dành cho Phòng KHCN&ĐN gửi góp ý cho hồ sơ MOU
+   */
+  async createFeedback(
+    documentId: string,
+    userId: string,
+    content: string,
+    attachments?: any[]
+  ): Promise<any> {
+    // Check if document exists
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${documentId} not found`);
+    }
+
+    // Only allow feedback for documents in certain statuses
+    const allowedStatuses: DocumentStatus[] = [
+      DocumentStatus.SUBMITTED,
+      DocumentStatus.REVIEWING,
+      DocumentStatus.APPROVED,
+    ];
+
+    if (!allowedStatuses.includes(document.status)) {
+      throw new BadRequestException(
+        `Cannot add feedback to document with status ${document.status}. Document must be SUBMITTED, REVIEWING, or APPROVED.`
+      );
+    }
+
+    // Create feedback
+    const feedback = await this.prisma.mOUFeedback.create({
+      data: {
+        documentId,
+        authorId: userId,
+        content,
+        attachments: attachments || [],
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            unitId: true,
+          },
+        },
+      },
+    });
+
+    // Update document status to REVIEWING if it was SUBMITTED
+    if (document.status === DocumentStatus.SUBMITTED) {
+      await this.prisma.document.update({
+        where: { id: documentId },
+        data: { status: DocumentStatus.REVIEWING },
+      });
+    }
+
+    // Emit event for notification
+    this.eventEmitter.emit('document.feedback.created', {
+      feedback,
+      document,
+      timestamp: new Date(),
+    });
+
+    return feedback;
+  }
+
+  /**
+   * Get all feedbacks for a document
+   */
+  async getFeedbacks(documentId: string): Promise<any[]> {
+    // Check if document exists
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${documentId} not found`);
+    }
+
+    const feedbacks = await this.prisma.mOUFeedback.findMany({
+      where: { documentId },
+      include: {
+        author: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            unitId: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return feedbacks;
+  }
+
+  /**
+   * Resubmit document after addressing feedback
+   * Đơn vị đề xuất chỉnh sửa hồ sơ theo góp ý và gửi lại
+   */
+  async resubmitDocument(documentId: string, userId: string): Promise<DocumentWithRelations> {
+    const document = await this.prisma.document.findUnique({
+      where: { id: documentId },
+      include: this.documentInclude,
+    });
+
+    if (!document) {
+      throw new NotFoundException(`Document with ID ${documentId} not found`);
+    }
+
+    // Only document creator can resubmit
+    if (document.createdById !== userId) {
+      throw new ForbiddenException('Only the document creator can resubmit the document');
+    }
+
+    // Check if document is in a status that allows resubmission
+    const allowedStatuses: DocumentStatus[] = [DocumentStatus.DRAFT, DocumentStatus.REVIEWING];
+    if (!allowedStatuses.includes(document.status)) {
+      throw new BadRequestException(
+        `Cannot resubmit document with status ${document.status}. Document must be DRAFT or REVIEWING.`
+      );
+    }
+
+    // Update document status to SUBMITTED
+    const updatedDocument = await this.prisma.document.update({
+      where: { id: documentId },
+      data: {
+        status: DocumentStatus.SUBMITTED,
+        updatedAt: new Date(),
+      },
+      include: this.documentInclude,
+    });
+
+    // Emit event for notification
+    this.eventEmitter.emit('document.resubmitted', {
+      document: updatedDocument,
+      userId,
+      timestamp: new Date(),
+    });
+
+    return updatedDocument;
+  }
 }
