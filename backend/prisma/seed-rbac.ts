@@ -239,6 +239,7 @@ async function main() {
         category: 'VISA_MANAGEMENT',
       },
     }),
+
     prisma.action.upsert({
       where: { code: 'VISA_UPDATE' },
       update: {},
@@ -392,6 +393,18 @@ async function main() {
         category: 'DOCUMENT_MANAGEMENT',
       },
     }),
+
+    prisma.action.upsert({
+      where: { code: 'DOCUMENT_READ_ALL' },
+      update: {},
+      create: {
+        code: 'DOCUMENT_READ_ALL',
+        name: 'Read All Documents',
+        description: 'Can view all documents across units',
+        category: 'DOCUMENT_MANAGEMENT',
+      },
+    }),
+
     // Template Management Actions
     prisma.action.upsert({
       where: { code: 'TEMPLATE_UPLOAD' },
@@ -1046,12 +1059,25 @@ async function main() {
 
   console.log('✅ Created additional permissions');
 
+  // Create a dedicated permission for global document read (read all)
+  const documentGlobalReadPermission = await prisma.permission.upsert({
+    where: { code: 'DOCUMENT_GLOBAL_READ' },
+    update: {},
+    create: {
+      code: 'DOCUMENT_GLOBAL_READ',
+      name: 'Document Global Read',
+      description: 'Permission to read all documents across units',
+    },
+  });
+
+  console.log('✅ Created DOCUMENT_GLOBAL_READ permission');
+
   // Assign actions to new permissions
   console.log('Assigning actions to new permissions...');
 
   // Document Management Permission Actions
   const documentManagementActions = actions.filter(action => 
-    ['DOCUMENT_CREATE', 'DOCUMENT_READ', 'DOCUMENT_UPDATE', 'DOCUMENT_DELETE', 'DOCUMENT_PROPOSE', 'DOCUMENT_APPROVE', 'DOCUMENT_SIGN', 'DOCUMENT_ACTIVATE', 'DOCUMENT_VIEW',, 'DOCUMENT_FEEDBACK']
+    ['DOCUMENT_CREATE', 'DOCUMENT_READ', 'DOCUMENT_UPDATE', 'DOCUMENT_DELETE', 'DOCUMENT_PROPOSE', 'DOCUMENT_APPROVE', 'DOCUMENT_SIGN', 'DOCUMENT_ACTIVATE', 'DOCUMENT_VIEW', 'DOCUMENT_FEEDBACK']
     .includes(action.code)
   );
   
@@ -1067,6 +1093,24 @@ async function main() {
       create: {
         permissionId: documentManagementPermission.id,
         actionId: action.id,
+      },
+    });
+  }
+
+  // Map DOCUMENT_READ_ALL action to the new DOCUMENT_GLOBAL_READ permission
+  const docReadAllAction = actions.find(a => a.code === 'DOCUMENT_READ_ALL');
+  if (docReadAllAction) {
+    await prisma.permissionAction.upsert({
+      where: {
+        permissionId_actionId: {
+          permissionId: documentGlobalReadPermission.id,
+          actionId: docReadAllAction.id,
+        },
+      },
+      update: {},
+      create: {
+        permissionId: documentGlobalReadPermission.id,
+        actionId: docReadAllAction.id,
       },
     });
   }
@@ -1312,6 +1356,7 @@ async function main() {
     rbacManagementPermission, 
     visaManagementPermission, 
     documentManagementPermission,
+    documentGlobalReadPermission,
     translationManagementPermission,
     guestManagementPermission,
     partnerManagementPermission,
@@ -1343,6 +1388,7 @@ async function main() {
     userManagementPermission,
     visaManagementPermission, 
     documentManagementPermission,
+    documentGlobalReadPermission,
     translationManagementPermission,
     guestManagementPermission,
     partnerManagementPermission,
@@ -1372,6 +1418,7 @@ async function main() {
   const leadershipPermissions = [
     visaManagementPermission,
     documentManagementPermission,
+    documentGlobalReadPermission,
     translationManagementPermission,
     guestManagementPermission,
     reportManagementPermission,

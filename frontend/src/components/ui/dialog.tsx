@@ -7,6 +7,17 @@ import { XIcon } from "lucide-react";
 import { cn } from "./utils";
 import styles from './dialog.module.css';
 
+/**
+ * Dialog Components
+ *
+ * Usage:
+ * - DialogContent supports a maxWidth prop for flexible sizing:
+ *   <DialogContent maxWidth="600px"> - fixed pixel width
+ *   <DialogContent maxWidth="50vw"> - viewport width percentage
+ *   <DialogContent maxWidth={800}> - number converted to pixels
+ *   <DialogContent className="max-w-4xl"> - still supports Tailwind classes
+ */
+
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
@@ -47,14 +58,20 @@ function DialogOverlay({
 function DialogContent({
   className,
   children,
+  maxWidth,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  maxWidth?: string | number;
+}) {
+  const style = maxWidth ? { maxWidth: typeof maxWidth === 'number' ? `${maxWidth}px` : maxWidth } : undefined;
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(styles.dialogContent, className)}
+        style={style}
         {...props}
       >
         {children}

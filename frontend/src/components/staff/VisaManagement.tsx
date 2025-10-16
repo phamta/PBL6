@@ -453,7 +453,7 @@ export function VisaManagement() {
         open={!!selectedExtension}
         onOpenChange={(open) => !open && setSelectedExtension(null)}
       >
-        <DialogContent className="max-w-3xl dialog-content">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Theo Dõi Đơn Gia Hạn</DialogTitle>
             <DialogDescription>
@@ -586,7 +586,7 @@ export function VisaManagement() {
 
       {/* Extension Form Dialog (simplified - reuse from InternationalMembers) */}
       <Dialog open={isExtensionFormOpen} onOpenChange={setIsExtensionFormOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Tạo Đơn Gia Hạn Visa</DialogTitle>
             <DialogDescription>

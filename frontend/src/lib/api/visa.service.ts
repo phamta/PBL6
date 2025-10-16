@@ -129,6 +129,28 @@ class VisaService {
     return response.data;
   }
 
+  // Get all international members (foreign students) for officer view
+  async getAllInternationalMembers(): Promise<InternationalMember[]> {
+    try {
+      // For officer role, get all foreign students from all units
+      const response = await axiosClient.get(API_ENDPOINTS.VISAS.FOREIGN_STUDENTS_ALL);
+      const students = response.data.data || response.data;
+
+      console.log('Raw foreign students data:', students);
+
+      // Transform each student to InternationalMember format
+      const transformedMembers = await Promise.all(
+        students.map((student: any) => this.transformForeignStudentToInternationalMember(student))
+      );
+
+      console.log('Transformed members:', transformedMembers);
+      return transformedMembers;
+    } catch (error) {
+      console.error('Error fetching international members:', error);
+      throw error;
+    }
+  }
+
   // Transform visa data to international member format
   transformToInternationalMember(visa: VisaWithRelations): InternationalMember {
     const status = visa.status === 'ACTIVE' ? 'active' :
@@ -277,6 +299,27 @@ class VisaService {
       return response.data;
     } catch (error) {
       console.error('Error creating visa extension:', error);
+      throw error;
+    }
+  }
+
+  async approveExtension(extensionId: string, approvalData: {
+    action: 'APPROVE' | 'REJECT';
+    comments?: string;
+  }) {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const response = await axiosClient.post(
+        API_ENDPOINTS.VISAS.APPROVE_EXTENSION(extensionId),
+        {
+          action: approvalData.action,
+          comments: approvalData.comments,
+          approvedBy: user.id,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error approving visa extension:', error);
       throw error;
     }
   }

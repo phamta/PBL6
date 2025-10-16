@@ -633,7 +633,7 @@ export function DelegationManagement() {
 
       {/* Add/Edit Delegation Dialog */}
       <Dialog open={isAddDelegationOpen} onOpenChange={setIsAddDelegationOpen}>
-        <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto p-6">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Thêm Đoàn Khách Quốc Tế Mới</DialogTitle>
             <DialogDescription>
@@ -641,8 +641,8 @@ export function DelegationManagement() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-8 py-6">
-            {/* Delegation Information */}
+          <div className="dialog-body max-h-[70vh] overflow-y-auto">
+
             <div className="space-y-6">
               <h4 className="text-xl font-semibold border-b pb-3 text-primary">Thông Tin Đoàn</h4>
 
@@ -1191,7 +1191,7 @@ export function DelegationManagement() {
         open={!!selectedDelegation}
         onOpenChange={(open) => !open && setSelectedDelegation(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[90vh] dialog-content overflow-y-auto ">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto ">
           <DialogHeader>
             <DialogTitle>Chi Tiết Đoàn Khách</DialogTitle>
             <DialogDescription>

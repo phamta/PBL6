@@ -821,7 +821,7 @@ export function TranslationsPage() {
 
       {/* Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Chi tiết yêu cầu dịch thuật</DialogTitle>
             <DialogDescription>
@@ -829,7 +829,7 @@ export function TranslationsPage() {
             </DialogDescription>
           </DialogHeader>
           {selectedTranslation && (
-            <div className="space-y-4">
+            <div className="dialog-body max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-sm font-medium">Tài liệu</Label>

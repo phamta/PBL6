@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { 
   Globe, 
   Search, 
@@ -16,7 +17,14 @@ import {
   AlertCircle,
   Check,
   Clock,
-  TrendingUp
+  TrendingUp,
+  CheckCircle,
+  XCircle,
+  FileCheck,
+  Flag,
+  GraduationCap,
+  RefreshCw,
+  User,
 } from "lucide-react";
 import { Card } from "../ui/card";
 import { Input } from "../ui/input";
@@ -68,6 +76,74 @@ import {
   Legend,
 } from "recharts";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { visaService } from "@/lib/api";
+
+// Types for API data
+interface VisaExtension {
+  id: string;
+  visaId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  newExpirationDate: string;
+  reason: string;
+  createdAt: string;
+  approvedBy?: {
+    id: string;
+    fullName: string;
+  };
+  approvedAt?: string;
+  comments?: string;
+}
+
+interface VisaApplication {
+  id: string;
+  holderName: string;
+  holderCountry: string;
+  passportNumber: string;
+  visaNumber: string;
+  issueDate: string;
+  expirationDate: string;
+  purpose: string;
+  sponsorUnit: string;
+  status: 'ACTIVE' | 'EXPIRING' | 'EXPIRED' | 'EXTENDED' | 'CANCELLED';
+  dateOfBirth?: string;
+  visaType?: string;
+  entryDate?: string;
+  program?: string;
+  department?: string;
+  email?: string;
+  phone?: string;
+  createdBy: {
+    id: string;
+    fullName: string;
+    email: string;
+  };
+  unit?: {
+    id: string;
+    name: string;
+    code: string;
+  };
+  extensions: VisaExtension[];
+  foreignStudents: Array<{
+    id: string;
+    fullName: string;
+    nationality: string;
+  }>;
+}
+
+// Helper function to format date
+const formatDate = (dateString: string) => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  } catch {
+    return dateString;
+  }
+};
 
 const membersData = [
   {
@@ -208,13 +284,140 @@ const visaTypeDistribution = [
 ];
 
 export function InternationalMembersPage() {
-  const [selectedMember, setSelectedMember] = useState<typeof membersData[0] | null>(
-    null
-  );
+  // State management
+  const [visas, setVisas] = useState<VisaApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedVisa, setSelectedVisa] = useState<VisaApplication | null>(null);
+  const [selectedMember, setSelectedMember] = useState<typeof membersData[0] | null>(null);
+  const [selectedExtension, setSelectedExtension] = useState<VisaExtension | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [activeTab, setActiveTab] = useState("members");
+  const [extensionStatusFilter, setExtensionStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("pending");
+  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
+  const [approvalAction, setApprovalAction] = useState<'APPROVE' | 'REJECT' | null>(null);
+  const [approvalComments, setApprovalComments] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch visa applications on mount
+  useEffect(() => {
+    const fetchVisas = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await visaService.list({});
+        console.log('Visa data received:', response);
+        setVisas(response.visas || []);
+      } catch (err) {
+        console.error('Error fetching visas:', err);
+        setError('Không thể tải dữ liệu đơn visa');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVisas();
+  }, []);
+
+  // Get pending extension requests (for officer to approve)
+  const pendingExtensions = visas.flatMap(visa => 
+    visa.extensions
+      .filter(ext => ext.status === 'PENDING')
+      .map(ext => ({ ...ext, visa }))
+  );
+
+  // Get processed extension requests
+  const processedExtensions = visas.flatMap(visa => 
+    visa.extensions
+      .filter(ext => ext.status !== 'PENDING')
+      .map(ext => ({ ...ext, visa }))
+  );
+
+  // Statistics
+  const totalPendingExtensions = pendingExtensions.length;
+  const totalApprovedExtensions = processedExtensions.filter(e => e.status === 'APPROVED').length;
+  const totalRejectedExtensions = processedExtensions.filter(e => e.status === 'REJECTED').length;
+  const totalActiveVisas = visas.filter(v => v.status === 'ACTIVE').length;
+
+  // Handle approval/rejection
+  const handleOpenApprovalDialog = (extension: VisaExtension & { visa: VisaApplication }, action: 'APPROVE' | 'REJECT') => {
+    setSelectedExtension(extension);
+    setApprovalAction(action);
+    setApprovalComments("");
+    setIsApprovalDialogOpen(true);
+  };
+
+  const handleSubmitApproval = async () => {
+    if (!selectedExtension || !approvalAction) return;
+
+    try {
+      setIsSubmitting(true);
+      
+      // Call API to approve/reject extension
+      await visaService.approveExtension(selectedExtension.id, {
+        action: approvalAction,
+        comments: approvalComments,
+      });
+
+      // Refresh data
+      const response = await visaService.list({});
+      setVisas(response.visas || []);
+
+      // Close dialog
+      setIsApprovalDialogOpen(false);
+      setSelectedExtension(null);
+      setApprovalAction(null);
+      setApprovalComments("");
+
+      alert(`Đơn gia hạn đã được ${approvalAction === 'APPROVE' ? 'phê duyệt' : 'từ chối'} thành công!`);
+    } catch (error) {
+      console.error('Error processing approval:', error);
+      alert('Có lỗi xảy ra khi xử lý đơn. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getExtensionStatusBadge = (status: string) => {
+    const config = {
+      PENDING: { 
+        variant: "secondary" as const, 
+        label: "Chờ duyệt",
+        icon: <Clock className="w-3 h-3 mr-1" />
+      },
+      APPROVED: { 
+        variant: "default" as const, 
+        label: "Đã duyệt",
+        icon: <CheckCircle className="w-3 h-3 mr-1" />
+      },
+      REJECTED: { 
+        variant: "destructive" as const, 
+        label: "Từ chối",
+        icon: <XCircle className="w-3 h-3 mr-1" />
+      },
+    };
+    const c = config[status as keyof typeof config] || { variant: "outline" as const, label: status, icon: null };
+    return (
+      <Badge variant={c.variant} className="flex items-center w-fit">
+        {c.icon}
+        {c.label}
+      </Badge>
+    );
+  };
+
+  const getVisaStatusBadge = (status: string) => {
+    const config = {
+      ACTIVE: { variant: "default" as const, label: "Hoạt động", className: "bg-green-100 text-green-800" },
+      EXPIRING: { variant: "secondary" as const, label: "Sắp hết hạn", className: "bg-orange-100 text-orange-800" },
+      EXPIRED: { variant: "destructive" as const, label: "Hết hạn", className: "" },
+      EXTENDED: { variant: "outline" as const, label: "Đã gia hạn", className: "bg-blue-100 text-blue-800" },
+      CANCELLED: { variant: "outline" as const, label: "Đã hủy", className: "bg-gray-100 text-gray-800" },
+    };
+    const c = config[status as keyof typeof config] || { variant: "outline" as const, label: status, className: "" };
+    return <Badge variant={c.variant} className={c.className}>{c.label}</Badge>;
+  };
 
   const filteredMembers = membersData.filter((member) => {
     const matchesSearch =
@@ -234,38 +437,6 @@ export function InternationalMembersPage() {
     };
     const config = variants[status] || { variant: "outline" as const, label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const getVisaStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string; icon: React.ReactNode }> = {
-      valid: { 
-        variant: "default", 
-        label: "Valid",
-        icon: <Check className="w-3 h-3 mr-1" />
-      },
-      "expiring-soon": { 
-        variant: "secondary", 
-        label: "Expiring Soon",
-        icon: <AlertCircle className="w-3 h-3 mr-1" />
-      },
-      "under-renewal": { 
-        variant: "outline", 
-        label: "Under Renewal",
-        icon: <Clock className="w-3 h-3 mr-1" />
-      },
-      expired: { 
-        variant: "destructive", 
-        label: "Expired",
-        icon: <AlertCircle className="w-3 h-3 mr-1" />
-      },
-    };
-    const config = variants[status] || { variant: "outline" as const, label: status, icon: null };
-    return (
-      <Badge variant={config.variant} className="flex items-center w-fit">
-        {config.icon}
-        {config.label}
-      </Badge>
-    );
   };
 
   const getRoleBadge = (role: string) => {
@@ -315,54 +486,307 @@ export function InternationalMembersPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h1>International Students/Trainees/Lecturers</h1>
+          <h1 className="text-3xl font-bold">Quản lý Visa & Gia hạn</h1>
           <p className="text-muted-foreground mt-1">
-            Manage international members, visa extensions, and generate reports
+            Duyệt đơn gia hạn visa, xét hồ sơ và tạo công văn
           </p>
         </div>
         <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                Export
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Export Format</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => handleExportReport("csv")}>
-                <FileText className="w-4 h-4 mr-2" />
-                CSV File
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExportReport("excel")}>
-                <FileSpreadsheet className="w-4 h-4 mr-2" />
-                Excel Spreadsheet
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExportReport("word")}>
-                <FileText className="w-4 h-4 mr-2" />
-                Word Document
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button className="bg-primary">
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Member
+          <Button variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Xuất báo cáo
           </Button>
         </div>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="members">Members</TabsTrigger>
-          <TabsTrigger value="statistics">Statistics & Reports</TabsTrigger>
-          <TabsTrigger value="visa">Visa Management</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 max-w-3xl">
+          <TabsTrigger value="pending" className="relative">
+            Chờ duyệt
+            {totalPendingExtensions > 0 && (
+              <Badge className="ml-2 bg-red-500 text-white h-5 px-1.5" variant="destructive">
+                {totalPendingExtensions}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="processed">Đã xử lý</TabsTrigger>
+          <TabsTrigger value="members">Danh sách Visa</TabsTrigger>
+          <TabsTrigger value="statistics">Thống kê</TabsTrigger>
         </TabsList>
 
-        {/* Members Tab */}
+        {/* Pending Extensions Tab */}
+        <TabsContent value="pending" className="space-y-4">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="p-4 border-l-4 border-l-yellow-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Chờ duyệt</p>
+                  <p className="text-2xl font-bold">{totalPendingExtensions}</p>
+                </div>
+                <Clock className="w-8 h-8 text-yellow-500" />
+              </div>
+            </Card>
+            <Card className="p-4 border-l-4 border-l-green-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Đã duyệt</p>
+                  <p className="text-2xl font-bold">{totalApprovedExtensions}</p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-green-500" />
+              </div>
+            </Card>
+            <Card className="p-4 border-l-4 border-l-red-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Từ chối</p>
+                  <p className="text-2xl font-bold">{totalRejectedExtensions}</p>
+                </div>
+                <XCircle className="w-8 h-8 text-red-500" />
+              </div>
+            </Card>
+            <Card className="p-4 border-l-4 border-l-blue-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Visa hoạt động</p>
+                  <p className="text-2xl font-bold">{totalActiveVisas}</p>
+                </div>
+                <FileCheck className="w-8 h-8 text-blue-500" />
+              </div>
+            </Card>
+          </div>
+
+          {/* Pending Extension Requests */}
+          {loading ? (
+            <Card className="p-6">
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+                <p className="ml-3 text-muted-foreground">Đang tải dữ liệu...</p>
+              </div>
+            </Card>
+          ) : error ? (
+            <Card className="p-6">
+              <div className="flex items-center justify-center py-8">
+                <AlertCircle className="w-8 h-8 text-destructive" />
+                <p className="ml-3 text-destructive">{error}</p>
+              </div>
+            </Card>
+          ) : pendingExtensions.length === 0 ? (
+            <Card className="p-12">
+              <div className="flex flex-col items-center justify-center text-center">
+                <FileCheck className="w-16 h-16 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Không có đơn chờ duyệt</h3>
+                <p className="text-muted-foreground">
+                  Hiện tại không có đơn gia hạn visa nào cần xử lý
+                </p>
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {pendingExtensions.map((extension: any) => (
+                <motion.div
+                  key={extension.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Card className="p-6 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div className="flex gap-4 flex-1">
+                        <Avatar className="w-16 h-16">
+                          <AvatarFallback className="bg-primary/10 text-primary text-lg">
+                            {getInitials(extension.visa.holderName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        
+                        <div className="flex-1 space-y-3">
+                          <div>
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-xl font-semibold">{extension.visa.holderName}</h3>
+                              {getExtensionStatusBadge(extension.status)}
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <Flag className="w-4 h-4" />
+                                {extension.visa.holderCountry}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4" />
+                                {extension.visa.visaNumber}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <GraduationCap className="w-4 h-4" />
+                                {extension.visa.program || 'N/A'}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                              <div>
+                                <span className="font-medium">Ngày hết hạn hiện tại:</span>
+                                <p className="text-muted-foreground">{formatDate(extension.visa.expirationDate)}</p>
+                              </div>
+                              <div>
+                                <span className="font-medium">Ngày gia hạn yêu cầu:</span>
+                                <p className="text-primary font-medium">{formatDate(extension.newExpirationDate)}</p>
+                              </div>
+                            </div>
+                            <div>
+                              <span className="font-medium">Lý do gia hạn:</span>
+                              <p className="text-muted-foreground mt-1">{extension.reason}</p>
+                            </div>
+                            <div>
+                              <span className="font-medium">Ngày nộp đơn:</span>
+                              <p className="text-muted-foreground">{formatDate(extension.createdAt)}</p>
+                            </div>
+                            <div>
+                              <span className="font-medium">Người nộp đơn:</span>
+                              <p className="text-muted-foreground">{extension.visa.createdBy.fullName}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2 ml-4">
+                        <Button 
+                          size="sm" 
+                          variant="default"
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => handleOpenApprovalDialog(extension, 'APPROVE')}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Phê duyệt
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => handleOpenApprovalDialog(extension, 'REJECT')}
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Từ chối
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setSelectedVisa(extension.visa)}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Chi tiết
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Processed Extensions Tab */}
+        <TabsContent value="processed" className="space-y-4">
+          {/* Filter */}
+          <Card className="p-4">
+            <div className="flex gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Tìm theo tên, quốc tịch, số visa..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Select value={extensionStatusFilter} onValueChange={setExtensionStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="APPROVED">Đã duyệt</SelectItem>
+                  <SelectItem value="REJECTED">Từ chối</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </Card>
+
+          {/* Processed Requests */}
+          <div className="space-y-4">
+            {processedExtensions
+              .filter(ext => extensionStatusFilter === 'all' || ext.status === extensionStatusFilter)
+              .map((extension: any) => (
+                <Card key={extension.id} className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex gap-4 flex-1">
+                      <Avatar className="w-14 h-14">
+                        <AvatarFallback className="bg-primary/10 text-primary">
+                          {getInitials(extension.visa.holderName)}
+                        </AvatarFallback>
+                      </Avatar>
+                      
+                      <div className="flex-1 space-y-2">
+                        <div>
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className="text-lg font-semibold">{extension.visa.holderName}</h3>
+                            {getExtensionStatusBadge(extension.status)}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Flag className="w-4 h-4" />
+                              {extension.visa.holderCountry}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <FileText className="w-4 h-4" />
+                              {extension.visa.visaNumber}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Ngày gia hạn:</span>
+                            <p className="font-medium">{formatDate(extension.newExpirationDate)}</p>
+                          </div>
+                          {extension.approvedBy && (
+                            <div>
+                              <span className="text-muted-foreground">Người xử lý:</span>
+                              <p className="font-medium">{extension.approvedBy.fullName}</p>
+                            </div>
+                          )}
+                          {extension.approvedAt && (
+                            <div>
+                              <span className="text-muted-foreground">Ngày xử lý:</span>
+                              <p className="font-medium">{formatDate(extension.approvedAt)}</p>
+                            </div>
+                          )}
+                          {extension.comments && (
+                            <div className="col-span-2">
+                              <span className="text-muted-foreground">Ghi chú:</span>
+                              <p className="font-medium">{extension.comments}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setSelectedVisa(extension.visa)}
+                    >
+                      <Eye className="w-4 h-4 mr-2" />
+                      Xem
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+          </div>
+        </TabsContent>
+
+        {/* Members Tab (Original) */}
         <TabsContent value="members" className="space-y-4">
-          {/* Filters */}
           <Card className="p-4">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
@@ -692,7 +1116,7 @@ export function InternationalMembersPage() {
         open={!!selectedMember}
         onOpenChange={(open) => !open && setSelectedMember(null)}
       >
-        <DialogContent className="max-w-3xl dialog-content">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Member Details</DialogTitle>
             <DialogDescription>
@@ -700,7 +1124,7 @@ export function InternationalMembersPage() {
             </DialogDescription>
           </DialogHeader>
           {selectedMember && (
-            <div className="dialog-body">
+            <div className="dialog-body max-h-[70vh] overflow-y-auto">
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
                   <Avatar className="w-16 h-16 bg-primary text-primary-foreground">
@@ -800,6 +1224,258 @@ export function InternationalMembersPage() {
             <Button variant="outline" onClick={handlePrintLetter}>
               <Printer className="w-4 h-4 mr-2" />
               Print Letter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Approval/Rejection Dialog */}
+      <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {approvalAction === 'APPROVE' ? (
+                <><CheckCircle className="w-5 h-5 text-green-600" /> Phê duyệt đơn gia hạn</>
+              ) : (
+                <><XCircle className="w-5 h-5 text-red-600" /> Từ chối đơn gia hạn</>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {approvalAction === 'APPROVE' 
+                ? 'Xác nhận phê duyệt đơn gia hạn visa này'
+                : 'Vui lòng nhập lý do từ chối đơn gia hạn'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedExtension && (
+            <div className="space-y-4">
+              {/* Extension Info */}
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="font-medium">Người nộp đơn:</span>
+                    <p className="text-muted-foreground">{(selectedExtension as any).visa?.holderName}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Số visa:</span>
+                    <p className="text-muted-foreground">{(selectedExtension as any).visa?.visaNumber}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Hết hạn hiện tại:</span>
+                    <p className="text-muted-foreground">{formatDate((selectedExtension as any).visa?.expirationDate)}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Ngày gia hạn yêu cầu:</span>
+                    <p className="text-primary font-medium">{formatDate(selectedExtension.newExpirationDate)}</p>
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium">Lý do:</span>
+                  <p className="text-muted-foreground">{selectedExtension.reason}</p>
+                </div>
+              </div>
+
+              {/* Comments */}
+              <div className="space-y-2">
+                <Label htmlFor="comments">
+                  {approvalAction === 'APPROVE' ? 'Ghi chú (tùy chọn)' : 'Lý do từ chối *'}
+                </Label>
+                <Textarea
+                  id="comments"
+                  placeholder={approvalAction === 'APPROVE' 
+                    ? 'Nhập ghi chú nếu cần...'
+                    : 'Nhập lý do từ chối đơn gia hạn...'}
+                  value={approvalComments}
+                  onChange={(e) => setApprovalComments(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsApprovalDialogOpen(false);
+                setSelectedExtension(null);
+                setApprovalAction(null);
+                setApprovalComments("");
+              }}
+              disabled={isSubmitting}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant={approvalAction === 'APPROVE' ? 'default' : 'destructive'}
+              onClick={handleSubmitApproval}
+              disabled={isSubmitting || (approvalAction === 'REJECT' && !approvalComments.trim())}
+            >
+              {isSubmitting ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : approvalAction === 'APPROVE' ? (
+                <CheckCircle className="w-4 h-4 mr-2" />
+              ) : (
+                <XCircle className="w-4 h-4 mr-2" />
+              )}
+              {isSubmitting ? 'Đang xử lý...' : approvalAction === 'APPROVE' ? 'Phê duyệt' : 'Từ chối'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Visa Detail Dialog */}
+      <Dialog open={!!selectedVisa} onOpenChange={(open) => !open && setSelectedVisa(null)}>
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chi tiết Visa</DialogTitle>
+            <DialogDescription>
+              Thông tin chi tiết về visa và lịch sử gia hạn
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedVisa && (
+            <div className="dialog-body max-h-[70vh] overflow-y-auto">
+            <div className="space-y-6">
+              {/* Personal Info */}
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Thông tin cá nhân
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Họ và tên:</span>
+                    <p className="font-medium">{selectedVisa.holderName}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Quốc tịch:</span>
+                    <p className="font-medium">{selectedVisa.holderCountry}</p>
+                  </div>
+                  {selectedVisa.dateOfBirth && (
+                    <div>
+                      <span className="text-muted-foreground">Ngày sinh:</span>
+                      <p className="font-medium">{formatDate(selectedVisa.dateOfBirth)}</p>
+                    </div>
+                  )}
+                  {selectedVisa.email && (
+                    <div>
+                      <span className="text-muted-foreground">Email:</span>
+                      <p className="font-medium">{selectedVisa.email}</p>
+                    </div>
+                  )}
+                  {selectedVisa.phone && (
+                    <div>
+                      <span className="text-muted-foreground">Điện thoại:</span>
+                      <p className="font-medium">{selectedVisa.phone}</p>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-muted-foreground">Số hộ chiếu:</span>
+                    <p className="font-medium">{selectedVisa.passportNumber}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Visa Info */}
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Thông tin Visa
+                </h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Số visa:</span>
+                    <p className="font-medium">{selectedVisa.visaNumber}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Trạng thái:</span>
+                    <div className="mt-1">{getVisaStatusBadge(selectedVisa.status)}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Ngày cấp:</span>
+                    <p className="font-medium">{formatDate(selectedVisa.issueDate)}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Ngày hết hạn:</span>
+                    <p className="font-medium">{formatDate(selectedVisa.expirationDate)}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Mục đích:</span>
+                    <p className="font-medium">{selectedVisa.purpose}</p>
+                  </div>
+                  {selectedVisa.program && (
+                    <div>
+                      <span className="text-muted-foreground">Chương trình:</span>
+                      <p className="font-medium">{selectedVisa.program}</p>
+                    </div>
+                  )}
+                  {selectedVisa.department && (
+                    <div>
+                      <span className="text-muted-foreground">Khoa/Đơn vị:</span>
+                      <p className="font-medium">{selectedVisa.department}</p>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-muted-foreground">Đơn vị bảo lãnh:</span>
+                    <p className="font-medium">{selectedVisa.sponsorUnit}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Extension History */}
+              {selectedVisa.extensions.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5" />
+                    Lịch sử gia hạn ({selectedVisa.extensions.length})
+                  </h3>
+                  <div className="space-y-3">
+                    {selectedVisa.extensions.map((ext) => (
+                      <div key={ext.id} className="border rounded-lg p-3 bg-muted/50">
+                        <div className="flex items-center justify-between mb-2">
+                          {getExtensionStatusBadge(ext.status)}
+                          <span className="text-sm text-muted-foreground">
+                            {formatDate(ext.createdAt)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Ngày gia hạn:</span>
+                            <p className="font-medium">{formatDate(ext.newExpirationDate)}</p>
+                          </div>
+                          {ext.approvedBy && (
+                            <div>
+                              <span className="text-muted-foreground">Người duyệt:</span>
+                              <p className="font-medium">{ext.approvedBy.fullName}</p>
+                            </div>
+                          )}
+                        </div>
+                        {ext.reason && (
+                          <div className="mt-2">
+                            <span className="text-muted-foreground text-sm">Lý do:</span>
+                            <p className="text-sm">{ext.reason}</p>
+                          </div>
+                        )}
+                        {ext.comments && (
+                          <div className="mt-2">
+                            <span className="text-muted-foreground text-sm">Ghi chú:</span>
+                            <p className="text-sm">{ext.comments}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedVisa(null)}>
+              Đóng
             </Button>
           </DialogFooter>
         </DialogContent>

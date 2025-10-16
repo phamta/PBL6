@@ -43,13 +43,12 @@ import {
   DialogTitle,
 } from "../ui/dialog";
 import { Breadcrumbs } from "../Breadcrumbs";
-import { guestService, GuestWithRelations } from "@/lib/api/guest.service";
+import { guestService, GuestMember, GuestWithRelations } from "@/lib/api/guest.service";
 import { toast } from "sonner";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
-import { ScrollArea } from "../ui/scroll-area";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { exportCongVanBaoCao } from "../ExportCongVanGuest";
 
 // Types for delegation mapping
 interface Delegation {
@@ -59,12 +58,12 @@ interface Delegation {
   startDate: string;
   endDate: string;
   participants: number;
-  status: "pending" | "approved" | "rejected" | "arrived" | "departed" | "cancelled";
+  status: "REGISTERED" | "APPROVED" | "ARRIVED" | "DEPARTED" | "CANCELLED";
   purpose: string;
   coordinator: string;
   department: string;
   agenda: string;
-  participantList: string[];
+  participantList: GuestMember[];
   accommodations: string;
   transportation: string;
   budget: string;
@@ -73,16 +72,16 @@ interface Delegation {
 
 // Helper function to map GuestWithRelations to Delegation
 function mapGuestToDelegation(guest: GuestWithRelations): Delegation {
-  // Map guest status to delegation status
+  // Map guest status to delegation status (giữ nguyên như API)
   const statusMap: Record<string, Delegation["status"]> = {
-    'REGISTERED': 'pending',
-    'APPROVED': 'approved',
-    'ARRIVED': 'arrived',
-    'DEPARTED': 'departed',
-    'CANCELLED': 'cancelled'
+    'REGISTERED': 'REGISTERED',
+    'APPROVED': 'APPROVED',
+    'ARRIVED': 'ARRIVED',
+    'DEPARTED': 'DEPARTED',
+    'CANCELLED': 'CANCELLED'
   };
 
-  const mappedStatus: Delegation["status"] = statusMap[guest.status] || 'pending';
+  const mappedStatus: Delegation["status"] = statusMap[guest.status] || 'REGISTERED';
 
   return {
     id: guest.id,
@@ -96,9 +95,7 @@ function mapGuestToDelegation(guest: GuestWithRelations): Delegation {
     coordinator: guest.contactPerson,
     department: guest.unit?.name || "Unknown Department",
     agenda: guest.visitPurpose || "",
-    participantList: guest.members?.map(member =>
-      `${member.fullName}${member.position ? ` - ${member.position}` : ''}`
-    ) || [],
+    participantList: guest.members || [],
     accommodations: guest.notes?.includes("accommodations") ? guest.notes : "Not specified",
     transportation: guest.notes?.includes("transportation") ? guest.notes : "Not specified",
     budget: guest.notes?.includes("budget") ? guest.notes : "Not specified",
@@ -111,7 +108,9 @@ export function DelegationsPage() {
   const [delegations, setDelegations] = useState<Delegation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDelegation, setSelectedDelegation] = useState<Delegation | null>(null);
-  const [editingDelegation, setEditingDelegation] = useState<Delegation | null>(null);
+  const [selectedMember, setSelectedMember] = useState<GuestMember | null>(null);
+  const [isEditingMode, setIsEditingMode] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<Delegation>>({});
 
   // Load delegations data
   useEffect(() => {
@@ -140,9 +139,11 @@ export function DelegationsPage() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string }> = {
-      approved: { variant: "default", label: "Approved" },
-      pending: { variant: "secondary", label: "Pending" },
-      rejected: { variant: "destructive", label: "Rejected" },
+      REGISTERED: { variant: "secondary", label: "Registered" },
+      APPROVED: { variant: "default", label: "Approved" },
+      ARRIVED: { variant: "default", label: "Arrived" },
+      DEPARTED: { variant: "outline", label: "Departed" },
+      CANCELLED: { variant: "destructive", label: "Cancelled" },
     };
     const config = variants[status] || { variant: "outline" as const, label: status };
     return  <Badge
@@ -158,14 +159,78 @@ export function DelegationsPage() {
     // Implement export logic
   };
 
-  const handlePrintDocument = () => {
-    console.log("Printing official document");
-    // Implement print logic
+  const handlePrintDocument = async (delegation?: Delegation) => {
+    const delegationToExport = delegation || selectedDelegation;
+    console.log("handlePrintDocument called");
+    console.log("delegationToExport:", delegationToExport);
+
+    if (!delegationToExport) {
+      console.log("No delegation to export, returning");
+      return;
+    }
+
+    try {
+      console.log("Calling exportCongVanBaoCao with:", delegationToExport);
+      await exportCongVanBaoCao(delegationToExport);
+      toast.success("Document exported successfully");
+    } catch (error) {
+      console.error("Failed to export document:", error);
+      toast.error("Failed to export document");
+    }
+  };
+
+  const handleViewDelegation = (delegation: Delegation) => {
+    setSelectedDelegation(delegation);
+    setIsEditingMode(false);
+    setEditFormData({});
   };
 
   const handleEditDelegation = (delegation: Delegation) => {
-    setEditingDelegation(delegation);
-    setSelectedDelegation(null);
+    setSelectedDelegation(delegation);
+    setEditFormData({ ...delegation });
+    setIsEditingMode(true);
+  };
+
+  const handleSaveChanges = async () => {
+    if (!selectedDelegation) return;
+
+    try {
+      // Update delegation via API
+      await guestService.update(selectedDelegation.id, {
+        groupName: editFormData.title,
+        purpose: editFormData.purpose,
+        arrivalDate: editFormData.startDate,
+        departureDate: editFormData.endDate,
+        contactPerson: editFormData.coordinator,
+        visitPurpose: editFormData.agenda,
+        hostDepartment: editFormData.department,
+        notes: editFormData.notes,
+      });
+
+      toast.success("Delegation updated successfully");
+
+      // Reload delegations
+      const response = await guestService.list({
+        page: 1,
+        limit: 100,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      });
+      const mappedDelegations = response.guests.map((guest): Delegation => mapGuestToDelegation(guest));
+      setDelegations(mappedDelegations);
+
+      // Exit edit mode
+      setIsEditingMode(false);
+      setEditFormData({});
+    } catch (error) {
+      console.error('Failed to update delegation:', error);
+      toast.error('Failed to update delegation');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditingMode(false);
+    setEditFormData({});
   };
 
   const handleApproveDelegation = async (delegationId: string) => {
@@ -257,7 +322,7 @@ export function DelegationsPage() {
             <div>
               <p className="text-muted-foreground">Pending Approval</p>
               <h3 className="mt-1">
-                {delegations.filter(d => d.status === "pending").length}
+                {delegations.filter(d => d.status === "REGISTERED").length}
               </h3>
             </div>
             <Clock className="w-8 h-8 text-yellow-500" />
@@ -268,7 +333,7 @@ export function DelegationsPage() {
             <div>
               <p className="text-muted-foreground">Approved</p>
               <h3 className="mt-1">
-                {delegations.filter(d => d.status === "approved").length}
+                {delegations.filter(d => d.status === "APPROVED").length}
               </h3>
             </div>
             <Check className="w-8 h-8 text-green-500" />
@@ -356,7 +421,7 @@ export function DelegationsPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setSelectedDelegation(delegation)}
+                    onClick={() => handleViewDelegation(delegation)}
                   >
                     <Eye className="w-4 h-4" />
                   </Button>
@@ -367,24 +432,20 @@ export function DelegationsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setSelectedDelegation(delegation)}>
+                      <DropdownMenuItem onClick={() => handleViewDelegation(delegation)}>
                         <Eye className="w-4 h-4 mr-2" />
                         View Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleEditDelegation(delegation)}>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit Delegation
-                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={handlePrintDocument}>
+                      <DropdownMenuItem onClick={() => handlePrintDocument(delegation)}>
                         <Printer className="w-4 h-4 mr-2" />
-                        Print Official Document
+                        Export Official Document
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleExportReport("pdf")}>
                         <Download className="w-4 h-4 mr-2" />
                         Download Report
                       </DropdownMenuItem>
-                      {delegation.status === "pending" && (
+                      {delegation.status === "REGISTERED" && (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
@@ -445,13 +506,24 @@ export function DelegationsPage() {
       {/* Enhanced Detail Dialog */}
       <Dialog
         open={!!selectedDelegation}
-        onOpenChange={(open) => !open && setSelectedDelegation(null)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedDelegation(null);
+            setIsEditingMode(false);
+            setEditFormData({});
+          }
+        }}
       >
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Delegation Details</DialogTitle>
+            <DialogTitle>
+              {isEditingMode ? "Edit Delegation" : "Delegation Details"}
+            </DialogTitle>
             <DialogDescription>
-              View and manage university-wide delegation information
+              {isEditingMode
+                ? "Modify delegation information across all university units"
+                : "View and manage university-wide delegation information"
+              }
             </DialogDescription>
           </DialogHeader>
           {selectedDelegation && (
@@ -479,7 +551,7 @@ export function DelegationsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Delegation ID</Label>
-                      <Input className="mt-1" defaultValue={selectedDelegation.id} />
+                      <Input className="mt-1" defaultValue={selectedDelegation.id} readOnly />
                     </div>
                     <div>
                       <Label>Status</Label>
@@ -489,39 +561,88 @@ export function DelegationsPage() {
                     </div>
                     <div>
                       <Label>Start Date</Label>
-                      <Input type="date" className="mt-1" defaultValue={selectedDelegation.startDate} />
+                      <Input
+                        type="date"
+                        className="mt-1"
+                        value={isEditingMode ? editFormData.startDate?.split('T')[0] || '' : (selectedDelegation.startDate ? selectedDelegation.startDate.split('T')[0] : '')}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                        readOnly={!isEditingMode}
+                      />
                     </div>
                     <div>
                       <Label>End Date</Label>
-                      <Input type="date" className="mt-1" defaultValue={selectedDelegation.endDate} />
+                      <Input
+                        type="date"
+                        className="mt-1"
+                        value={isEditingMode ? editFormData.endDate?.split('T')[0] || '' : (selectedDelegation.endDate ? selectedDelegation.endDate.split('T')[0] : '')}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, endDate: e.target.value }))}
+                        readOnly={!isEditingMode}
+                      />
                     </div>
                     <div>
                       <Label>Department</Label>
-                      <Input className="mt-1" defaultValue={selectedDelegation.department} />
+                      <Input
+                        className="mt-1"
+                        value={isEditingMode ? editFormData.department || '' : selectedDelegation.department}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, department: e.target.value }))}
+                        readOnly={!isEditingMode}
+                      />
                     </div>
                     <div>
                       <Label>Coordinator</Label>
-                      <Input className="mt-1" defaultValue={selectedDelegation.coordinator} />
+                      <Input
+                        className="mt-1"
+                        value={isEditingMode ? editFormData.coordinator || '' : selectedDelegation.coordinator}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, coordinator: e.target.value }))}
+                        readOnly={!isEditingMode}
+                      />
                     </div>
                     <div>
                       <Label>Total Participants</Label>
-                      <Input className="mt-1" defaultValue={selectedDelegation.participants} />
+                      <Input
+                        type="number"
+                        className="mt-1"
+                        value={isEditingMode ? editFormData.participants || '' : selectedDelegation.participants}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, participants: parseInt(e.target.value) || 0 }))}
+                        readOnly={!isEditingMode}
+                      />
                     </div>
                     <div>
                       <Label>Budget</Label>
-                      <Input className="mt-1" defaultValue={selectedDelegation.budget} />
+                      <Input
+                        className="mt-1"
+                        value={isEditingMode ? editFormData.budget || '' : selectedDelegation.budget}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, budget: e.target.value }))}
+                        readOnly={!isEditingMode}
+                      />
                     </div>
                     <div className="col-span-2">
                       <Label>Purpose</Label>
-                      <Textarea className="mt-1" defaultValue={selectedDelegation.purpose} />
+                      <Textarea
+                        className="mt-1"
+                        value={isEditingMode ? editFormData.purpose || '' : selectedDelegation.purpose}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, purpose: e.target.value }))}
+                        readOnly={!isEditingMode}
+                      />
                     </div>
                     <div className="col-span-2">
                       <Label>Agenda</Label>
-                      <Textarea className="mt-1" defaultValue={selectedDelegation.agenda} rows={3} />
+                      <Textarea
+                        className="mt-1"
+                        value={isEditingMode ? editFormData.agenda || '' : selectedDelegation.agenda}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, agenda: e.target.value }))}
+                        rows={3}
+                        readOnly={!isEditingMode}
+                      />
                     </div>
                     <div className="col-span-2">
                       <Label>Additional Notes</Label>
-                      <Textarea className="mt-1" defaultValue={selectedDelegation.notes} />
+                      <Textarea
+                        className="mt-1"
+                        value={isEditingMode ? editFormData.notes || '' : selectedDelegation.notes}
+                        onChange={(e) => setEditFormData(prev => ({ ...prev, notes: e.target.value }))}
+                        readOnly={!isEditingMode}
+                      />
                     </div>
                   </div>
                 </TabsContent>
@@ -531,11 +652,20 @@ export function DelegationsPage() {
                     <h4 className="mb-3">Participant List</h4>
                     <div className="space-y-2">
                       {selectedDelegation.participantList.map((participant, index) => (
-                        <div key={index} className="flex items-center gap-3 p-2 bg-muted/50 rounded">
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 p-2 bg-muted/50 rounded cursor-pointer hover:bg-muted/70 transition-colors"
+                          onClick={() => setSelectedMember(participant)}
+                        >
                           <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                             <Users className="w-4 h-4 text-primary" />
                           </div>
-                          <p className="text-sm">{participant}</p>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{participant.fullName}</p>
+                            {participant.position && (
+                              <p className="text-xs text-muted-foreground">{participant.position}</p>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -569,167 +699,149 @@ export function DelegationsPage() {
           )}
 
           <DialogFooter className="mt-4 border-t pt-4">
-            <Button variant="outline" onClick={handlePrintDocument}>
-              <Printer className="w-4 h-4 mr-2" />
-              Print Document
-            </Button>
-            <Button variant="outline" onClick={() => handleExportReport("pdf")}>
-              <Download className="w-4 h-4 mr-2" />
-              Export Report
-            </Button>
-            {selectedDelegation?.status === "pending" && (
+            {isEditingMode ? (
               <>
-                <Button
-                  variant="outline"
-                  className="text-destructive"
-                  onClick={() => handleRejectDelegation(selectedDelegation.id)}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Reject
+                <Button variant="outline" onClick={handleCancelEdit}>
+                  Cancel
                 </Button>
-                <Button
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={() => handleApproveDelegation(selectedDelegation.id)}
-                >
-                  <Check className="w-4 h-4 mr-2" />
-                  Approve
+                <Button className="bg-primary" onClick={handleSaveChanges}>
+                  Save Changes
                 </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={() => handleEditDelegation(selectedDelegation!)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Delegation
+                </Button>
+                <Button variant="outline" onClick={() => handlePrintDocument(selectedDelegation || undefined)} disabled={isEditingMode}>
+                  <Printer className="w-4 h-4 mr-2" />
+                  Export Document
+                </Button>
+                <Button variant="outline" onClick={() => handleExportReport("pdf")} disabled={isEditingMode}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Report
+                </Button>
+                {selectedDelegation?.status === "REGISTERED" && !isEditingMode && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="text-destructive"
+                      onClick={() => handleRejectDelegation(selectedDelegation.id)}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Reject
+                    </Button>
+                    <Button
+                      className="bg-green-600 hover:bg-green-700"
+                      onClick={() => handleApproveDelegation(selectedDelegation.id)}
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Approve
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Delegation Dialog */}
+      {/* Member Detail Dialog */}
       <Dialog
-        open={!!editingDelegation}
-        onOpenChange={(open) => !open && setEditingDelegation(null)}
+        open={!!selectedMember}
+        onOpenChange={(open) => !open && setSelectedMember(null)}
       >
-        <DialogContent className="max-w-4xl">
+        <DialogContent maxWidth="48rem" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Delegation</DialogTitle>
+            <DialogTitle>Member Details</DialogTitle>
             <DialogDescription>
-              Modify delegation information across all university units
+              Detailed information about the delegation member
             </DialogDescription>
           </DialogHeader>
-          {editingDelegation && (
-            <div className="space-y-4">
+          {selectedMember && (
+            <div className="space-y-6">
+              {/* Basic Information */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Delegation Title</Label>
-                  <Input
-                    className="mt-1"
-                    defaultValue={editingDelegation.title}
-                    placeholder="Enter delegation title"
-                  />
+                  <Label>Full Name</Label>
+                  <Input className="mt-1" defaultValue={selectedMember.fullName} readOnly />
                 </div>
                 <div>
-                  <Label>Institution</Label>
-                  <Input
-                    className="mt-1"
-                    defaultValue={editingDelegation.institution}
-                    placeholder="Enter institution name"
-                  />
+                  <Label>Nationality</Label>
+                  <Input className="mt-1" defaultValue={selectedMember.nationality} readOnly />
                 </div>
                 <div>
-                  <Label>Start Date</Label>
+                  <Label>Passport Number</Label>
+                  <Input className="mt-1" defaultValue={selectedMember.passportNumber} readOnly />
+                </div>
+                <div>
+                  <Label>Position</Label>
+                  <Input className="mt-1" defaultValue={selectedMember.position} readOnly />
+                </div>
+                <div>
+                  <Label>Organization</Label>
+                  <Input className="mt-1" defaultValue={selectedMember.organization} readOnly />
+                </div>
+                <div>
+                  <Label>Title</Label>
+                  <Input className="mt-1" defaultValue={selectedMember.title || "Not specified"} readOnly />
+                </div>
+                <div>
+                  <Label>Gender</Label>
+                  <Input className="mt-1" defaultValue={selectedMember.gender || "Not specified"} readOnly />
+                </div>
+                <div>
+                  <Label>Date of Birth</Label>
                   <Input
                     type="date"
                     className="mt-1"
-                    defaultValue={editingDelegation.startDate.split('T')[0]}
-                  />
-                </div>
-                <div>
-                  <Label>End Date</Label>
-                  <Input
-                    type="date"
-                    className="mt-1"
-                    defaultValue={editingDelegation.endDate.split('T')[0]}
-                  />
-                </div>
-                <div>
-                  <Label>Department</Label>
-                  <Input
-                    className="mt-1"
-                    defaultValue={editingDelegation.department}
-                    placeholder="Enter department"
-                  />
-                </div>
-                <div>
-                  <Label>Coordinator</Label>
-                  <Input
-                    className="mt-1"
-                    defaultValue={editingDelegation.coordinator}
-                    placeholder="Enter coordinator name"
-                  />
-                </div>
-                <div>
-                  <Label>Total Participants</Label>
-                  <Input
-                    type="number"
-                    className="mt-1"
-                    defaultValue={editingDelegation.participants}
-                  />
-                </div>
-                <div>
-                  <Label>Budget</Label>
-                  <Input
-                    className="mt-1"
-                    defaultValue={editingDelegation.budget}
-                    placeholder="Enter budget"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label>Purpose</Label>
-                  <Textarea
-                    className="mt-1"
-                    defaultValue={editingDelegation.purpose}
-                    placeholder="Enter delegation purpose"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label>Agenda</Label>
-                  <Textarea
-                    className="mt-1"
-                    defaultValue={editingDelegation.agenda}
-                    rows={3}
-                    placeholder="Enter delegation agenda"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label>Accommodations</Label>
-                  <Textarea
-                    className="mt-1"
-                    defaultValue={editingDelegation.accommodations}
-                    placeholder="Enter accommodation details"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label>Transportation</Label>
-                  <Textarea
-                    className="mt-1"
-                    defaultValue={editingDelegation.transportation}
-                    placeholder="Enter transportation details"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label>Additional Notes</Label>
-                  <Textarea
-                    className="mt-1"
-                    defaultValue={editingDelegation.notes}
-                    placeholder="Enter additional notes"
+                    defaultValue={selectedMember.dateOfBirth ? selectedMember.dateOfBirth.split('T')[0] : ""}
+                    readOnly
                   />
                 </div>
               </div>
+
+              {/* Contact Information */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium">Contact Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Email</Label>
+                    <Input className="mt-1" defaultValue={selectedMember.email || "Not provided"} readOnly />
+                  </div>
+                  <div>
+                    <Label>Phone Number</Label>
+                    <Input className="mt-1" defaultValue={selectedMember.phoneNumber || "Not provided"} readOnly />
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional Information */}
+              {selectedMember.affiliation && (
+                <div>
+                  <Label>Affiliation</Label>
+                  <Textarea className="mt-1" defaultValue={selectedMember.affiliation} readOnly />
+                </div>
+              )}
+
+              {/* Passport File */}
+              {selectedMember.passportFile && (
+                <div>
+                  <Label>Passport Document</Label>
+                  <div className="mt-2 p-3 bg-muted/50 rounded border">
+                    <p className="text-sm text-muted-foreground">
+                      Passport file available: {selectedMember.passportFile}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           <DialogFooter className="mt-4 border-t pt-4">
-            <Button variant="outline" onClick={() => setEditingDelegation(null)}>
-              Cancel
-            </Button>
-            <Button className="bg-primary">
-              Save Changes
+            <Button variant="outline" onClick={() => setSelectedMember(null)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

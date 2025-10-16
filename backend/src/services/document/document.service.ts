@@ -404,7 +404,7 @@ export class DocumentService {
     }
 
     // Check permission
-    if (!user.actions.includes('DOCUMENT_READ_ALL')) {
+    if (!user.actions.includes('DOCUMENT_READ')) {
       if (document.createdById !== user.id && document.unitId !== user.unitId) {
         throw new ForbiddenException('You do not have permission to view this document');
       }
@@ -687,9 +687,9 @@ export class DocumentService {
 
     const document = await this.findOne(id, user);
 
-    // Only allow reject if status is REVIEWING
-    if (document.status !== DocumentStatus.REVIEWING) {
-      throw new BadRequestException('Document can only be rejected when status is REVIEWING');
+    // Only allow reject if status is REVIEWING or SUBMITTED
+    if (document.status !== DocumentStatus.REVIEWING && document.status !== DocumentStatus.SUBMITTED) {
+      throw new BadRequestException('Document can only be rejected when status is REVIEWING or SUBMITTED');
     }
 
     const updatedDocument = await this.prisma.document.update({

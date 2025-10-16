@@ -832,7 +832,7 @@ export class VisaService {
    */
   async getForeignStudentsByUnitId(unitId: string, user: VisaUser): Promise<ForeignStudent[]> {
     // Check if user has permission to read foreign students
-    if (!user.actions.includes('VISA_READ_ALL') && !user.actions.includes('STUDENT_READ')) {
+    if (!user.actions.includes('VISA_READ')) {
       throw new ForbiddenException('You do not have permission to view foreign students');
     }
 
@@ -862,7 +862,7 @@ export class VisaService {
    */
   async getForeignStudentsByUnitIds(unitIds: string[], user: VisaUser): Promise<ForeignStudent[]> {
     // Check if user has permission to read foreign students
-    if (!user.actions.includes('VISA_READ_ALL') && !user.actions.includes('STUDENT_READ')) {
+    if (!user.actions.includes('VISA_READ')) {
       throw new ForbiddenException('You do not have permission to view foreign students');
     }
 
@@ -894,8 +894,8 @@ export class VisaService {
    */
   async getForeignStudentById(id: string, user: VisaUser): Promise<ForeignStudent> {
     // Check if user has permission to read foreign students
-    if (!user.actions.includes('VISA_READ_ALL') && !user.actions.includes('STUDENT_READ')) {
-      throw new ForbiddenException('You do not have permission to view foreign students');
+    if (!user.actions.includes('VISA_READ')) {
+      throw new ForbiddenException('You do not have permission to view foreign students 3');
     }
 
     const student = await this.prisma.foreignStudent.findUnique({
@@ -955,7 +955,7 @@ export class VisaService {
   async getForeignStudentsByCurrentUserUnit(user: VisaUser): Promise<ForeignStudent[]> {
     // Check if user has permission to read foreign students
     // Staff users with VISA_READ can view foreign students in their unit
-    if (!user.actions.includes('VISA_READ_ALL') && !user.actions.includes('VISA_READ') && !user.actions.includes('STUDENT_READ')) {
+    if (!user.actions.includes('VISA_READ') ) {
       throw new ForbiddenException('You do not have permission to view foreign students');
     }
 
@@ -966,6 +966,40 @@ export class VisaService {
 
     return this.prisma.foreignStudent.findMany({
       where: { departmentId: user.unitId },
+      include: {
+        unit: {
+          select: { id: true, name: true, code: true },
+        },
+        visa: {
+          select: {
+            id: true,
+            visaNumber: true,
+            holderName: true,
+            status: true,
+            expirationDate: true,
+            purpose: true,
+            issueDate: true,
+            attachments: true,
+            extensions: {
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Get all foreign students (for officer/admin view)
+   */
+  async getAllForeignStudents(user: VisaUser): Promise<ForeignStudent[]> {
+    // Check if user has permission to read all foreign students
+    if (!user.actions.includes('VISA_READ') && !user.actions.includes('VISA_READ_ALL')) {
+      throw new ForbiddenException('You do not have permission to view all foreign students');
+    }
+
+    return this.prisma.foreignStudent.findMany({
       include: {
         unit: {
           select: { id: true, name: true, code: true },

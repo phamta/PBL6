@@ -693,14 +693,14 @@ export function TranslationConfirmation() {
 
       {/* Submit Translation Request Dialog */}
       <Dialog open={isSubmitOpen} onOpenChange={setIsSubmitOpen}>
-        <DialogContent className="max-w-3xl dialog-content">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Submit Translation Confirmation Request</DialogTitle>
             <DialogDescription>
               Request confirmation for a translated international cooperation document
             </DialogDescription>
           </DialogHeader>
-          <div className="dialog-body">
+          <div className="dialog-body max-h-[70vh] overflow-y-auto">
             <div className="space-y-6">
               {/* Basic Information */}
               <div className="grid grid-cols-2 gap-4">
@@ -905,7 +905,7 @@ export function TranslationConfirmation() {
         open={!!selectedTranslation}
         onOpenChange={(open) => !open && setSelectedTranslation(null)}
       >
-        <DialogContent className="max-w-3xl max-h-[90vh] dialog-content">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Translation Details</DialogTitle>
             <DialogDescription>
@@ -913,7 +913,7 @@ export function TranslationConfirmation() {
             </DialogDescription>
           </DialogHeader>
           {selectedTranslation && (
-            <div className="max-h-[60vh] pr-4 dialog-body overflow-y-auto">
+            <div className="dialog-body max-h-[70vh] overflow-y-auto">
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>

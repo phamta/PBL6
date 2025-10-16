@@ -695,7 +695,7 @@ export class DocumentController {
   @ApiResponse({ status: 403, description: 'Không có quyền gửi góp ý' })
   @ApiResponse({ status: 404, description: 'Document not found' })
   async addFeedback(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() body: { content: string; attachments?: any[] },
     @Req() req: AuthenticatedRequest
   ) {
@@ -725,7 +725,7 @@ export class DocumentController {
   })
   @ApiResponse({ status: 200, description: 'Feedbacks retrieved successfully' })
   @ApiResponse({ status: 404, description: 'Document not found' })
-  async getFeedbacks(@Param('id', ParseUUIDPipe) id: string) {
+  async getFeedbacks(@Param('id') id: string) {
     const feedbacks = await this.documentService.getFeedbacks(id);
     
     return {
@@ -751,7 +751,7 @@ export class DocumentController {
   @ApiResponse({ status: 403, description: 'Chỉ người tạo hồ sơ mới có quyền gửi lại' })
   @ApiResponse({ status: 404, description: 'Document not found' })
   async resubmitDocument(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Req() req: AuthenticatedRequest
   ) {
     const document = await this.documentService.resubmitDocument(id, req.user.id);

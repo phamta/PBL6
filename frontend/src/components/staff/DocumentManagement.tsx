@@ -788,13 +788,13 @@ const handleFile = (file: File | null, key: string) => {
             setEditingId(null);
           }
         }}>
-          <DialogContent className="max-w-4xl dialog-content">
+          <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{dialogTitle}</DialogTitle>
               <DialogDescription>{dialogDescription}</DialogDescription>
             </DialogHeader>
 
-            <div className="dialog-body">
+            <div className="dialog-body max-h-[70vh] overflow-y-auto">
               {/* ✅ Tabs không unmount dữ liệu nữa vì dùng useState tổng */}
               <Tabs defaultValue="basic" className="space-y-4">
                 <TabsList className="grid w-full grid-cols-3">
@@ -984,7 +984,7 @@ const handleFile = (file: File | null, key: string) => {
                 open={!!selectedProposal}
                 onOpenChange={(open) => !open && setSelectedProposal(null)}
               >
-          <DialogContent className="max-w-4xl dialog-content">
+          <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>MOU/Agreement Details</DialogTitle>
               <DialogDescription>
@@ -992,7 +992,7 @@ const handleFile = (file: File | null, key: string) => {
               </DialogDescription>
             </DialogHeader>
             {selectedProposal && fullDocument ? (
-            <div className="dialog-body">
+            <div className="dialog-body max-h-[70vh] overflow-y-auto">
               <Tabs defaultValue="basic" className="space-y-4">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="basic">Basic Info</TabsTrigger>

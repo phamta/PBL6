@@ -1008,14 +1008,14 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
 
       {/* Registration Form Dialog */}
       <Dialog open={isRegistrationOpen} onOpenChange={setIsRegistrationOpen}>
-        <DialogContent className="max-w-4xl dialog-content">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Online Registration Form</DialogTitle>
             <DialogDescription>
               Register a new international student, trainee, or lecturer
             </DialogDescription>
           </DialogHeader>
-          <div className="dialog-body">
+          <div className="dialog-body max-h-[70vh] overflow-y-auto">
             <Tabs defaultValue="personal" className="space-y-4">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="personal">Personal Info</TabsTrigger>
@@ -1187,7 +1187,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
         open={!!selectedMember}
         onOpenChange={(open) => !open && setSelectedMember(null)}
       >
-        <DialogContent className="max-w-3xl dialog-content">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Member Details</DialogTitle>
             <DialogDescription>
@@ -1195,7 +1195,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
             </DialogDescription>
           </DialogHeader>
           {selectedMember && (
-            <div className="dialog-body overflow-y-auto max-h-[60vh] pr-4">
+            <div className="dialog-body max-h-[70vh] overflow-y-auto">
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -1281,7 +1281,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
 
       {/* Visa Extension Request Dialog */}
       <Dialog open={isVisaExtensionOpen} onOpenChange={setIsVisaExtensionOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] dialog-content ">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RefreshCw className="w-5 h-5 text-primary" />
@@ -1292,7 +1292,7 @@ export function InternationalMembers({ onNavigate }: InternationalMembersProps =
               {selectedForExtension?.fullName}
             </DialogDescription>
           </DialogHeader>
-                <div className="dialog-body overflow-y-auto">
+                <div className="dialog-body max-h-[70vh] overflow-y-auto">
                   <div className="space-y-6 py-4">
                     {/* Student Information Summary */}
                     <Card className="p-4 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background border-blue-200">

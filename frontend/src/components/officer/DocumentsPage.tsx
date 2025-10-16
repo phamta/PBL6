@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useState } from "react";
+import { documentsService, FullDocument, DocumentItem, PaginatedDocuments } from "@/lib/api/documents.service";
 import { 
   FileText, 
   Search, 
@@ -57,104 +58,7 @@ import { ScrollArea } from "../ui/scroll-area";
 import { Separator } from "../ui/separator";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 
-const documentsData = [
-  {
-    id: "DOC-2025-001",
-    title: "International Partnership Agreement",
-    partner: "University of Barcelona",
-    signedDate: "2025-09-28",
-    status: "signed",
-    type: "Agreement",
-    department: "International Relations",
-    submittedBy: "Dr. Maria Garcia",
-    attachments: ["agreement_signed.pdf", "terms_conditions.pdf"],
-    description: "Bilateral partnership agreement for student exchange and research collaboration.",
-  },
-  {
-    id: "DOC-2025-002",
-    title: "Student Exchange MOU",
-    partner: "Technical University Munich",
-    signedDate: "2025-09-25",
-    status: "signed",
-    type: "MOU",
-    department: "Engineering",
-    submittedBy: "Prof. Schmidt",
-    attachments: ["mou_final.pdf"],
-    description: "Memorandum of Understanding for engineering student exchange program.",
-  },
-  {
-    id: "DOC-2025-003",
-    title: "Research Collaboration Contract",
-    partner: "ETH Zurich",
-    signedDate: "2025-09-22",
-    status: "pending-approval",
-    type: "Contract",
-    department: "Research Office",
-    submittedBy: "Dr. Weber",
-    attachments: ["contract_draft.pdf"],
-    description: "Joint research project on sustainable energy solutions.",
-  },
-  {
-    id: "DOC-2025-004",
-    title: "Joint Degree Program Agreement",
-    partner: "Sorbonne University",
-    signedDate: "2025-09-20",
-    status: "signed",
-    type: "Agreement",
-    department: "Academic Affairs",
-    submittedBy: "Prof. Dubois",
-    attachments: ["program_agreement.pdf", "curriculum.pdf"],
-    description: "Double degree program in International Business.",
-  },
-  {
-    id: "DOC-2025-005",
-    title: "Faculty Exchange MOU",
-    partner: "National University Singapore",
-    signedDate: "2025-09-18",
-    status: "under-review",
-    type: "MOU",
-    department: "Faculty Affairs",
-    submittedBy: "Dr. Chen",
-    attachments: ["faculty_exchange_mou.pdf"],
-    description: "Faculty exchange program for teaching and research.",
-  },
-  {
-    id: "DOC-2025-006",
-    title: "Erasmus+ Partnership",
-    partner: "University of Amsterdam",
-    signedDate: "2025-09-15",
-    status: "needs-revision",
-    type: "Agreement",
-    department: "European Programs",
-    submittedBy: "Dr. Van der Berg",
-    attachments: ["erasmus_draft.pdf"],
-    description: "Erasmus+ mobility partnership agreement.",
-  },
-  {
-    id: "DOC-2025-007",
-    title: "Research Grant Agreement",
-    partner: "MIT",
-    signedDate: "2025-09-12",
-    status: "expired",
-    type: "Contract",
-    department: "Research Office",
-    submittedBy: "Prof. Johnson",
-    attachments: ["grant_agreement.pdf"],
-    description: "Collaborative research grant for AI applications.",
-  },
-  {
-    id: "DOC-2025-008",
-    title: "Cultural Exchange Letter",
-    partner: "Peking University",
-    signedDate: "2025-09-10",
-    status: "signed",
-    type: "Letter",
-    department: "Cultural Programs",
-    submittedBy: "Dr. Wang",
-    attachments: ["cultural_exchange.pdf"],
-    description: "Cultural exchange and arts collaboration program.",
-  },
-];
+// We'll load documents from the API instead of mock data
 
 const revisionHistory = [
   {
@@ -185,55 +89,56 @@ const revisionHistory = [
     action: "Initial submission",
     changes: "Document submitted for review",
   },
+    {
+    version: "v1.0",
+    date: "2025-09-28 09:15",
+    author: "Dr. Garcia",
+    action: "Initial submission",
+    changes: "Document submitted for review",
+  },
+    {
+    version: "v1.0",
+    date: "2025-09-28 09:15",
+    author: "Dr. Garcia",
+    action: "Initial submission",
+    changes: "Document submitted for review",
+  },
 ];
 
 export function DocumentsPage() {
-  const [selectedDocument, setSelectedDocument] = useState<typeof documentsData[0] | null>(
-    null
-  );
+  const [selectedDocument, setSelectedDocument] = useState<FullDocument | null>(null);
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [total, setTotal] = useState<number>(0);
+  const [page, setPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(20);
+  const [loading, setLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [feedbackText, setFeedbackText] = useState("");
   const [showRevisionHistory, setShowRevisionHistory] = useState(false);
 
-  const filteredDocuments = documentsData.filter((doc) => {
+  const filteredDocuments = documents.filter((doc) => {
     const matchesSearch =
-      doc.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.partner.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.id.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || doc.status === statusFilter;
+      (doc.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doc.partnerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (doc.id || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || (doc.status || '').toLowerCase() === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string; icon: React.ReactNode }> = {
-      signed: { 
-        variant: "default", 
-        label: "Signed",
-        icon: <FileCheck className="w-3 h-3 mr-1" />
-      },
-      "pending-approval": { 
-        variant: "secondary", 
-        label: "Pending Approval",
-        icon: <Clock className="w-3 h-3 mr-1" />
-      },
-      "under-review": { 
-        variant: "outline", 
-        label: "Under Review",
-        icon: <Eye className="w-3 h-3 mr-1" />
-      },
-      "needs-revision": {
-        variant: "destructive",
-        label: "Needs Revision",
-        icon: <AlertCircle className="w-3 h-3 mr-1" />
-      },
-      expired: { 
-        variant: "destructive", 
-        label: "Expired",
-        icon: <X className="w-3 h-3 mr-1" />
-      },
+    // Map backend DocumentStatus to friendly labels
+    const map: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string; icon?: React.ReactNode }> = {
+      DRAFT: { variant: 'outline', label: 'Draft' },
+      SUBMITTED: { variant: 'secondary', label: 'Submitted', icon: <Clock className="w-3 h-3 mr-1" /> },
+      REVIEWING: { variant: 'secondary', label: 'Reviewing', icon: <Eye className="w-3 h-3 mr-1" /> },
+      APPROVED: { variant: 'default', label: 'Approved', icon: <FileCheck className="w-3 h-3 mr-1" /> },
+      SIGNED: { variant: 'default', label: 'Signed', icon: <FileCheck className="w-3 h-3 mr-1" /> },
+      ACTIVE: { variant: 'default', label: 'Active' },
+      EXPIRED: { variant: 'destructive', label: 'Expired', icon: <X className="w-3 h-3 mr-1" /> },
+      CANCELLED: { variant: 'destructive', label: 'Cancelled', icon: <X className="w-3 h-3 mr-1" /> },
     };
-    const config = variants[status] || { variant: "outline" as const, label: status, icon: null };
+    const config = map[status] || { variant: 'outline' as const, label: status };
     return (
       <Badge variant={config.variant} className="flex items-center w-fit">
         {config.icon}
@@ -242,22 +147,94 @@ export function DocumentsPage() {
     );
   };
 
-  const handleApprove = () => {
-    // Implement approval logic
-    console.log("Document approved");
-    setSelectedDocument(null);
+  // Load documents from API
+  const loadDocuments = async () => {
+    try {
+      setLoading(true);
+      const res = await documentsService.list({ page, limit, search: searchQuery || undefined, status: statusFilter === 'all' ? undefined : (statusFilter as any) });
+      setDocuments(res.items || []);
+      setTotal(res.total || 0);
+    } catch (e) {
+      console.error('Failed to load documents', e);
+      setDocuments([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleReject = () => {
-    // Implement rejection logic
-    console.log("Document rejected");
-    setSelectedDocument(null);
+  useEffect(() => {
+    loadDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, limit, statusFilter]);
+
+  // Open detail and fetch full document
+  const openDocument = async (id: string) => {
+    try {
+      setLoading(true);
+      const full = await documentsService.get(id);
+      setSelectedDocument(full);
+    } catch (e) {
+      console.error('Failed to load document', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSendFeedback = () => {
-    // Implement feedback sending logic
-    console.log("Feedback sent:", feedbackText);
-    setFeedbackText("");
+  // Approval/Rejection flow: backend requires ApproveDocumentDto with non-empty comment
+  const handleApprove = async () => {
+    if (!selectedDocument) return;
+    const comment = feedbackText.trim() || 'Approved by officer';
+    try {
+      setLoading(true);
+      await documentsService.approve(selectedDocument.id, { comment });
+      // refresh list and close
+      await loadDocuments();
+      setSelectedDocument(null);
+      setFeedbackText('');
+    } catch (e) {
+      console.error('Approve failed', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!selectedDocument) return;
+    const comment = feedbackText.trim();
+    if (!comment) {
+      alert('Vui lòng nhập lý do từ chối / yêu cầu bổ sung (feedback)');
+      return;
+    }
+    try {
+      setLoading(true);
+      await documentsService.reject(selectedDocument.id, { comment });
+      await loadDocuments();
+      setSelectedDocument(null);
+      setFeedbackText('');
+    } catch (e) {
+      console.error('Reject failed', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendFeedback = async () => {
+    if (!selectedDocument) return;
+    const content = feedbackText.trim();
+    if (!content) return;
+    try {
+      setLoading(true);
+      await documentsService.addFeedback(selectedDocument.id, { content });
+      // Optionally refresh feedback list
+      setFeedbackText('');
+      alert('Gửi góp ý thành công');
+    } catch (e) {
+      console.error('Send feedback failed', e);
+      alert('Gửi góp ý thất bại');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -334,12 +311,12 @@ export function DocumentsPage() {
                     {document.id}
                   </TableCell>
                   <TableCell>{document.title}</TableCell>
-                  <TableCell>{document.partner}</TableCell>
+                  <TableCell>{document.partnerName}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {document.department}
+                    {document.contactPerson || '-'}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {document.signedDate}
+                    {document.updatedAt?.split?.('T')?.[0] || document.createdAt?.split?.('T')?.[0] || '-'}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{document.type}</Badge>
@@ -354,20 +331,20 @@ export function DocumentsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => setSelectedDocument(document)}
+                          onClick={() => openDocument(document.id)}
                         >
                           <Eye className="w-4 h-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        {(document.status === "pending-approval" || document.status === "under-review") && (
+                        {(document.status === 'SUBMITTED' || document.status === 'REVIEWING') && (
                           <>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openDocument(document.id)}>
                               <Check className="w-4 h-4 mr-2" />
-                              Approve
+                              Open & Approve
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openDocument(document.id)}>
                               <MessageSquare className="w-4 h-4 mr-2" />
-                              Request Revision
+                              Open & Request Revision
                             </DropdownMenuItem>
                           </>
                         )}
@@ -403,7 +380,7 @@ export function DocumentsPage() {
           }
         }}
       >
-        <DialogContent className="max-w-4xl dialog-content">
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Document Details</DialogTitle>
             <DialogDescription>
@@ -411,7 +388,7 @@ export function DocumentsPage() {
             </DialogDescription>
           </DialogHeader>
           {selectedDocument && (
-            <div className="flex gap-6">
+            <div className="dialog-body max-h-[70vh] overflow-y-auto">
               {/* Main Content */}
               <div className="flex-1">
                 <Tabs defaultValue="details" className="space-y-4">
@@ -440,7 +417,7 @@ export function DocumentsPage() {
                           </div>
                           <div className="col-span-2">
                             <Label>Partner Institution</Label>
-                            <Input className="mt-1" defaultValue={selectedDocument.partner} />
+                            <Input className="mt-1" defaultValue={selectedDocument.partnerName || selectedDocument.partner?.name || ''} />
                             <p className="text-xs text-muted-foreground mt-1">
                               Edit to normalize partner name
                             </p>
@@ -462,15 +439,15 @@ export function DocumentsPage() {
                           </div>
                           <div>
                             <Label>Signed Date</Label>
-                            <Input type="date" className="mt-1" defaultValue={selectedDocument.signedDate} />
+                            <Input type="date" className="mt-1" defaultValue={selectedDocument.signedDate || ''} />
                           </div>
                           <div>
                             <Label>Department</Label>
-                            <p className="mt-1">{selectedDocument.department}</p>
+                            <p className="mt-1">{selectedDocument.unit?.name || '-'}</p>
                           </div>
                           <div>
                             <Label>Submitted By</Label>
-                            <p className="mt-1">{selectedDocument.submittedBy}</p>
+                            <p className="mt-1">{selectedDocument.createdBy?.fullName || '-'}</p>
                           </div>
                           <div className="col-span-2">
                             <Label>Description</Label>
@@ -489,9 +466,9 @@ export function DocumentsPage() {
                   <TabsContent value="review" className="space-y-4">
                     <div className="dialog-body">
                       <div className="space-y-4">
-                        {(selectedDocument.status === "pending-approval" || 
-                          selectedDocument.status === "under-review" ||
-                          selectedDocument.status === "needs-revision") && (
+                        {(selectedDocument.status === 'SUBMITTED' || 
+                          selectedDocument.status === 'REVIEWING' ||
+                          selectedDocument.handlingStatus === 'NEEDS_REVISION') && (
                           <Card className="p-4 bg-accent/50">
                             <h4 className="mb-2">Admin Review Actions</h4>
                             <p className="text-sm text-muted-foreground mb-4">
@@ -501,6 +478,7 @@ export function DocumentsPage() {
                               <Button 
                                 className="flex-1 bg-green-600 hover:bg-green-700"
                                 onClick={handleApprove}
+                                disabled={loading}
                               >
                                 <Check className="w-4 h-4 mr-2" />
                                 Approve Document
@@ -509,6 +487,7 @@ export function DocumentsPage() {
                                 variant="destructive" 
                                 className="flex-1"
                                 onClick={handleReject}
+                                disabled={loading}
                               >
                                 <X className="w-4 h-4 mr-2" />
                                 Reject Document
@@ -533,7 +512,7 @@ export function DocumentsPage() {
                             variant="outline" 
                             className="w-full"
                             onClick={handleSendFeedback}
-                            disabled={!feedbackText}
+                            disabled={!feedbackText || loading}
                           >
                             <MessageSquare className="w-4 h-4 mr-2" />
                             Send Revision Request
@@ -545,15 +524,15 @@ export function DocumentsPage() {
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Submitted By:</span>
-                              <span>{selectedDocument.submittedBy}</span>
+                              <span>{selectedDocument.createdBy?.fullName || '-'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Department:</span>
-                              <span>{selectedDocument.department}</span>
+                              <span>{selectedDocument.unit?.name || '-'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Submission Date:</span>
-                              <span>{selectedDocument.signedDate}</span>
+                              <span>{selectedDocument.signedDate || selectedDocument.createdAt?.split?.('T')?.[0] || '-'}</span>
                             </div>
                           </div>
                         </Card>
@@ -565,7 +544,7 @@ export function DocumentsPage() {
                   <TabsContent value="attachments" className="space-y-4">
                     <div className="dialog-body">
                       <div className="space-y-3">
-                        {selectedDocument.attachments.map((file, index) => (
+                        {selectedDocument.attachments?.map((file, index) => (
                           <Card key={index} className="p-4">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
@@ -573,7 +552,7 @@ export function DocumentsPage() {
                                   <FileText className="w-5 h-5 text-primary" />
                                 </div>
                                 <div>
-                                  <p>{file}</p>
+                                  <p>{(file as any).path || String(file)}</p>
                                   <p className="text-sm text-muted-foreground">
                                     PDF Document
                                   </p>
@@ -590,8 +569,12 @@ export function DocumentsPage() {
                     </div>
                   </TabsContent>
                 </Tabs>
-
-                <DialogFooter className="mt-4 border-t pt-4">
+              </div>
+              {/* Revision History Button */}
+              
+            </div>
+          )}
+          <DialogFooter className="mt-4 border-t pt-4">
                   <Button variant="outline" onClick={() => setSelectedDocument(null)}>
                     Close
                   </Button>
@@ -602,12 +585,7 @@ export function DocumentsPage() {
                     <Clock className="w-4 h-4 mr-2" />
                     Show History
                   </Button>
-                </DialogFooter>
-              </div>
-
-              
-            </div>
-          )}
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       {/* Revision History Sidebar */}
@@ -615,16 +593,16 @@ export function DocumentsPage() {
               <DialogContent
                 className="fixed right-0 top-0 h-full w-[400px] max-w-none rounded-none p-0 shadow-lg"
                 style={{ margin: 0 }}
-              >
+              > 
+                <DialogHeader>
+                  <DialogTitle>Revision History</DialogTitle>
+                  <DialogDescription>
+                    Review and manage History information
+                  </DialogDescription>
+                </DialogHeader>
                 <div className="flex flex-col h-full">
-                  <div className="p-4 border-b">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-lg">Revision History</h4>
-  
-                    </div>
-                  </div>
-
-                  <ScrollArea className="flex-1 p-4">
+                
+                  <div className="dialog-body max-h-[70vh] overflow-y-auto">
                     <div className="space-y-4">
                       {revisionHistory.map((revision, index) => (
                         <Card key={index} className="p-4">
@@ -651,7 +629,7 @@ export function DocumentsPage() {
                         </Card>
                       ))}
                     </div>
-                  </ScrollArea>
+                  </div>
 
                   <div className="p-4 border-t">
                     <Button

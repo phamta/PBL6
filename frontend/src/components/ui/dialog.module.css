@@ -11,14 +11,14 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: 90vw;
-  max-width: 450px;
-  max-height: 85vh;
+  max-width: 750px; /* Increased from 450px to 1200px for delegation dialogs */
+  max-height: 90vh; /* Increased from 85vh to 90vh */
   padding: 25px;
   background: white;
   border-radius: 6px;
   box-shadow: hsl(206 22% 7% / 35%) 0px 10px 38px -10px, hsl(206 22% 7% / 20%) 0px 10px 20px -15px;
   animation: contentShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
-  overflow-y: auto;
+  overflow: hidden; /* Changed from overflow-y: auto to overflow: hidden */
   display: flex;
   flex-direction: column;
 }

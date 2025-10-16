@@ -67,18 +67,52 @@ const cellParagraph = (
     spacing: { before: spacingBefore, after: spacingAfter, line: 240 }, // Giãn dòng 1.0 lines
     children: children,
   });
+// --- HÀM HỖ TRỢ CHUYỂN ĐỔI DỮ LIỆU ---
+
+// Interface thống nhất cho export
+interface ExportDelegationData {
+  title: string;
+  startDate: string;
+  purpose: string;
+  participantList: any[];
+}
+
+// Adapter function để thống nhất dữ liệu từ cả officer và staff
+const normalizeDelegationData = (delegation: any): ExportDelegationData => {
+  // Kiểm tra nếu là Delegation interface (officer)
+  if (delegation.participantList !== undefined) {
+    return {
+      title: delegation.title || "Unnamed Delegation",
+      startDate: delegation.startDate || "",
+      purpose: delegation.purpose || "",
+      participantList: delegation.participantList || []
+    };
+  }
+
+  // Nếu là GuestWithRelations interface (staff)
+  return {
+    title: delegation.groupName || "Unnamed Delegation",
+    startDate: delegation.arrivalDate || "",
+    purpose: delegation.purpose || "",
+    participantList: delegation.members || []
+  };
+};
+
 // --- HÀM CHÍNH XUẤT BÁO CÁO ---
 
-export const exportCongVanBaoCao = async (selectedDelegation: any) => {
-  if (!selectedDelegation) return;
+export const exportCongVanBaoCao = async (delegation: any) => {
+  if (!delegation) return;
+
+  // Chuẩn hóa dữ liệu
+  const normalizedData = normalizeDelegationData(delegation);
 
   const currentDate = new Date();
   const day = currentDate.getDate().toString();
   const month = (currentDate.getMonth() + 1).toString();
   const year = currentDate.getFullYear().toString();
 
-  const arrivalDate = selectedDelegation.arrivalDate
-    ? new Date(selectedDelegation.arrivalDate)
+  const arrivalDate = normalizedData.startDate
+    ? new Date(normalizedData.startDate)
     : new Date();
   const arrivalDay = arrivalDate.getDate().toString().padStart(2, "0");
   const arrivalMonth = (arrivalDate.getMonth() + 1).toString();
@@ -170,7 +204,7 @@ export const exportCongVanBaoCao = async (selectedDelegation: any) => {
           
           // Mục 1 (13pt, thụt lề 1.25cm)
           paragraph(
-            `1. Thành phần đoàn khách: ${selectedDelegation.groupName || "………………………………………."}.`,
+            `1. Thành phần đoàn khách: ${normalizedData.title || "………………………………………."}.`,
             ALIGN.JUSTIFIED,
             709,
             200,
@@ -207,7 +241,7 @@ export const exportCongVanBaoCao = async (selectedDelegation: any) => {
                 ),
               }),
               // Hàng Data (13pt)
-              ...(selectedDelegation.members || []).map((member: any, index: number) => {
+              ...(normalizedData.participantList || []).map((member: any, index: number) => {
                 const birthDate = member.dateOfBirth
                   ? new Date(member.dateOfBirth).toLocaleDateString("vi-VN")
                   : "";
@@ -249,7 +283,7 @@ export const exportCongVanBaoCao = async (selectedDelegation: any) => {
           // Mục 3 (13pt, thụt lề 1.25cm)
           paragraph("3. Nội dung làm việc", ALIGN.LEFT, 709, 100, true, SIZE_13PT),
           paragraph(
-            selectedDelegation.purpose || "……………………………………………………………………………",
+            normalizedData.purpose || "……………………………………………………………………………",
             ALIGN.JUSTIFIED,
             0,
             200,
@@ -308,6 +342,6 @@ export const exportCongVanBaoCao = async (selectedDelegation: any) => {
   const blob = await Packer.toBlob(doc);
   saveAs(
     blob,
-    `cong-van-bao-cao-${selectedDelegation.groupName || "unnamed"}.docx`
+    `cong-van-bao-cao-${normalizedData.title || "unnamed"}.docx`
   );
 };

@@ -182,6 +182,60 @@ class DocumentsService {
     }
   }
 
+  async submit(id: string): Promise<DocumentItem> {
+    try {
+      const res = await axiosClient.post(API_ENDPOINTS.DOCUMENTS.SUBMIT(id));
+      return this.handleResponse<DocumentItem>(res);
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async startReview(id: string): Promise<DocumentItem> {
+    try {
+      const res = await axiosClient.post(API_ENDPOINTS.DOCUMENTS.REVIEW(id));
+      return this.handleResponse<DocumentItem>(res);
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async approve(id: string, payload: { comment: string; notes?: string; nextSteps?: string }) {
+    try {
+      const res = await axiosClient.post(API_ENDPOINTS.DOCUMENTS.APPROVE(id), payload);
+      return this.handleResponse<any>(res);
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async reject(id: string, payload: { comment: string; notes?: string; nextSteps?: string }) {
+    try {
+      const res = await axiosClient.post(API_ENDPOINTS.DOCUMENTS.REJECT(id), payload);
+      return this.handleResponse<any>(res);
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async addFeedback(id: string, payload: { content: string; attachments?: string[] }) {
+    try {
+      const res = await axiosClient.post(API_ENDPOINTS.DOCUMENTS.DETAIL(id) + '/feedback', payload);
+      return this.handleResponse<any>(res);
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
+  async resubmit(id: string) {
+    try {
+      const res = await axiosClient.patch(API_ENDPOINTS.DOCUMENTS.PATCH(id) + '/resubmit');
+      return this.handleResponse<any>(res);
+    } catch (error) {
+      this.handleError(error);
+    }
+  }
+
   async stats(): Promise<DocumentStats> {
     try {
       const res = await axiosClient.get(API_ENDPOINTS.DOCUMENTS.STATS);

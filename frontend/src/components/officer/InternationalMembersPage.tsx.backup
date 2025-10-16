@@ -1,0 +1,724 @@
+"use client";
+
+import React from "react";
+import { useState, useEffect } from "react";
+import {
+  FileText,
+  Search,
+  Download,
+  Eye,
+  Check,
+  X,
+  Clock,
+  AlertCircle,
+  TrendingUp,
+  Loader2,
+  Printer,
+  FileSpreadsheet,
+  Calendar,
+  Users,
+  Building,
+  Globe,
+  CheckCircle
+} from "lucide-react";
+import { Card } from "../ui/card";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
+import { Avatar, AvatarFallback } from "../ui/avatar";
+import { Badge } from "../ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "../ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
+import { ScrollArea } from "../ui/scroll-area";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "../ui/chart";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart as RechartsBarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { visaService } from "@/lib/api/visa.service";
+import { toast } from "sonner";
+
+// Types for officer workflow
+interface PendingApproval {
+  id: string;
+  type: 'visa_extension' | 'document_proposal' | 'guest_registration';
+  title: string;
+  requester: string;
+  requesterUnit: string;
+  submittedDate: string;
+  dueDate: string;
+  priority: 'high' | 'medium' | 'low';
+  description: string;
+  attachments?: string[];
+}
+
+interface ApprovedItem {
+  id: string;
+  type: 'visa_extension' | 'document_proposal' | 'guest_registration';
+  title: string;
+  requester: string;
+  approvedDate: string;
+  approvedBy: string;
+  status: 'active' | 'completed' | 'expired';
+}
+
+interface ReportData {
+  totalPending: number;
+  totalApproved: number;
+  totalRejected: number;
+  monthlyStats: Array<{
+    month: string;
+    approved: number;
+    rejected: number;
+  }>;
+  typeDistribution: Array<{
+    type: string;
+    count: number;
+  }>;
+}
+
+export function InternationalMembersPage() {
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
+  const [approvedItems, setApprovedItems] = useState<ApprovedItem[]>([]);
+  const [reportData, setReportData] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedApproval, setSelectedApproval] = useState<PendingApproval | null>(null);
+  const [selectedApprovedItem, setSelectedApprovedItem] = useState<ApprovedItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("pending");
+  const [approvalComment, setApprovalComment] = useState("");
+
+  // Fetch officer dashboard data
+  useEffect(() => {
+    const fetchOfficerData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch pending approvals (visa extensions, document proposals, etc.)
+        const pending = await visaService.getPendingApprovals();
+        setPendingApprovals(pending);
+
+        // Fetch approved items
+        const approved = await visaService.getApprovedItems();
+        setApprovedItems(approved);
+
+        // Fetch report data
+        const reports = await visaService.getOfficerReports();
+        setReportData(reports);
+
+      } catch (err) {
+        console.error('Error fetching officer data:', err);
+        setError('Failed to load officer dashboard data');
+        toast.error('Failed to load officer dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOfficerData();
+  }, []);
+
+  const filteredPendingApprovals = pendingApprovals.filter((approval) => {
+    const matchesSearch =
+      approval.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      approval.requester.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      approval.requesterUnit.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "all" || approval.type === typeFilter;
+    const matchesPriority = priorityFilter === "all" || approval.priority === priorityFilter;
+    return matchesSearch && matchesType && matchesPriority;
+  });
+
+  const filteredApprovedItems = approvedItems.filter((item) => {
+    const matchesSearch =
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.requester.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = typeFilter === "all" || item.type === typeFilter;
+    return matchesSearch && matchesType;
+  });
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string }> = {
+      active: { variant: "default", label: "Active" },
+      pending: { variant: "secondary", label: "Pending" },
+      completed: { variant: "outline", label: "Completed" },
+    };
+    const config = variants[status] || { variant: "outline" as const, label: status };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const getVisaStatusBadge = (status: string) => {
+    const variants: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string; icon: React.ReactNode }> = {
+      "active": {
+        variant: "default",
+        label: "Valid",
+        icon: <Check className="w-3 h-3 mr-1" />
+      },
+      "expiring-soon": {
+        variant: "secondary",
+        label: "Expiring Soon",
+        icon: <AlertCircle className="w-3 h-3 mr-1" />
+      },
+      "extension-requested": {
+        variant: "outline",
+        label: "Extension Requested",
+        icon: <Clock className="w-3 h-3 mr-1" />
+      },
+      "pending": {
+        variant: "outline",
+        label: "Under Renewal",
+        icon: <Clock className="w-3 h-3 mr-1" />
+      },
+    };
+    const config = variants[status] || { variant: "outline" as const, label: status, icon: null };
+    return (
+      <Badge variant={config.variant} className="flex items-center w-fit">
+        {config.icon}
+        {config.label}
+      </Badge>
+    );
+  };
+
+  const getRoleBadge = (visaType: string) => {
+    const colors: Record<string, string> = {
+      "Student Visa": "bg-blue-100 text-blue-700",
+      "Exchange Visitor": "bg-purple-100 text-purple-700",
+      "Work Visa": "bg-green-100 text-green-700",
+      "Training Visa": "bg-orange-100 text-orange-700",
+    };
+    return (
+      <Badge variant="outline" className={colors[visaType] || ""}>
+        {visaType}
+      </Badge>
+    );
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const handleExportReport = (format: "csv" | "excel" | "word") => {
+    console.log(`Exporting report as ${format.toUpperCase()}`);
+  };
+
+  const handlePrintLetter = () => {
+    console.log("Printing official letter");
+  };
+
+  // Calculate statistics from report data
+  const pendingCount = pendingApprovals.length;
+  const approvedCount = approvedItems.filter(item => item.status === 'active').length;
+  const highPriorityCount = pendingApprovals.filter(item => item.priority === 'high').length;
+
+  // Generate type distribution from pending approvals
+  const typeDistribution = reportData?.typeDistribution || [];
+
+  // Generate monthly stats from report data
+  const monthlyStats = reportData?.monthlyStats || [];
+
+  const chartConfig = {
+    count: {
+      label: "Count",
+      color: "hsl(var(--chart-1))",
+    },
+  };
+
+  return (
+    <div className="space-y-6">
+      <Breadcrumbs items={[{ label: "Sinh viên quốc tế" }]} />
+      {/* Header */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h1>International Students/Trainees/Lecturers</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage international members, visa extensions, and generate reports
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Export Format</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleExportReport("csv")}>
+                <FileText className="w-4 h-4 mr-2" />
+                CSV File
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportReport("excel")}>
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Excel Spreadsheet
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportReport("word")}>
+                <FileText className="w-4 h-4 mr-2" />
+                Word Document
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button className="bg-primary">
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add Member
+          </Button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="pending">Pending Approvals</TabsTrigger>
+          <TabsTrigger value="approved">Approved Items</TabsTrigger>
+          <TabsTrigger value="reports">Reports & Statistics</TabsTrigger>
+        </TabsList>
+
+        {/* Pending Approvals Tab */}
+        <TabsContent value="pending" className="space-y-4">
+          {/* Filters */}
+          <Card className="p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search by title, requester, or unit..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-full md:w-40">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="visa-extension">Visa Extension</SelectItem>
+                  <SelectItem value="document-proposal">Document Proposal</SelectItem>
+                  <SelectItem value="training-program">Training Program</SelectItem>
+                  <SelectItem value="research-permit">Research Permit</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger className="w-full md:w-40">
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </Card>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="expiring-soon">Expiring Soon</SelectItem>
+                  <SelectItem value="extension-requested">Extension Requested</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </Card>
+
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin" />
+                <span>Loading international members...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <Card className="p-6">
+              <div className="text-center text-destructive">
+                <AlertCircle className="w-12 h-12 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Failed to Load Data</h3>
+                <p>{error}</p>
+                <Button
+                  onClick={() => window.location.reload()}
+                  className="mt-4"
+                  variant="outline"
+                >
+                  Try Again
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          {/* Pending Approvals Grid */}
+          {!loading && !error && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredPendingApprovals.map((approval) => (
+                <Card
+                  key={approval.id}
+                  className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                  onClick={() => setSelectedApproval(approval)}
+                >
+                  <div className="flex items-start gap-4">
+                    <Avatar className="w-12 h-12 bg-orange-100 text-orange-700">
+                      <AvatarFallback>{getInitials(approval.requester)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="mb-1 truncate">{approval.title}</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {approval.requester} - {approval.requesterUnit}
+                      </p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                          {approval.type}
+                        </Badge>
+                        <Badge variant={approval.priority === 'high' ? 'destructive' : 'secondary'}>
+                          {approval.priority} priority
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Submitted: {new Date(approval.submittedDate).toLocaleDateString()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Due: {new Date(approval.dueDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4 flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1">
+                      <Eye className="w-4 h-4 mr-2" />
+                      Review
+                    </Button>
+                    <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700">
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Approve
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        {/* Reports & Statistics Tab */}
+        <TabsContent value="reports" className="space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground">Pending Approvals</p>
+                  <h2 className="mt-1">{pendingCount}</h2>
+                </div>
+                <Clock className="h-8 w-8 text-orange-500" />
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground">Approved This Month</p>
+                  <h2 className="mt-1">{approvedCount}</h2>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground">High Priority</p>
+                  <h2 className="mt-1">{highPriorityCount}</h2>
+                </div>
+                <AlertTriangle className="h-8 w-8 text-red-500" />
+              </div>
+            </Card>
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-muted-foreground">Avg Processing Time</p>
+                  <h2 className="mt-1">{reportData?.avgProcessingTime || 0} days</h2>
+                </div>
+                <TrendingUp className="h-8 w-8 text-blue-500" />
+              </div>
+            </Card>
+          </div>
+
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Type Distribution Chart */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Application Types</h3>
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={typeDistribution}
+                      dataKey="count"
+                      nameKey="type"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      fill="#8884d8"
+                      label
+                    >
+                      {typeDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={`hsl(${index * 45}, 70%, 50%)`} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </Card>
+
+            {/* Monthly Stats Chart */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Monthly Performance</h3>
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsBarChart data={monthlyStats}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="approved" fill="#10b981" name="Approved" />
+                    <Bar dataKey="rejected" fill="#ef4444" name="Rejected" />
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </Card>
+          </div>
+        </TabsContent>
+
+      {/* Enhanced Detail Dialog */}
+                  <p className="text-muted-foreground">Valid Visas</p>
+                  <h2 className="mt-1">{validCount}</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    No action needed
+                  </p>
+                </div>
+                <Check className="w-10 h-10 text-green-500" />
+              </div>
+              <Button variant="outline" size="sm" className="w-full">
+                View Details
+              </Button>
+            </Card>
+          </div>
+
+          {/* Visa Extension Requests */}
+          <Card className="p-6">
+            <h3 className="mb-4">Recent Visa Extension Requests</h3>
+            <div className="space-y-3">
+              {membersData
+                .filter(m => m.status === "expiring-soon" || m.status === "extension-requested")
+                .map((member) => (
+                  <Card key={member.id} className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="w-10 h-10 bg-primary text-primary-foreground">
+                          <AvatarFallback>{getInitials(member.fullName)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4>{member.fullName}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Visa expires: {member.visaExpiry}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getVisaStatusBadge(member.status)}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="outline">
+                              Actions
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setSelectedMember(member)}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Review Request
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handlePrintLetter}>
+                              <Printer className="w-4 h-4 mr-2" />
+                              Print Letter
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-green-600">
+                              <Check className="w-4 h-4 mr-2" />
+                              Approve Extension
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Enhanced Detail Dialog */}
+      <Dialog
+        open={!!selectedMember}
+        onOpenChange={(open) => !open && setSelectedMember(null)}
+      >
+        <DialogContent maxWidth="750px" className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Member Details</DialogTitle>
+            <DialogDescription>
+              View and manage international member information
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMember && (
+            <div className="dialog-body max-h-[70vh] overflow-y-auto">
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <Avatar className="w-16 h-16 bg-primary text-primary-foreground">
+                    <AvatarFallback className="text-xl">
+                      {getInitials(selectedMember.fullName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3>{selectedMember.fullName}</h3>
+                    <p className="text-muted-foreground">{selectedMember.nationality}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Member ID</Label>
+                    <p className="mt-1">{selectedMember.id}</p>
+                  </div>
+                  <div>
+                    <Label>Nationality</Label>
+                    <p className="mt-1">{selectedMember.nationality}</p>
+                  </div>
+                  <div>
+                    <Label>Visa Type</Label>
+                    <div className="mt-1">{getRoleBadge(selectedMember.visaType)}</div>
+                  </div>
+                  <div>
+                    <Label>Status</Label>
+                    <div className="mt-1">{getStatusBadge(selectedMember.status)}</div>
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Program</Label>
+                    <p className="mt-1">{selectedMember.program}</p>
+                  </div>
+                  <div>
+                    <Label>Start Date</Label>
+                    <p className="mt-1">{selectedMember.startDate}</p>
+                  </div>
+                  <div>
+                    <Label>Expected End Date</Label>
+                    <p className="mt-1">{selectedMember.expectedEndDate}</p>
+                  </div>
+                </div>
+
+                <Card className="p-4 bg-accent/50">
+                  <h4 className="mb-3">Visa Information</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Visa Type</Label>
+                      <p className="mt-1">{selectedMember.visaType}</p>
+                    </div>
+                    <div>
+                      <Label>Visa Status</Label>
+                      <div className="mt-1">{getVisaStatusBadge(selectedMember.status)}</div>
+                    </div>
+                    <div className="col-span-2">
+                      <Label>Expiry Date</Label>
+                      <p className="mt-1">{selectedMember.visaExpiry}</p>
+                    </div>
+                  </div>
+                </Card>
+
+                {(selectedMember.status === "expiring-soon" ||
+                  selectedMember.status === "extension-requested") && (
+                  <Card className="p-4">
+                    <h4 className="mb-3">Visa Extension Actions</h4>
+                    <div className="space-y-3">
+                      <Textarea
+                        placeholder="Add notes or comments about the visa extension request..."
+                        rows={3}
+                      />
+                      <div className="flex gap-2">
+                        <Button className="flex-1 bg-green-600 hover:bg-green-700">
+                          <Check className="w-4 h-4 mr-2" />
+                          Approve Extension
+                        </Button>
+                        <Button variant="outline" className="flex-1" onClick={handlePrintLetter}>
+                          <Printer className="w-4 h-4 mr-2" />
+                          Generate Letter
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-4 border-t pt-4">
+            <Button variant="outline" onClick={() => setSelectedMember(null)}>
+              Close
+            </Button>
+            <Button variant="outline">
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Details
+            </Button>
+            <Button variant="outline" onClick={handlePrintLetter}>
+              <Printer className="w-4 h-4 mr-2" />
+              Print Letter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

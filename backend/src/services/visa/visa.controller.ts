@@ -151,7 +151,7 @@ export class VisaController {
   })
   @ApiParam({ name: 'id', description: 'Visa ID', type: 'string' })
   async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
   ) {
     const visa = await this.visaService.findOne(id, req.user);
@@ -194,7 +194,7 @@ export class VisaController {
   @ApiParam({ name: 'id', description: 'Visa ID', type: 'string' })
   @ApiBody({ type: UpdateVisaDto })
   async update(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id') id: string,
     @Body() updateVisaDto: UpdateVisaDto,
     @Req() req: AuthenticatedRequest,
   ) {
@@ -233,7 +233,7 @@ export class VisaController {
   })
   @ApiParam({ name: 'id', description: 'Visa ID', type: 'string' })
   async remove(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id' ) id: string,
     @Req() req: AuthenticatedRequest,
   ) {
     await this.visaService.remove(id, req.user);
@@ -311,7 +311,7 @@ export class VisaController {
   @ApiParam({ name: 'extensionId', description: 'Visa extension ID', type: 'string' })
   @ApiBody({ type: ApproveVisaDto })
   async approveExtension(
-    @Param('extensionId', ParseUUIDPipe) extensionId: string,
+    @Param('extensionId' ) extensionId: string,
     @Body() approveVisaDto: ApproveVisaDto,
     @Req() req: AuthenticatedRequest,
   ) {
@@ -338,7 +338,7 @@ export class VisaController {
   })
   @ApiParam({ name: 'id', description: 'Visa ID', type: 'string' })
   async getExtensions(
-    @Param('id', ParseUUIDPipe) visaId: string,
+    @Param('id' ) visaId: string,
     @Req() req: AuthenticatedRequest,
   ) {
     const extensions = await this.visaService.getExtensions(visaId, req.user);
@@ -439,7 +439,7 @@ export class VisaController {
     description: 'Foreign students retrieved successfully',
   })
   async getAllStudentsByVisaId(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id' ) id: string,
     @Req() req: AuthenticatedRequest,
   ) {
     const students = await this.visaService.getAllStudentsByVisaId(id, req.user);
@@ -469,7 +469,7 @@ export class VisaController {
     description: 'Foreign students retrieved successfully',
   })
   async getForeignStudentsByUnitId(
-    @Param('unitId', ParseUUIDPipe) unitId: string,
+    @Param('unitId' ) unitId: string,
     @Req() req: AuthenticatedRequest,
   ) {
     const students = await this.visaService.getForeignStudentsByUnitId(unitId, req.user);
@@ -551,6 +551,28 @@ export class VisaController {
   }
 
   /**
+   * Get all foreign students (for officer/admin view)
+   */
+  @Get('foreign-students/all')
+  @RequireAction('VISA_READ')
+  @ApiOperation({
+    summary: 'Get all foreign students in the system',
+    description: 'Get all foreign students across all units/departments. Requires VISA_READ_ALL action (officer/admin only).',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'All foreign students retrieved successfully',
+  })
+  async getAllForeignStudents(@Req() req: AuthenticatedRequest) {
+    const students = await this.visaService.getAllForeignStudents(req.user);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'All foreign students retrieved successfully',
+      data: students,
+    };
+  }
+
+  /**
    * Get foreign student by ID
    */
   @Get('foreign-students/:id')
@@ -578,7 +600,7 @@ export class VisaController {
     description: 'Insufficient permissions',
   })
   async getForeignStudentById(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id' ) id: string,
     @Req() req: AuthenticatedRequest,
   ) {
     const student = await this.visaService.getForeignStudentById(id, req.user);
