@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Languages, Upload, Check, X, Clock, FileText, Search, Filter, Download, Eye, BarChart3, Users, FileCheck, AlertCircle, Calendar, Building } from "lucide-react";
+import { motion } from "motion/react";
+import { Languages, Upload, Check, X, Clock, FileText, Search, Filter, Download, Eye, BarChart3, Users, FileCheck, AlertCircle, Calendar, Building, CheckCircle, Info, ArrowRight } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -287,7 +288,7 @@ export function TranslationsPage() {
           <TabsTrigger value="overview">Tổng quan</TabsTrigger>
           <TabsTrigger value="requests">Danh sách yêu cầu</TabsTrigger>
           <TabsTrigger value="search">Tra cứu nâng cao</TabsTrigger>
-          <TabsTrigger value="submit">Tạo yêu cầu mới</TabsTrigger>
+          <TabsTrigger value="process">Quy trình phê duyệt</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -611,224 +612,211 @@ export function TranslationsPage() {
           </Card>
         </TabsContent>
 
-        {/* Submit New Request Tab */}
-        <TabsContent value="submit">
+        <TabsContent value="process">
           <Card className="p-6">
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="w-full space-y-6">
               <div className="text-center mb-8">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Languages className="w-8 h-8 text-primary" />
+                  <FileText className="w-8 h-8 text-primary" />
                 </div>
-                <h2>Nộp yêu cầu dịch thuật</h2>
+                <h2 className="text-2xl font-bold">Quy trình phê duyệt dịch thuật</h2>
                 <p className="text-muted-foreground mt-2">
-                  Điền thông tin để nộp yêu cầu dịch thuật tài liệu
+                  Quy trình xử lý yêu cầu dịch thuật từ lúc nộp đến khi hoàn thành
                 </p>
               </div>
 
-              <form className="space-y-4" onSubmit={async (e) => {
-                e.preventDefault();
-                // Handle form submission
-                const formData = new FormData(e.target as HTMLFormElement);
-                const data = {
-                  applicantName: formData.get('applicantName') as string,
-                  applicantEmail: formData.get('applicantEmail') as string,
-                  applicantPhone: formData.get('applicantPhone') as string,
-                  documentTitle: formData.get('documentTitle') as string,
-                  sourceLanguage: formData.get('sourceLanguage') as string,
-                  targetLanguage: formData.get('targetLanguage') as string,
-                  documentType: formData.get('documentType') as string,
-                  purpose: formData.get('purpose') as string,
-                  urgentLevel: (formData.get('urgentLevel') as UrgentLevel) || 'NORMAL',
-                  unitName: formData.get('unitName') as string,
-                  notes: formData.get('notes') as string,
-                  // Note: File upload would need additional handling
-                  originalFile: 'placeholder.pdf', // This would be handled by file upload
-                };
+              {/* Quy trình phê duyệt */}
+              <div className="space-y-6">
+                  <Card className="p-6 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background">
+                    <h4 className="mb-4">Quy trình xử lý xác nhận dịch thuật</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                          1
+                        </div>
+                        <div>
+                          <h4 className="mb-1">Nộp đơn</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Cán bộ nộp đơn và tài liệu
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                          2
+                        </div>
+                        <div>
+                          <h4 className="mb-1">Xét duyệt</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Admin kiểm tra tài liệu
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-purple-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                          3
+                        </div>
+                        <div>
+                          <h4 className="mb-1">Phê duyệt</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Ban giám hiệu phê duyệt
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                          4
+                        </div>
+                        <div>
+                          <h4 className="mb-1">Cấp thư</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Hoàn thành và cấp thư
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
 
-                try {
-                  await translationService.create(data);
-                  toast.success('Yêu cầu dịch thuật đã được nộp thành công');
-                  setActiveTab('requests');
-                  // Refresh data
-                  setFilters(prev => ({ ...prev }));
-                } catch (err) {
-                  console.error('Error creating translation request:', err);
-                  toast.error('Không thể nộp yêu cầu dịch thuật');
-                }
-              }}>
-                <div>
-                  <Label htmlFor="applicantName">Tên người yêu cầu</Label>
-                  <Input
-                    id="applicantName"
-                    name="applicantName"
-                    placeholder="Nhập tên đầy đủ"
-                    className="mt-2"
-                    required
-                  />
-                </div>
+                {/* Danh sách yêu cầu đang xử lý */}
+                <div className="mt-8">
+                  <h3 className="text-xl font-semibold mb-6">Quy trình xử lý đơn xác nhận</h3>
+                  <div className="space-y-4">
+                    {translations.slice(0, 5).map((trans, index) => (
+                      <motion.div
+                        key={trans.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        whileHover={{ scale: 1.01 }}
+                      >
+                        <Card className="p-6 hover:shadow-lg transition-all">
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4>{trans.documentTitle}</h4>
+                                {getStatusBadge(trans.status)}
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                Mã đơn: {trans.id} • Nộp ngày: {new Date(trans.createdAt).toLocaleDateString('vi-VN')}
+                              </p>
+                              <div className="flex items-center gap-4 mt-2 text-sm">
+                                <span className="flex items-center gap-1">
+                                  <Languages className="w-4 h-4 text-muted-foreground" />
+                                  {trans.sourceLanguage} → {trans.targetLanguage}
+                                </span>
+                                <span className="text-muted-foreground">•</span>
+                                <span className="text-muted-foreground">{trans.createdBy.fullName}</span>
+                              </div>
+                            </div>
+                          </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="applicantEmail">Email</Label>
-                    <Input
-                      id="applicantEmail"
-                      name="applicantEmail"
-                      type="email"
-                      placeholder="email@example.com"
-                      className="mt-2"
-                      required
-                    />
+                          {/* Timeline Progress */}
+                          <div className="mt-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              {[
+                                { step: "Nộp yêu cầu", status: trans.status === "PENDING" ? "current" : trans.status === "APPROVED" || trans.status === "COMPLETED" ? "completed" : "pending", date: new Date(trans.createdAt).toLocaleDateString('vi-VN') },
+                                { step: "Duyệt yêu cầu", status: trans.status === "APPROVED" || trans.status === "COMPLETED" ? "completed" : "pending", date: trans.status === "APPROVED" || trans.status === "COMPLETED" ? "Đã duyệt" : null },
+                                { step: "Dịch thuật", status: trans.status === "COMPLETED" ? "completed" : "pending", date: trans.status === "COMPLETED" ? "Hoàn thành" : null },
+                                { step: "Hoàn thành", status: trans.status === "COMPLETED" ? "completed" : "pending", date: null }
+                              ].map((item, idx) => (
+                                <div key={idx} className="flex items-center flex-1">
+                                  <div
+                                    className={`flex-1 h-2 rounded-full transition-all ${
+                                      item.status === "completed"
+                                        ? "bg-green-500"
+                                        : item.status === "current"
+                                        ? "bg-blue-500"
+                                        : "bg-gray-200"
+                                    }`}
+                                  >
+                                    {item.status === "current" && (
+                                      <div className="h-full bg-blue-400 rounded-full animate-pulse" />
+                                    )}
+                                  </div>
+                                  {idx < 3 && (
+                                    <ArrowRight className="w-4 h-4 mx-1 text-muted-foreground" />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 text-xs">
+                              {[
+                                { step: "Nộp yêu cầu", status: trans.status === "PENDING" ? "current" : trans.status === "APPROVED" || trans.status === "COMPLETED" ? "completed" : "pending", date: new Date(trans.createdAt).toLocaleDateString('vi-VN') },
+                                { step: "Duyệt yêu cầu", status: trans.status === "APPROVED" || trans.status === "COMPLETED" ? "completed" : "pending", date: trans.status === "APPROVED" || trans.status === "COMPLETED" ? "Đã duyệt" : null },
+                                { step: "Dịch thuật", status: trans.status === "COMPLETED" ? "completed" : "pending", date: trans.status === "COMPLETED" ? "Hoàn thành" : null },
+                                { step: "Hoàn thành", status: trans.status === "COMPLETED" ? "completed" : "pending", date: null }
+                              ].map((item, idx) => (
+                                <div key={idx} className="text-center">
+                                  <p
+                                    className={`font-medium ${
+                                      item.status === "completed"
+                                        ? "text-green-600"
+                                        : item.status === "current"
+                                        ? "text-blue-600"
+                                        : "text-muted-foreground"
+                                    }`}
+                                  >
+                                    {item.step}
+                                  </p>
+                                  {item.date && (
+                                    <p className="text-muted-foreground mt-1">
+                                      {item.date}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Current Status Note */}
+                          {[
+                            { step: "Nộp yêu cầu", status: trans.status === "PENDING" ? "current" : trans.status === "APPROVED" || trans.status === "COMPLETED" ? "completed" : "pending", note: "Đang chờ Department Officer duyệt yêu cầu" },
+                            { step: "Duyệt yêu cầu", status: trans.status === "APPROVED" || trans.status === "COMPLETED" ? "completed" : "pending", note: "Department Officer đã duyệt, đang phân công nhân viên dịch thuật" },
+                            { step: "Dịch thuật", status: trans.status === "COMPLETED" ? "completed" : "pending", note: "Nhân viên dịch thuật đang xử lý tài liệu" },
+                            { step: "Hoàn thành", status: trans.status === "COMPLETED" ? "completed" : "pending", note: "Đã hoàn thành và gửi thông báo cho người yêu cầu" }
+                          ].find((t) => t.status === "current") && (
+                            <Card className="p-3 mt-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200">
+                              <p className="text-sm flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-blue-600" />
+                                <span className="text-blue-900 dark:text-blue-100">
+                                  {[
+                                    { step: "Nộp yêu cầu", status: trans.status === "PENDING" ? "current" : trans.status === "APPROVED" || trans.status === "COMPLETED" ? "completed" : "pending", note: "Đang chờ Department Officer duyệt yêu cầu" },
+                                    { step: "Duyệt yêu cầu", status: trans.status === "APPROVED" || trans.status === "COMPLETED" ? "completed" : "pending", note: "Department Officer đã duyệt, đang phân công nhân viên dịch thuật" },
+                                    { step: "Dịch thuật", status: trans.status === "COMPLETED" ? "completed" : "pending", note: "Nhân viên dịch thuật đang xử lý tài liệu" },
+                                    { step: "Hoàn thành", status: trans.status === "COMPLETED" ? "completed" : "pending", note: "Đã hoàn thành và gửi thông báo cho người yêu cầu" }
+                                  ].find((t) => t.status === "current")?.note}
+                                </span>
+                              </p>
+                            </Card>
+                          )}
+
+                          {/* Actions */}
+                          <div className="flex gap-2 mt-4">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewDetails(trans)}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Xem chi tiết
+                            </Button>
+                            {trans.status === "COMPLETED" && trans.translatedFile && (
+                              <Button size="sm" variant="outline">
+                                <Download className="w-4 h-4 mr-2" />
+                                Tải bản dịch
+                              </Button>
+                            )}
+                          </div>
+                        </Card>
+                      </motion.div>
+                    ))}
                   </div>
-                  <div>
-                    <Label htmlFor="applicantPhone">Số điện thoại</Label>
-                    <Input
-                      id="applicantPhone"
-                      name="applicantPhone"
-                      placeholder="+84..."
-                      className="mt-2"
-                    />
-                  </div>
                 </div>
-
-                <div>
-                  <Label htmlFor="documentTitle">Tiêu đề tài liệu</Label>
-                  <Input
-                    id="documentTitle"
-                    name="documentTitle"
-                    placeholder="Ví dụ: Bằng tốt nghiệp Đại học"
-                    className="mt-2"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Upload tài liệu</Label>
-                  <div className="mt-2 border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer">
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">
-                      Nhấp để tải lên hoặc kéo thả
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      PDF, DOC, DOCX tối đa 10MB
-                    </p>
-                    <input type="file" className="hidden" accept=".pdf,.doc,.docx" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="sourceLanguage">Ngôn ngữ gốc</Label>
-                    <Select name="sourceLanguage" required>
-                      <SelectTrigger id="sourceLanguage" className="mt-2">
-                        <SelectValue placeholder="Chọn ngôn ngữ" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {languages.map((lang) => (
-                          <SelectItem key={lang} value={lang.toLowerCase()}>
-                            {lang}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="targetLanguage">Ngôn ngữ đích</Label>
-                    <Select name="targetLanguage" required>
-                      <SelectTrigger id="targetLanguage" className="mt-2">
-                        <SelectValue placeholder="Chọn ngôn ngữ" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {languages.map((lang) => (
-                          <SelectItem key={lang} value={lang.toLowerCase()}>
-                            {lang}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="documentType">Loại tài liệu</Label>
-                    <Select name="documentType" required>
-                      <SelectTrigger id="documentType" className="mt-2">
-                        <SelectValue placeholder="Chọn loại" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Diploma">Bằng cấp</SelectItem>
-                        <SelectItem value="Certificate">Chứng chỉ</SelectItem>
-                        <SelectItem value="Contract">Hợp đồng</SelectItem>
-                        <SelectItem value="Passport">Hộ chiếu</SelectItem>
-                        <SelectItem value="Transcript">Bảng điểm</SelectItem>
-                        <SelectItem value="Other">Khác</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="urgentLevel">Mức độ khẩn cấp</Label>
-                    <Select name="urgentLevel">
-                      <SelectTrigger id="urgentLevel" className="mt-2">
-                        <SelectValue placeholder="Chọn mức độ" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="NORMAL">Bình thường</SelectItem>
-                        <SelectItem value="URGENT">Khẩn cấp</SelectItem>
-                        <SelectItem value="VERY_URGENT">Rất khẩn cấp</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="purpose">Mục đích sử dụng</Label>
-                  <Input
-                    id="purpose"
-                    name="purpose"
-                    placeholder="Ví dụ: Nộp hồ sơ du học"
-                    className="mt-2"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="unitName">Tên đơn vị</Label>
-                  <Input
-                    id="unitName"
-                    name="unitName"
-                    placeholder="Ví dụ: Phòng Hợp tác Quốc tế"
-                    className="mt-2"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="notes">Ghi chú thêm (Tùy chọn)</Label>
-                  <Textarea
-                    id="notes"
-                    name="notes"
-                    placeholder="Các yêu cầu đặc biệt hoặc ngữ cảnh cho việc dịch thuật"
-                    className="mt-2 min-h-24"
-                  />
-                </div>
-
-                <div className="flex gap-4 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setActiveTab("requests")}
-                  >
-                    Hủy
-                  </Button>
-                  <Button type="submit" className="flex-1 bg-primary">
-                    <Languages className="w-4 h-4 mr-2" />
-                    Nộp yêu cầu
-                  </Button>
-                </div>
-              </form>
+              </div>
             </div>
           </Card>
         </TabsContent>
+
       </Tabs>
 
       {/* Detail Dialog */}
