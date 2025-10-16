@@ -121,6 +121,36 @@ export class GuestService {
       throw new ForbiddenException('You do not have permission to create guests');
     }
 
+    // Validate required fields
+    if (!createGuestDto.groupName || createGuestDto.groupName.trim() === '') {
+      throw new BadRequestException('Group name is required');
+    }
+
+    if (!createGuestDto.contactPerson || createGuestDto.contactPerson.trim() === '') {
+      throw new BadRequestException('Contact person is required');
+    }
+
+    if (!createGuestDto.purpose || createGuestDto.purpose.trim() === '') {
+      throw new BadRequestException('Purpose is required');
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (createGuestDto.contactEmail && !emailRegex.test(createGuestDto.contactEmail)) {
+      throw new BadRequestException('Invalid contact email format');
+    }
+
+    // Validate phone format (basic validation)
+    const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+    if (createGuestDto.contactPhone && !phoneRegex.test(createGuestDto.contactPhone)) {
+      throw new BadRequestException('Invalid contact phone format');
+    }
+
+    // Validate totalMembers
+    if (createGuestDto.totalMembers !== undefined && createGuestDto.totalMembers <= 0) {
+      throw new BadRequestException('Total members must be greater than 0');
+    }
+
     // Validate dates
     const arrivalDate = new Date(createGuestDto.arrivalDate);
     const departureDate = new Date(createGuestDto.departureDate);
@@ -131,6 +161,27 @@ export class GuestService {
 
     if (arrivalDate < new Date()) {
       throw new BadRequestException('Arrival date cannot be in the past');
+    }
+
+    // Validate members if provided
+    if (createGuestDto.members && createGuestDto.members.length > 0) {
+      for (const member of createGuestDto.members) {
+        if (!member.fullName || member.fullName.trim() === '') {
+          throw new BadRequestException('Member full name is required');
+        }
+        if (member.email && !emailRegex.test(member.email)) {
+          throw new BadRequestException('Invalid member email format');
+        }
+        if (member.phoneNumber && !phoneRegex.test(member.phoneNumber)) {
+          throw new BadRequestException('Invalid member phone format');
+        }
+        if (member.dateOfBirth) {
+          const birthDate = new Date(member.dateOfBirth);
+          if (birthDate > new Date()) {
+            throw new BadRequestException('Member date of birth cannot be in the future');
+          }
+        }
+      }
     }
 
     // Validate partner if provided
@@ -218,10 +269,24 @@ export class GuestService {
 
       // Emit event
       this.eventEmitter.emit('guest.created', {
-        guestId: guest.id,
-        userId: user.id,
-        arrivalDate: guest.arrivalDate,
-        totalMembers: guest.totalMembers,
+        guest: {
+          id: guest.id,
+          fullName: guest.contactPerson, // Use contactPerson as fullName
+          email: guest.contactEmail,
+          organization: guest.groupName || 'N/A', // Use groupName as organization
+          visitDate: guest.arrivalDate,
+          createdBy: {
+            id: guest.createdBy.id,
+            fullName: guest.createdBy.fullName,
+            email: guest.createdBy.email,
+          },
+        },
+        user: {
+          id: user.id,
+          actions: user.actions,
+          fullName: guest.createdBy.fullName, // Get from createdBy relation
+          email: guest.createdBy.email, // Get from createdBy relation
+        },
       });
 
       return guest as GuestWithRelations;

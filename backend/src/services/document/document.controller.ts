@@ -18,7 +18,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { ActionGuard } from '../../common/guards/action.guard';
 import { RequireAction } from '../../decorators/require-action.decorator';
 import { DocumentService, DocumentUser } from './document.service';
-import { CreateDocumentDto, UpdateDocumentDto, ApproveDocumentDto, FilterDocumentDto } from './dto';
+import { CreateDocumentDto, UpdateDocumentDto, ApproveDocumentDto, FilterDocumentDto , CreateFeedbackDto} from './dto';
 import { DocumentStatus, DocumentType } from '@prisma/client';
 import { Request } from 'express';
 
@@ -675,6 +675,91 @@ export class DocumentController {
       statusCode: HttpStatus.OK,
       message: 'MOU statistics retrieved successfully',
       data: stats
+    };
+  }
+  // ==================== Feedback Management Routes ====================
+
+  /**
+   * Add feedback to a document
+   * Gửi góp ý cho hồ sơ MOU (Phòng KHCN&ĐN)
+   */
+  @Post(':id/feedback')
+  @HttpCode(HttpStatus.CREATED)
+  @RequireAction('DOCUMENT_FEEDBACK')
+  @ApiOperation({ 
+    summary: 'Gửi góp ý cho hồ sơ MOU',
+    description: 'Phòng KHCN&ĐN gửi góp ý, nhận xét cho hồ sơ MOU đang được xem xét'
+  })
+  @ApiResponse({ status: 201, description: 'Feedback created successfully' })
+  @ApiResponse({ status: 400, description: 'Không thể gửi góp ý cho document ở trạng thái hiện tại' })
+  @ApiResponse({ status: 403, description: 'Không có quyền gửi góp ý' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async addFeedback(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { content: string; attachments?: any[] },
+    @Req() req: AuthenticatedRequest
+  ) {
+    const feedback = await this.documentService.createFeedback(
+      id,
+      req.user.id,
+      body.content,
+      body.attachments
+    );
+    
+    return {
+      statusCode: HttpStatus.CREATED,
+      message: 'Feedback created successfully',
+      data: feedback
+    };
+  }
+
+  /**
+   * Get all feedbacks for a document
+   * Lấy danh sách góp ý của một hồ sơ
+   */
+  @Get(':id/feedback')
+  @RequireAction('DOCUMENT_READ')
+  @ApiOperation({ 
+    summary: 'Xem toàn bộ góp ý cho hồ sơ MOU',
+    description: 'Lấy danh sách tất cả các góp ý đã được gửi cho hồ sơ MOU này'
+  })
+  @ApiResponse({ status: 200, description: 'Feedbacks retrieved successfully' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async getFeedbacks(@Param('id', ParseUUIDPipe) id: string) {
+    const feedbacks = await this.documentService.getFeedbacks(id);
+    
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Feedbacks retrieved successfully',
+      data: feedbacks,
+      count: feedbacks.length
+    };
+  }
+
+  /**
+   * Resubmit document after addressing feedback
+   * Đơn vị đề xuất chỉnh sửa hồ sơ theo góp ý và gửi lại
+   */
+  @Patch(':id/resubmit')
+  @RequireAction('DOCUMENT_UPDATE')
+  @ApiOperation({ 
+    summary: 'Đơn vị đề xuất chỉnh sửa hồ sơ theo góp ý và gửi lại',
+    description: 'Sau khi nhận góp ý, đơn vị đề xuất chỉnh sửa hồ sơ và gửi lại Phòng KHCN&ĐN để xem xét'
+  })
+  @ApiResponse({ status: 200, description: 'Document resubmitted successfully' })
+  @ApiResponse({ status: 400, description: 'Không thể gửi lại document ở trạng thái hiện tại' })
+  @ApiResponse({ status: 403, description: 'Chỉ người tạo hồ sơ mới có quyền gửi lại' })
+  @ApiResponse({ status: 404, description: 'Document not found' })
+  async resubmitDocument(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const document = await this.documentService.resubmitDocument(id, req.user.id);
+    
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Document resubmitted successfully',
+      data: document
     };
   }
 }

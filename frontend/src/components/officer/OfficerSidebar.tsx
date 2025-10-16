@@ -20,17 +20,16 @@ interface OfficerSidebarProps {
 
 const menuItems = [
   { id: "home", label: "Home", icon: Home },
-  { id: "documents", label: "Signed Document Management", icon: FileText },
-  { id: "delegations", label: "Incoming Delegation Management", icon: Users },
+  { id: "documents", label: "Quản Lý Tài Liệu Ký Kết", icon: FileText },
+  { id: "delegations", label: "Quản Lý Đoàn Vào", icon: Users },
   {
     id: "international",
-    label: "International Students/Trainees/Lecturers",
+    label: "Quản Lý Sinh Viên Quốc Tế",
     icon: Globe,
   },
-  { id: "translations", label: "Translation Confirmation Requests", icon: Languages },
-  { id: "statistics", label: "Automatic Statistics & Reports", icon: BarChart3 },
-  { id: "users", label: "User Management", icon: UserCog },
-  { id: "roles", label: "Role & Permission Management", icon: Shield },
+  { id: "translations", label: "Quản Lý Bản Dịch", icon: Languages },
+  { id: "statistics", label: "Báo Cáo & Thống Kê", icon: BarChart3 },
+  { id: "profile", label: "Hồ Sơ Cá Nhân", icon: UserCog },
 ];
 
 export function OfficerSidebar({ currentPage, onNavigate }: OfficerSidebarProps) {
@@ -47,7 +46,7 @@ export function OfficerSidebar({ currentPage, onNavigate }: OfficerSidebarProps)
         {!collapsed && (
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white">AD</span>
+              <span className="text-white">OD</span>
             </div>
             <span className="text-sidebar-foreground">Officer Dashboard</span>
           </div>

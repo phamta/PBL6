@@ -1,27 +1,39 @@
 "use client";
 
-import React from "react";
-import { useState } from "react";
-import { 
-  Calendar, 
-  List, 
-  Check, 
-  X, 
-  Eye, 
-  MapPin, 
-  Users, 
+import React, { useState, useEffect } from "react";
+import { motion } from "motion/react";
+import {
+  Users,
   Download,
   FileText,
-  Printer,
   FileSpreadsheet,
+  List,
+  Calendar,
+  Eye,
+  MoreHorizontal,
   Edit,
-  Clock
+  Trash2,
+  Check,
+  X,
+  Clock,
+  Building,
+  MapPin,
+  DollarSign,
+  Printer,
+  Plus,
 } from "lucide-react";
 import { Card } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { Breadcrumbs } from "../Breadcrumbs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -30,137 +42,101 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from "../ui/dropdown-menu";
+import { Breadcrumbs } from "../Breadcrumbs";
+import { guestService, GuestWithRelations } from "@/lib/api/guest.service";
+import { toast } from "sonner";
 import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { ScrollArea } from "../ui/scroll-area";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 
-const delegationsData = [
-  {
-    id: "DEL-2025-001",
-    title: "EU Partnership Delegation",
-    institution: "University of Barcelona",
-    startDate: "2025-10-15",
-    endDate: "2025-10-20",
-    participants: 8,
-    status: "pending",
-    purpose: "Academic partnership discussion",
-    coordinator: "Dr. Maria Garcia",
-    department: "International Relations",
-    agenda: "Day 1: Campus tour, Day 2: Partnership discussion, Day 3: MOU signing",
-    participantList: [
-      "Dr. Maria Garcia - Lead Coordinator",
-      "Prof. Juan Martinez - Dean of Engineering",
-      "Dr. Sofia Rodriguez - Research Director",
-      "5 other faculty members"
-    ],
-    accommodations: "University Guest House, Rooms 201-208",
-    transportation: "Airport pickup arranged",
-    budget: "$15,000",
-    notes: "VIP delegation requiring special protocol",
-  },
-  {
-    id: "DEL-2025-002",
-    title: "Research Collaboration Visit",
-    institution: "MIT",
-    startDate: "2025-10-22",
-    endDate: "2025-10-28",
-    participants: 5,
-    status: "approved",
-    purpose: "Joint research project kickoff",
-    coordinator: "Prof. John Smith",
-    department: "Research Office",
-    agenda: "Research lab visits, Grant planning meetings, Technical workshops",
-    participantList: [
-      "Prof. John Smith - Principal Investigator",
-      "Dr. Emily Chen - Research Scientist",
-      "3 PhD students"
-    ],
-    accommodations: "Downtown Hotel",
-    transportation: "Self-arranged",
-    budget: "$8,500",
-    notes: "Focus on AI and Machine Learning collaboration",
-  },
-  {
-    id: "DEL-2025-003",
-    title: "Student Exchange Program",
-    institution: "National University Singapore",
-    startDate: "2025-11-01",
-    endDate: "2025-11-15",
-    participants: 12,
-    status: "pending",
-    purpose: "Student exchange orientation",
-    coordinator: "Dr. Chen Wei",
-    department: "Student Affairs",
-    agenda: "Orientation sessions, Campus integration, Cultural activities",
-    participantList: [
-      "Dr. Chen Wei - Exchange Coordinator",
-      "10 Exchange Students",
-      "1 Administrative Staff"
-    ],
-    accommodations: "Student Dormitory",
-    transportation: "University shuttle service",
-    budget: "$20,000",
-    notes: "Includes cultural immersion program",
-  },
-  {
-    id: "DEL-2025-004",
-    title: "Faculty Development Workshop",
-    institution: "ETH Zurich",
-    startDate: "2025-11-10",
-    endDate: "2025-11-12",
-    participants: 6,
-    status: "approved",
-    purpose: "Faculty training and development",
-    coordinator: "Prof. Schmidt",
-    department: "Academic Development",
-    agenda: "Teaching methodology workshops, Assessment techniques, Technology integration",
-    participantList: [
-      "Prof. Schmidt - Workshop Lead",
-      "5 Faculty trainers"
-    ],
-    accommodations: "Conference Center Hotel",
-    transportation: "University van",
-    budget: "$12,000",
-    notes: "Two-day intensive workshop",
-  },
-  {
-    id: "DEL-2025-005",
-    title: "Cultural Exchange Program",
-    institution: "Peking University",
-    startDate: "2025-11-20",
-    endDate: "2025-11-25",
-    participants: 15,
-    status: "rejected",
-    purpose: "Cultural and academic exchange",
-    coordinator: "Dr. Wang Li",
-    department: "Cultural Programs",
-    agenda: "Cultural performances, Academic seminars, City tours",
-    participantList: [
-      "Dr. Wang Li - Cultural Director",
-      "10 Students",
-      "4 Faculty members"
-    ],
-    accommodations: "International House",
-    transportation: "Tour bus",
-    budget: "$25,000",
-    notes: "Rejected due to scheduling conflicts",
-  },
-];
+// Types for delegation mapping
+interface Delegation {
+  id: string;
+  title: string;
+  institution: string;
+  startDate: string;
+  endDate: string;
+  participants: number;
+  status: "pending" | "approved" | "rejected" | "arrived" | "departed" | "cancelled";
+  purpose: string;
+  coordinator: string;
+  department: string;
+  agenda: string;
+  participantList: string[];
+  accommodations: string;
+  transportation: string;
+  budget: string;
+  notes: string;
+}
+
+// Helper function to map GuestWithRelations to Delegation
+function mapGuestToDelegation(guest: GuestWithRelations): Delegation {
+  // Map guest status to delegation status
+  const statusMap: Record<string, Delegation["status"]> = {
+    'REGISTERED': 'pending',
+    'APPROVED': 'approved',
+    'ARRIVED': 'arrived',
+    'DEPARTED': 'departed',
+    'CANCELLED': 'cancelled'
+  };
+
+  const mappedStatus: Delegation["status"] = statusMap[guest.status] || 'pending';
+
+  return {
+    id: guest.id,
+    title: guest.groupName || "Unnamed Delegation",
+    institution: guest.partner?.name || "Unknown Institution",
+    startDate: guest.arrivalDate,
+    endDate: guest.departureDate,
+    participants: guest.totalMembers,
+    status: mappedStatus,
+    purpose: guest.purpose,
+    coordinator: guest.contactPerson,
+    department: guest.unit?.name || "Unknown Department",
+    agenda: guest.visitPurpose || "",
+    participantList: guest.members?.map(member =>
+      `${member.fullName}${member.position ? ` - ${member.position}` : ''}`
+    ) || [],
+    accommodations: guest.notes?.includes("accommodations") ? guest.notes : "Not specified",
+    transportation: guest.notes?.includes("transportation") ? guest.notes : "Not specified",
+    budget: guest.notes?.includes("budget") ? guest.notes : "Not specified",
+    notes: guest.notes || "",
+  };
+}
+
 
 export function DelegationsPage() {
-  const [selectedDelegation, setSelectedDelegation] = useState<
-    typeof delegationsData[0] | null
-  >(null);
+  const [delegations, setDelegations] = useState<Delegation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDelegation, setSelectedDelegation] = useState<Delegation | null>(null);
+  const [editingDelegation, setEditingDelegation] = useState<Delegation | null>(null);
+
+  // Load delegations data
+  useEffect(() => {
+    const loadDelegations = async () => {
+      try {
+        setLoading(true);
+        const response = await guestService.list({
+          page: 1,
+          limit: 100, // Load more for officer view
+          sortBy: 'createdAt',
+          sortOrder: 'desc'
+        });
+
+        const mappedDelegations = response.guests.map((guest): Delegation => mapGuestToDelegation(guest));
+        setDelegations(mappedDelegations);
+      } catch (error) {
+        console.error('Failed to load delegations:', error);
+        toast.error('Failed to load delegations data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDelegations();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string }> = {
@@ -185,6 +161,49 @@ export function DelegationsPage() {
   const handlePrintDocument = () => {
     console.log("Printing official document");
     // Implement print logic
+  };
+
+  const handleEditDelegation = (delegation: Delegation) => {
+    setEditingDelegation(delegation);
+    setSelectedDelegation(null);
+  };
+
+  const handleApproveDelegation = async (delegationId: string) => {
+    try {
+      await guestService.approve(delegationId, { notes: "Approved by officer" });
+      toast.success("Delegation approved successfully");
+      // Reload delegations
+      const response = await guestService.list({
+        page: 1,
+        limit: 100,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      });
+      const mappedDelegations = response.guests.map((guest): Delegation => mapGuestToDelegation(guest));
+      setDelegations(mappedDelegations);
+    } catch (error) {
+      console.error('Failed to approve delegation:', error);
+      toast.error('Failed to approve delegation');
+    }
+  };
+
+  const handleRejectDelegation = async (delegationId: string) => {
+    try {
+      await guestService.reject(delegationId, { reason: "Rejected by officer", notes: "Rejected by officer" });
+      toast.success("Delegation rejected successfully");
+      // Reload delegations
+      const response = await guestService.list({
+        page: 1,
+        limit: 100,
+        sortBy: 'createdAt',
+        sortOrder: 'desc'
+      });
+      const mappedDelegations = response.guests.map((guest): Delegation => mapGuestToDelegation(guest));
+      setDelegations(mappedDelegations);
+    } catch (error) {
+      console.error('Failed to reject delegation:', error);
+      toast.error('Failed to reject delegation');
+    }
   };
 
   return (
@@ -219,10 +238,6 @@ export function DelegationsPage() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button className="bg-primary">
-            <Users className="w-4 h-4 mr-2" />
-            New Delegation
-          </Button>
         </div>
       </div>
 
@@ -232,7 +247,7 @@ export function DelegationsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground">Total Delegations</p>
-              <h3 className="mt-1">{delegationsData.length}</h3>
+              <h3 className="mt-1">{delegations.length}</h3>
             </div>
             <Users className="w-8 h-8 text-primary" />
           </div>
@@ -242,7 +257,7 @@ export function DelegationsPage() {
             <div>
               <p className="text-muted-foreground">Pending Approval</p>
               <h3 className="mt-1">
-                {delegationsData.filter(d => d.status === "pending").length}
+                {delegations.filter(d => d.status === "pending").length}
               </h3>
             </div>
             <Clock className="w-8 h-8 text-yellow-500" />
@@ -253,7 +268,7 @@ export function DelegationsPage() {
             <div>
               <p className="text-muted-foreground">Approved</p>
               <h3 className="mt-1">
-                {delegationsData.filter(d => d.status === "approved").length}
+                {delegations.filter(d => d.status === "approved").length}
               </h3>
             </div>
             <Check className="w-8 h-8 text-green-500" />
@@ -264,7 +279,7 @@ export function DelegationsPage() {
             <div>
               <p className="text-muted-foreground">Total Participants</p>
               <h3 className="mt-1">
-                {delegationsData.reduce((sum, d) => sum + d.participants, 0)}
+                {delegations.reduce((sum, d) => sum + d.participants, 0)}
               </h3>
             </div>
             <Users className="w-8 h-8 text-cyan-500" />
@@ -286,7 +301,19 @@ export function DelegationsPage() {
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
-          {delegationsData.map((delegation) => (
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-2">Loading delegations...</p>
+            </div>
+          ) : delegations.length === 0 ? (
+            <Card className="p-8 text-center">
+              <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3>No delegations found</h3>
+              <p className="text-muted-foreground">There are no delegations to display at the moment.</p>
+            </Card>
+          ) : (
+            delegations.map((delegation) => (
             <Card key={delegation.id} className="p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex gap-4 flex-1">
@@ -307,12 +334,12 @@ export function DelegationsPage() {
                       <div>
                         <p className="text-sm text-muted-foreground">Dates</p>
                         <p className="text-sm">
-                          {delegation.startDate} - {delegation.endDate}
+                          {new Date(delegation.startDate).toLocaleDateString()} - {new Date(delegation.endDate).toLocaleDateString()}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Participants</p>
-                        <p className="text-sm">{delegation.participants} people</p>
+                        <p className="text-sm">{delegation.participantList.length} people</p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">Department</p>
@@ -344,7 +371,7 @@ export function DelegationsPage() {
                         <Eye className="w-4 h-4 mr-2" />
                         View Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditDelegation(delegation)}>
                         <Edit className="w-4 h-4 mr-2" />
                         Edit Delegation
                       </DropdownMenuItem>
@@ -360,11 +387,17 @@ export function DelegationsPage() {
                       {delegation.status === "pending" && (
                         <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-green-600">
+                          <DropdownMenuItem
+                            className="text-green-600"
+                            onClick={() => handleApproveDelegation(delegation.id)}
+                          >
                             <Check className="w-4 h-4 mr-2" />
                             Approve
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleRejectDelegation(delegation.id)}
+                          >
                             <X className="w-4 h-4 mr-2" />
                             Reject
                           </DropdownMenuItem>
@@ -375,7 +408,8 @@ export function DelegationsPage() {
                 </div>
               </div>
             </Card>
-          ))}
+          ))
+          )}
         </TabsContent>
 
         <TabsContent value="calendar">
@@ -387,7 +421,7 @@ export function DelegationsPage() {
                 Calendar integration would be displayed here
               </p>
               <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
-                {delegationsData.slice(0, 3).map((delegation) => (
+                {delegations.slice(0, 3).map((delegation) => (
                   <Card key={delegation.id} className="p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-2 h-2 bg-primary rounded-full" />
@@ -413,7 +447,7 @@ export function DelegationsPage() {
         open={!!selectedDelegation}
         onOpenChange={(open) => !open && setSelectedDelegation(null)}
       >
-        <DialogContent className="max-w-4xl dialog-content">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Delegation Details</DialogTitle>
             <DialogDescription>
@@ -421,7 +455,7 @@ export function DelegationsPage() {
             </DialogDescription>
           </DialogHeader>
           {selectedDelegation && (
-            <div className="dialog-body">
+            <div className="dialog-body max-h-[70vh] overflow-y-auto">
               <Tabs defaultValue="overview" className="space-y-4">
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -545,16 +579,158 @@ export function DelegationsPage() {
             </Button>
             {selectedDelegation?.status === "pending" && (
               <>
-                <Button variant="outline" className="text-destructive">
+                <Button
+                  variant="outline"
+                  className="text-destructive"
+                  onClick={() => handleRejectDelegation(selectedDelegation.id)}
+                >
                   <X className="w-4 h-4 mr-2" />
                   Reject
                 </Button>
-                <Button className="bg-green-600 hover:bg-green-700">
+                <Button
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => handleApproveDelegation(selectedDelegation.id)}
+                >
                   <Check className="w-4 h-4 mr-2" />
                   Approve
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Delegation Dialog */}
+      <Dialog
+        open={!!editingDelegation}
+        onOpenChange={(open) => !open && setEditingDelegation(null)}
+      >
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Edit Delegation</DialogTitle>
+            <DialogDescription>
+              Modify delegation information across all university units
+            </DialogDescription>
+          </DialogHeader>
+          {editingDelegation && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Delegation Title</Label>
+                  <Input
+                    className="mt-1"
+                    defaultValue={editingDelegation.title}
+                    placeholder="Enter delegation title"
+                  />
+                </div>
+                <div>
+                  <Label>Institution</Label>
+                  <Input
+                    className="mt-1"
+                    defaultValue={editingDelegation.institution}
+                    placeholder="Enter institution name"
+                  />
+                </div>
+                <div>
+                  <Label>Start Date</Label>
+                  <Input
+                    type="date"
+                    className="mt-1"
+                    defaultValue={editingDelegation.startDate.split('T')[0]}
+                  />
+                </div>
+                <div>
+                  <Label>End Date</Label>
+                  <Input
+                    type="date"
+                    className="mt-1"
+                    defaultValue={editingDelegation.endDate.split('T')[0]}
+                  />
+                </div>
+                <div>
+                  <Label>Department</Label>
+                  <Input
+                    className="mt-1"
+                    defaultValue={editingDelegation.department}
+                    placeholder="Enter department"
+                  />
+                </div>
+                <div>
+                  <Label>Coordinator</Label>
+                  <Input
+                    className="mt-1"
+                    defaultValue={editingDelegation.coordinator}
+                    placeholder="Enter coordinator name"
+                  />
+                </div>
+                <div>
+                  <Label>Total Participants</Label>
+                  <Input
+                    type="number"
+                    className="mt-1"
+                    defaultValue={editingDelegation.participants}
+                  />
+                </div>
+                <div>
+                  <Label>Budget</Label>
+                  <Input
+                    className="mt-1"
+                    defaultValue={editingDelegation.budget}
+                    placeholder="Enter budget"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Purpose</Label>
+                  <Textarea
+                    className="mt-1"
+                    defaultValue={editingDelegation.purpose}
+                    placeholder="Enter delegation purpose"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Agenda</Label>
+                  <Textarea
+                    className="mt-1"
+                    defaultValue={editingDelegation.agenda}
+                    rows={3}
+                    placeholder="Enter delegation agenda"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Accommodations</Label>
+                  <Textarea
+                    className="mt-1"
+                    defaultValue={editingDelegation.accommodations}
+                    placeholder="Enter accommodation details"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Transportation</Label>
+                  <Textarea
+                    className="mt-1"
+                    defaultValue={editingDelegation.transportation}
+                    placeholder="Enter transportation details"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label>Additional Notes</Label>
+                  <Textarea
+                    className="mt-1"
+                    defaultValue={editingDelegation.notes}
+                    placeholder="Enter additional notes"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="mt-4 border-t pt-4">
+            <Button variant="outline" onClick={() => setEditingDelegation(null)}>
+              Cancel
+            </Button>
+            <Button className="bg-primary">
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

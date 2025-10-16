@@ -120,6 +120,58 @@ export class TranslationService {
       throw new ForbiddenException('You do not have permission to create translations');
     }
 
+    // Validate required fields
+    if (!createTranslationDto.applicantName || createTranslationDto.applicantName.trim() === '') {
+      throw new BadRequestException('Applicant name is required');
+    }
+
+    if (!createTranslationDto.documentTitle || createTranslationDto.documentTitle.trim() === '') {
+      throw new BadRequestException('Document title is required');
+    }
+
+    if (!createTranslationDto.sourceLanguage || createTranslationDto.sourceLanguage.trim() === '') {
+      throw new BadRequestException('Source language is required');
+    }
+
+    if (!createTranslationDto.targetLanguage || createTranslationDto.targetLanguage.trim() === '') {
+      throw new BadRequestException('Target language is required');
+    }
+
+    if (!createTranslationDto.documentType || createTranslationDto.documentType.trim() === '') {
+      throw new BadRequestException('Document type is required');
+    }
+
+    if (!createTranslationDto.purpose || createTranslationDto.purpose.trim() === '') {
+      throw new BadRequestException('Purpose is required');
+    }
+
+    if (!createTranslationDto.originalFile || createTranslationDto.originalFile.trim() === '') {
+      throw new BadRequestException('Original file is required');
+    }
+
+    // Validate language pair
+    if (createTranslationDto.sourceLanguage.toLowerCase() === createTranslationDto.targetLanguage.toLowerCase()) {
+      throw new BadRequestException('Source language and target language cannot be the same');
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (createTranslationDto.applicantEmail && !emailRegex.test(createTranslationDto.applicantEmail)) {
+      throw new BadRequestException('Invalid applicant email format');
+    }
+
+    // Validate phone format (basic validation)
+    const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
+    if (createTranslationDto.applicantPhone && !phoneRegex.test(createTranslationDto.applicantPhone)) {
+      throw new BadRequestException('Invalid applicant phone format');
+    }
+
+    // Validate urgent level
+    const validUrgentLevels = ['NORMAL', 'URGENT', 'VERY_URGENT'];
+    if (createTranslationDto.urgentLevel && !validUrgentLevels.includes(createTranslationDto.urgentLevel)) {
+      throw new BadRequestException('Invalid urgent level');
+    }
+
     // Validate partner if provided
     if (createTranslationDto['partnerId']) {
       const partner = await this.prisma.partner.findUnique({
